@@ -1,0 +1,30 @@
+/* 全域基礎樣式 - 僅保留真正需要全域共用的樣式 */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: #FFF8F6;
+  font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+  color: #333;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* 全域重置樣式 */
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
