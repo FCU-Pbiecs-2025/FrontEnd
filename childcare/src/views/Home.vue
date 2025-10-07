@@ -6,15 +6,15 @@
         <span class="section-title" style="border:none;background:none;padding:0;margin:0;color:#333;font-weight:normal;font-size:24px;">首頁 /</span>
       </div>
       <div class="card-container">
-        <div class="card">
+        <div class="card" @click="goToPage('ApplicationStatus')" style="cursor:pointer;">
           <img src="https://img.icons8.com/ios/100/000000/id-verified.png" alt="申請進度查詢">
           <p>申請進度查詢</p>
         </div>
-        <div class="card">
+        <div class="card" @click="goToPage('ApplyService')" style="cursor:pointer;">
           <img src="https://img.icons8.com/ios/100/000000/document.png" alt="申請托育服務">
           <p>申請托育服務</p>
         </div>
-        <div class="card">
+        <div class="card" @click="goToPage('SubsidyCalculator')" style="cursor:pointer;">
           <img src="https://img.icons8.com/ios/100/000000/upload.png" alt="補助試算">
           <p>補助試算</p>
         </div>
@@ -63,7 +63,15 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { getAllAnnouncements } from '../api/announcements.js'
+
+// 路由器實例
+const router = useRouter()
+// 導航到不同頁面
+const goToPage = (page) => {
+  router.push({ name: page })
+}
 
 // 響應式資料
 const newsItems = ref([])
@@ -181,6 +189,7 @@ main {
   align-items: center;
   width: 270px;
   transition: box-shadow 0.2s, transform 0.2s;
+  cursor: pointer;
 }
 
 .card:hover {

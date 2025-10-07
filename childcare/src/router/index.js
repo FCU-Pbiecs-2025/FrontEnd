@@ -25,6 +25,21 @@ const routes = [
         path: '/member-center',
         name: 'MemberCenter',
         component: () => import('../views/MemberCenter.vue')
+    },
+    {
+        path: '/application-status',
+        name: 'ApplicationStatus',
+        component: () => import('../views/ApplicationStatus.vue')
+    },
+    {
+        path: '/apply-service',
+        name: 'ApplyService',
+        component: () => import('../views/ApplyService.vue')
+    },
+    {
+        path: '/subsidy-calculator',
+        name: 'SubsidyCalculator',
+        component: () => import('../views/SubsidyCalculator.vue')
     }
 ]
 

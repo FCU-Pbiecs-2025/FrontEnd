@@ -4,7 +4,7 @@
     <header>
       <div class="header-left" @click="goToPage('Home')" style="cursor:pointer;">
         <img class="logo" src="https://img.icons8.com/ios-filled/50/ffffff/baby.png" alt="logo" />
-        <span class="system-title">新竹公共托育系統</span>
+        <span class="system-title">新竹縣公共托育系統</span>
       </div>
       <nav class="header-nav">
         <div class="nav-item" @click="goToPage('News')" style="cursor:pointer;">
