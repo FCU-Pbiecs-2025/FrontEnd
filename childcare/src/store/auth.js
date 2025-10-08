@@ -1,0 +1,78 @@
+import { defineStore } from 'pinia'
+import { login, logout, getUserInfo } from '../api/auth.js'
+
+export const useAuthStore = defineStore('auth', {
+  state: () => ({
+    token: localStorage.getItem('token') || null,
+    user: null,
+    isAuthenticated: false
+  }),
+
+  getters: {
+    isLoggedIn: (state) => !!state.token && state.isAuthenticated
+  },
+
+  actions: {
+    async loginUser(account, password, captcha) {
+      try {
+        const response = await login(account, password, captcha)
+        // 根據後端格式直接回傳
+        if (response.success) {
+          const { token, user } = response
+          this.token = token
+          this.user = user
+          this.isAuthenticated = true
+          localStorage.setItem('token', token)
+          localStorage.setItem('user', JSON.stringify(user))
+          return { success: true }
+        } else {
+          return {
+            success: false,
+            message: response.message || '登入失敗'
+          }
+        }
+      } catch (error) {
+        console.error('Login failed:', error)
+        return {
+          success: false,
+          message: error.response?.data?.message || '登入失敗'
+        }
+      }
+    },
+
+    async logoutUser() {
+      try {
+        await logout()
+      } catch (error) {
+        console.error('Logout error:', error)
+      } finally {
+        this.token = null
+        this.user = null
+        this.isAuthenticated = false
+
+        // 清除 localStorage
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+      }
+    },
+
+    async initializeAuth() {
+      const token = localStorage.getItem('token')
+      const user = localStorage.getItem('user')
+
+      if (token && user) {
+        this.token = token
+        this.user = JSON.parse(user)
+        this.isAuthenticated = true
+
+        // 驗證 token 是否仍有效
+        try {
+          await getUserInfo()
+        } catch (error) {
+          console.error('Token validation failed:', error)
+          this.logoutUser()
+        }
+      }
+    }
+  }
+})

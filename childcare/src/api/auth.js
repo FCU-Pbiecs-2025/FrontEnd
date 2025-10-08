@@ -1,0 +1,70 @@
+import http from "./http.js";
+import { mockAuth } from "./mockAuth.js";
+
+// 開發環境使用模擬 API，生產環境使用真實 API
+const USE_MOCK_API = false; // 設為 false 時使用真實後端 API（包含 SMTP）
+const SMTP_SERVER_URL = 'http://localhost:3001'; // SMTP 服務器地址
+
+export function login(account, password, captcha) {
+    if (USE_MOCK_API) {
+        return mockAuth.login(account, password, captcha);
+    }
+    return http.post("/auth/login", { account, password, captcha });
+}
+
+export function logout() {
+    if (USE_MOCK_API) {
+        return mockAuth.logout();
+    }
+    return http.post("/auth/logout");
+}
+
+export function getUserInfo() {
+    if (USE_MOCK_API) {
+        const token = localStorage.getItem('token');
+        return mockAuth.getUserInfo(token);
+    }
+    return http.get("/auth/me");
+}
+
+export function forgotPassword(email, recaptchaToken = null) {
+    if (USE_MOCK_API) {
+        return mockAuth.forgotPassword(email, recaptchaToken);
+    }
+    // 使用真實的 SMTP 服務
+    return fetch(`${SMTP_SERVER_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, recaptchaToken })
+    }).then(response => response.json());
+}
+
+export function resetPassword(email, resetToken, newPassword) {
+    if (USE_MOCK_API) {
+        return mockAuth.resetPassword(email, resetToken, newPassword);
+    }
+    // 使用真實的 SMTP 服務
+    return fetch(`${SMTP_SERVER_URL}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, token: resetToken, newPassword })
+    }).then(response => response.json());
+}
+
+export function verifyResetToken(email, resetToken) {
+    if (USE_MOCK_API) {
+        return mockAuth.verifyResetToken(email, resetToken);
+    }
+    // 使用真實的 SMTP 服務
+    return fetch(`${SMTP_SERVER_URL}/api/auth/verify-reset-token`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, token: resetToken })
+    }).then(response => response.json());
+}

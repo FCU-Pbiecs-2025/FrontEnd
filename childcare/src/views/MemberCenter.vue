@@ -13,11 +13,11 @@
             <img src="https://img.icons8.com/ios-filled/100/F9AFAE/user-male-circle.png" alt="會員頭像" />
           </div>
           <div class="member-details">
-            <h3>王小明</h3>
-            <p>📧 email: wang@example.com</p>
-            <p>📱 電話: 0912-345-678</p>
-            <p>🏠 地址: 新竹縣竹北市中正東路123號</p>
-            <button class="edit-btn">編輯資料</button>
+            <h3>{{ authStore.user?.name || authStore.user?.account || '用戶' }}</h3>
+            <p>📧 email: {{ authStore.user?.email || '未設定' }}</p>
+            <p>📱 電話: {{ authStore.user?.phone || '未設定' }}</p>
+            <p>🏠 地址: {{ authStore.user?.address || '未設定' }}</p>
+            <button class="edit-btn" @click="editProfile">編輯資料</button>
           </div>
         </div>
       </div>
@@ -29,28 +29,28 @@
             <div class="service-icon">📋</div>
             <h3>申請進度查詢</h3>
             <p>查看托育服務申請的處理進度</p>
-            <button class="service-btn">查看詳情</button>
+            <button class="service-btn" @click="checkApplications">查看詳情</button>
           </div>
 
           <div class="service-card">
             <div class="service-icon">📝</div>
             <h3>申請托育服務</h3>
             <p>線上申請公共托育服務</p>
-            <button class="service-btn">立即申請</button>
+            <button class="service-btn" @click="applyService">立即申請</button>
           </div>
 
           <div class="service-card">
             <div class="service-icon">💰</div>
             <h3>補助試算</h3>
             <p>計算您可申請的托育補助金額</p>
-            <button class="service-btn">開始試算</button>
+            <button class="service-btn" @click="calculateSubsidy">開始試算</button>
           </div>
 
           <div class="service-card">
             <div class="service-icon">📊</div>
             <h3>服務記錄</h3>
             <p>查看過往的申請與服務記錄</p>
-            <button class="service-btn">查看記錄</button>
+            <button class="service-btn" @click="viewRecords">查看記錄</button>
           </div>
         </div>
       </div>
@@ -58,25 +58,18 @@
       <div class="applications-section">
         <h2>申請狀態</h2>
         <div class="applications-list">
-          <div class="application-item">
-            <div class="application-info">
-              <h4>公共托育服務申請</h4>
-              <p class="application-date">申請日期: 2024/01/15</p>
-              <p class="application-details">申請人: 王小明 | 嬰兒: 王小寶 (6個月)</p>
-            </div>
-            <div class="application-status">
-              <span class="status-badge processing">審核中</span>
-            </div>
+          <div v-if="applications.length === 0" class="no-applications">
+            <p>目前沒有申請記錄</p>
+            <button class="service-btn" @click="applyService">開始申請</button>
           </div>
-
-          <div class="application-item">
+          <div v-else class="application-item" v-for="application in applications" :key="application.id">
             <div class="application-info">
-              <h4>托育補助申請</h4>
-              <p class="application-date">申請日期: 2024/01/10</p>
-              <p class="application-details">補助類型: 一般家庭托育補助</p>
+              <h4>{{ application.title }}</h4>
+              <p class="application-date">申請日期: {{ formatDate(application.date) }}</p>
+              <p class="application-details">{{ application.details }}</p>
             </div>
             <div class="application-status">
-              <span class="status-badge approved">已核准</span>
+              <span :class="['status-badge', application.status]">{{ getStatusText(application.status) }}</span>
             </div>
           </div>
         </div>
@@ -85,19 +78,19 @@
       <div class="quick-actions-section">
         <h2>快速功能</h2>
         <div class="quick-actions">
-          <button class="quick-action-btn">
+          <button class="quick-action-btn" @click="editProfile">
             <span class="action-icon">🔄</span>
             <span>更新個人資料</span>
           </button>
-          <button class="quick-action-btn">
+          <button class="quick-action-btn" @click="contactSupport">
             <span class="action-icon">📞</span>
             <span>聯絡客服</span>
           </button>
-          <button class="quick-action-btn">
+          <button class="quick-action-btn" @click="downloadForms">
             <span class="action-icon">📋</span>
             <span>下載申請表</span>
           </button>
-          <button class="quick-action-btn">
+          <button class="quick-action-btn" @click="handleLogout">
             <span class="action-icon">🚪</span>
             <span>登出系統</span>
           </button>
@@ -107,9 +100,120 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'MemberCenter'
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../store/auth.js'
+
+const router = useRouter()
+const authStore = useAuthStore()
+
+// 申請記錄
+const applications = ref([])
+
+// 初始化會員中心資料
+onMounted(async () => {
+  // 確保用戶已登入，如果沒有登入則導向登入頁
+  if (!authStore.isLoggedIn) {
+    router.push('/login')
+    return
+  }
+
+  // 載入用戶的申請記錄（這裡可以呼叫 API）
+  loadApplications()
+})
+
+// 載入申請記錄
+const loadApplications = async () => {
+  try {
+    // 這裡可以呼叫 API 獲取真實的申請記錄
+    // const response = await getUserApplications()
+    // applications.value = response.data
+
+    // 示例資料
+    applications.value = [
+      {
+        id: 1,
+        title: '公共托育服務申請',
+        date: '2024-01-15',
+        details: `申請人: ${authStore.user?.name || authStore.user?.account} | 嬰兒: 王小寶 (6個月)`,
+        status: 'processing'
+      },
+      {
+        id: 2,
+        title: '托育補助申請',
+        date: '2024-01-10',
+        details: '補助類型: 一般家庭托育補助',
+        status: 'approved'
+      }
+    ]
+  } catch (error) {
+    console.error('載入申請記錄失敗:', error)
+  }
+}
+
+// 處理登出
+const handleLogout = async () => {
+  try {
+    await authStore.logoutUser()
+    router.push('/')
+  } catch (error) {
+    console.error('登出失敗:', error)
+  }
+}
+
+// 編輯個人資料
+const editProfile = () => {
+  // 這裡可以導向編輯個人資料頁面或開啟模態框
+  alert('編輯個人資料功能（待實現）')
+}
+
+// 查看申請進度
+const checkApplications = () => {
+  // 捲動到申請狀態區塊
+  document.querySelector('.applications-section').scrollIntoView({ behavior: 'smooth' })
+}
+
+// 申請托育服務
+const applyService = () => {
+  alert('申請托育服務功能（待實現）')
+}
+
+// 補助試算
+const calculateSubsidy = () => {
+  alert('補助試算功能（待實現）')
+}
+
+// 查看服務記錄
+const viewRecords = () => {
+  alert('查看服務記錄功能（待實現）')
+}
+
+// 聯絡客服
+const contactSupport = () => {
+  alert('聯絡客服功能（待實現）')
+}
+
+// 下載申請表
+const downloadForms = () => {
+  alert('下載申請表功能（待實現）')
+}
+
+// 格式化日期
+const formatDate = (dateString) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('zh-TW')
+}
+
+// 獲取狀態文字
+const getStatusText = (status) => {
+  const statusMap = {
+    'processing': '審核中',
+    'approved': '已核准',
+    'rejected': '已拒絕',
+    'pending': '待審核'
+  }
+  return statusMap[status] || '未知狀態'
 }
 </script>
 
@@ -331,6 +435,17 @@ export default {
 
 .action-icon {
   font-size: 1.2rem;
+}
+
+.no-applications {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.no-applications p {
+  margin-bottom: 20px;
+  font-size: 1.1rem;
 }
 
 @media (max-width: 768px) {
