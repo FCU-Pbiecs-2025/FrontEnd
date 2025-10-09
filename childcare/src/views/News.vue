@@ -2,11 +2,19 @@
   <div class="news-page">
     <!-- 輪播圖區塊 -->
     <div class="carousel-wrapper">
-      <button class="carousel-btn left" @click="prevSlide">&#8592;</button>
+      <button class="carousel-btn left" @click="prevSlide">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polyline points="20,8 12,16 20,24" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+      </button>
       <div class="carousel-image-box">
         <img :src="carouselImages[currentSlide]" alt="輪播圖" class="carousel-image" />
       </div>
-      <button class="carousel-btn right" @click="nextSlide">&#8594;</button>
+      <button class="carousel-btn right" @click="nextSlide">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polyline points="12,8 20,16 12,24" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+      </button>
     </div>
     <!-- 交換為 Home.vue 的動態區塊（但保留靜態資料） -->
 
@@ -86,7 +94,6 @@ export default {
 <style scoped>
 .news-page {
   min-height: calc(100vh - 160px); /* 減去 header 和 footer 的高度 */
-  background: #FFF8F6;
   padding: 40px 0;
 }
 
@@ -192,7 +199,7 @@ export default {
   gap: 12px;
 }
 .carousel-image-box {
-  width: 630px; /* 420 * 1.5 */
+  width: 100%; /* 420 * 1.5 */
   height: 330px; /* 220 * 1.5 */
   overflow: hidden;
   border-radius: 24px; /* 16 * 1.5 */
@@ -209,19 +216,27 @@ export default {
   transition: opacity 0.3s;
 }
 .carousel-btn {
-  background: #fffbe6;
-  border: 1.5px solid #ffb6b9;
-  border-radius: 50%;
-  width: 54px; /* 36 * 1.5 */
-  height: 54px; /* 36 * 1.5 */
-  font-size: 2.25rem; /* 1.5 * 1.5 */
-  color: #f9afae;
+  background: #ffcbb3; /* 米色 */
+  border: none;
+  border-radius: 20%;
+  width: 54px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  box-shadow: 0 3px 12px rgba(255,182,185,0.08);
-  transition: background 0.2s;
+  box-shadow: 0 4px 16px rgba(210, 180, 140, 0.25), 0 1.5px 6px rgba(0,0,0,0.08);
+  transition: background 0.2s, box-shadow 0.2s, color 0.2s;
+  padding: 0;
+}
+.carousel-btn svg {
+  display: block;
+  width: 32px;
+  height: 32px;
 }
 .carousel-btn:hover {
-  background: #ffe5c2;
+  background: #efad8f; /* 深一點的米色 */
+  box-shadow: 0 6px 20px rgba(210, 180, 140, 0.35), 0 2px 8px rgba(0,0,0,0.12);
 }
 .news-list-section {
   background: #fff;

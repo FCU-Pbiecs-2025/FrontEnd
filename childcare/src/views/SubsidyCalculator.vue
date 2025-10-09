@@ -133,7 +133,6 @@ function calcSubsidy() {
 
 <style scoped>
 .subsidy-page {
-  background: #fdf6f3;
   min-height: 100vh;
   padding-bottom: 40px;
 }

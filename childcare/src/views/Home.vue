@@ -156,7 +156,6 @@ onMounted(() => {
 /* Main 樣式 */
 main {
   min-height: 100vh;
-  background: #FFF8F6;
   padding-bottom: 40px;
 }
 

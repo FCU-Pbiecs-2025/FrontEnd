@@ -220,7 +220,7 @@ const getStatusText = (status) => {
 <style scoped>
 .member-center-page {
   min-height: calc(100vh - 160px);
-  background: #FFF8F6;
+
   padding: 40px 0;
 }
 

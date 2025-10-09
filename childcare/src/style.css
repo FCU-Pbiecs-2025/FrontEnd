@@ -4,7 +4,12 @@
 }
 
 body {
-  background: #FFF8F6;
+  /* 將全站背景改為 2.jpg */
+  background-image: url('@/imgs/7.jpg');
+
+  background-repeat: repeat;
+  background-attachment: fixed;
+  background-color: #FFF8F6; /* 作為備援底色 */
   font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
   color: #333;
   margin: 0;

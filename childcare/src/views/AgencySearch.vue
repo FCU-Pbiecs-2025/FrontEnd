@@ -128,23 +128,21 @@ export default {
 <style scoped>
 .agency-search-page {
   min-height: calc(100vh - 160px);
-  background: #FFF8F6;
   padding: 40px 0;
+  position: relative; /* 讓絕對定位的 .view-toggle 以此為基準 */
 }
 
 .page-wrapper {
-  position: relative;
   padding-top: 60px;
 }
 
 .view-toggle {
   position: absolute;
   top: 0;
-  right: 15%;
-
+  right: 0;
   display: flex;
   gap: 10px;
-  z-index: 100;
+  z-index: 10;
 }
 
 .toggle-btn {
@@ -284,11 +282,16 @@ export default {
 }
 
 @media (max-width: 768px) {
+  .view-toggle {
+    top: 0;
+    right: 0;
+    flex-direction: column;
+    gap: 8px;
+  }
   .form-row {
     flex-direction: column;
     gap: 16px;
   }
-
   .agency-item {
     flex-direction: column;
     align-items: flex-start;
