@@ -1,73 +1,80 @@
 <template>
   <!-- Main -->
   <main>
-    <section class="main-section">
-      <div class="section-title-bar">
-        <span class="section-title" style="border:none;background:none;padding:0;margin:0;color:#333;font-weight:normal;font-size:24px;">首頁 /</span>
-      </div>
-      <div class="card-container">
-        <div class="card" @click="goToPage('ApplicationStatus')" style="cursor:pointer;">
-          <img src="https://img.icons8.com/ios/100/000000/id-verified.png" alt="申請進度查詢">
-          <p>申請進度查詢</p>
-        </div>
-        <div class="card" @click="goToPage('ApplyService')" style="cursor:pointer;">
-          <img src="https://img.icons8.com/ios/100/000000/document.png" alt="申請托育服務">
-          <p>申請托育服務</p>
-        </div>
-        <div class="card" @click="goToPage('SubsidyCalculator')" style="cursor:pointer;">
-          <img src="https://img.icons8.com/ios/100/000000/upload.png" alt="補助試算">
-          <p>補助試算</p>
-        </div>
-      </div>
-    </section>
+    <template v-if="isHome">
+      <section class="main-section">
 
-    <section class="news">
-      <div class="news-title">
-        <span>最新消息</span>
-      </div>
-      <div class="news-box bulletin-box">
-        <!-- 載入狀態 -->
-        <div v-if="isLoading" class="loading-state">
-          <div class="loading-spinner"></div>
-          <p>載入中...</p>
+        <div class="card-container">
+          <div class="card" @click="goToPage('ApplicationStatus')" style="cursor:pointer;">
+            <img src="https://img.icons8.com/ios/100/000000/id-verified.png" alt="申請進度查詢">
+            <p>申請進度查詢</p>
+          </div>
+          <div class="card" @click="goToPage('ApplyService')" style="cursor:pointer;">
+            <img src="https://img.icons8.com/ios/100/000000/document.png" alt="申請托育服務">
+            <p>申請托育服務</p>
+          </div>
+          <div class="card" @click="goToPage('SubsidyCalculator')" style="cursor:pointer;">
+            <img src="https://img.icons8.com/ios/100/000000/upload.png" alt="補助試算">
+            <p>補助試算</p>
+          </div>
         </div>
+      </section>
 
-        <!-- 錯誤狀態 -->
-        <div v-else-if="error" class="error-state">
-          <p>{{ error }}</p>
-          <button @click="loadNewsData" class="retry-btn">重新載入</button>
+      <section class="news">
+        <div class="news-title">
+          <span>最新消息</span>
         </div>
+        <div class="news-box bulletin-box">
+          <!-- 載入狀態 -->
+          <div v-if="isLoading" class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>載入中...</p>
+          </div>
 
-        <!-- 正常資料顯示 -->
-        <ul v-else-if="newsItems.length > 0">
-          <li class="news-item bulletin-item" v-for="item in newsItems" :key="item.id">
-            <div class="news-date">
-              <span class="news-year">{{ item.formattedDate.year }}</span>
-              <span class="news-month">{{ item.formattedDate.month }}</span>
-              <span class="news-day">{{ item.formattedDate.day }}</span>
-            </div>
-            <div class="news-content">
-              {{ item.title }}
-            </div>
-          </li>
-        </ul>
+          <!-- 錯誤狀態 -->
+          <div v-else-if="error" class="error-state">
+            <p>{{ error }}</p>
+            <button @click="loadNewsData" class="retry-btn">重新載入</button>
+          </div>
 
-        <!-- 無資料狀態 -->
-        <div v-else class="empty-state">
-          <p>暫無最新消息</p>
+          <!-- 正常資料顯示 -->
+          <ul v-else-if="newsItems.length > 0">
+            <li class="news-item bulletin-item" v-for="item in newsItems" :key="item.id">
+              <div class="news-date">
+                <span class="news-year">{{ item.formattedDate.year }}</span>
+                <span class="news-month">{{ item.formattedDate.month }}</span>
+                <span class="news-day">{{ item.formattedDate.day }}</span>
+              </div>
+              <div class="news-content">
+                {{ item.title }}
+              </div>
+            </li>
+          </ul>
+
+          <!-- 無資料狀態 -->
+          <div v-else class="empty-state">
+            <p>暫無最新消息</p>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </template>
+
+    <!-- 子路由內容顯示區 -->
+    <router-view />
+
   </main>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { getAllAnnouncements } from '../api/announcements.js'
 
 // 路由器實例
 const router = useRouter()
+const route = useRoute()
+// 判斷是否在首頁
+const isHome = computed(() => route.name === 'Home')
 // 導航到不同頁面
 const goToPage = (page) => {
   router.push({ name: page })

@@ -38,7 +38,9 @@
     <!-- Main Content -->
     <main class="main-content">
       <!-- Router View - 顯示不同頁面的內容 -->
-      <router-view />
+      <Breadcrumbs/>
+      <div><router-view /></div>
+
     </main>
 
     <!-- Footer -->
@@ -50,8 +52,10 @@
 </template>
 
 <script setup>
+
 import { useRouter } from 'vue-router'
 import { useAuthStore } from './store/auth.js'
+import Breadcrumbs from "@/components/Breadcrumbs.vue";
 
 // 路由器實例
 const router = useRouter()

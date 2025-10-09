@@ -5,70 +5,79 @@ const routes = [
     {
         path: '/',
         name: 'Home',
-        component: () => import('../views/Home.vue')
+        component: () => import('../views/Home.vue'),
+        meta: {breadcrumb: '首頁'},
+        children: [
+            {
+                path: '/news',
+                name: 'News',
+                component: () => import('../views/News.vue'),
+                meta: {breadcrumb: '最新消息'}
+            },
+            {
+                path: '/agency-search',
+                name: 'AgencySearch',
+                component: () => import('../views/AgencySearch.vue'),
+                meta: {breadcrumb: '查詢機構'}
+            },
+            {
+                path: '/qualification',
+                name: 'Qualification',
+                component: () => import('../views/Qualification.vue'),
+                meta: {breadcrumb: '公托資格說明'}
+            },
+            {
+                path: '/member-center',
+                name: 'MemberCenter',
+                component: () => import('../views/MemberCenter.vue'),
+                meta: { requiresAuth: true, breadcrumb: '會員中心' }
+            },
+            {
+                path: '/forgot-password',
+                name: 'ForgotPassword',
+                component: () => import('../views/ForgotPassword.vue')
+            },
+            {
+                path: '/register',
+                name: 'Register',
+                component: () => import('../views/Register.vue')
+            },
+            {
+                path: '/register-terms',
+                name: 'RegisterTerms',
+                component: () => import('../views/RegisterTerms.vue')
+            },
+            {
+                path: '/reset-password',
+                name: 'ResetPassword',
+                component: () => import('../views/ResetPassword.vue')
+            },
+            {
+                path: '/application-status',
+                name: 'ApplicationStatus',
+                component: () => import('../views/ApplicationStatus.vue'),
+                meta: {breadcrumb: '申請進度查詢'}
+            },
+            {
+                path: '/apply-service',
+                name: 'ApplyService',
+                component: () => import('../views/ApplyService.vue'),
+                meta: {breadcrumb: '申請托育服務'}
+            },
+            {
+                path: '/subsidy-calculator',
+                name: 'SubsidyCalculator',
+                component: () => import('../views/SubsidyCalculator.vue'),
+                meta: {breadcrumb: '補助試算'}
+            },
+            {
+                path: '/login',
+                name: 'Login',
+                component: () => import('../views/LoginView.vue'),
+                meta: { requiresGuest: true } // 已登入用戶不能訪問登入頁
+            }
+        ]
     },
-    {
-        path: '/news',
-        name: 'News',
-        component: () => import('../views/News.vue')
-    },
-    {
-        path: '/agency-search',
-        name: 'AgencySearch',
-        component: () => import('../views/AgencySearch.vue')
-    },
-    {
-        path: '/qualification',
-        name: 'Qualification',
-        component: () => import('../views/Qualification.vue')
-    },
-    {
-        path: '/member-center',
-        name: 'MemberCenter',
-        component: () => import('../views/MemberCenter.vue'),
-        meta: { requiresAuth: true } // 需要登入才能訪問
-    },
-    {
-        path: '/forgot-password',
-        name: 'ForgotPassword',
-        component: () => import('../views/ForgotPassword.vue')
-    },
-    {
-        path: '/register',
-        name: 'Register',
-        component: () => import('../views/Register.vue')
-    },
-    {
-        path: '/register-terms',
-        name: 'RegisterTerms',
-        component: () => import('../views/RegisterTerms.vue')
-    },
-    {
-        path: '/reset-password',
-        name: 'ResetPassword',
-        component: () => import('../views/ResetPassword.vue')
-    },
-    {
-        path: '/application-status',
-        name: 'ApplicationStatus',
-        component: () => import('../views/ApplicationStatus.vue')
-    },
-    {
-        path: '/apply-service',
-        name: 'ApplyService',
-        component: () => import('../views/ApplyService.vue')
-    },
-    {
-        path: '/subsidy-calculator',
-        name: 'SubsidyCalculator',
-        component: () => import('../views/SubsidyCalculator.vue')
-    },
-    {
-        path: '/login',
-        name: 'Login',
-        component: () => import('../views/LoginView.vue'),
-        meta: { requiresGuest: true } // 已登入用戶不能訪問登入頁
-    }
 ]
 
 const router = createRouter({
