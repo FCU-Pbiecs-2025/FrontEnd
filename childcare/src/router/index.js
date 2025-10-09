@@ -18,7 +18,21 @@ const routes = [
                 path: '/agency-search',
                 name: 'AgencySearch',
                 component: () => import('../views/AgencySearch.vue'),
-                meta: {breadcrumb: '查詢機構'}
+                meta: {breadcrumb: '查詢機構'},
+                children: [
+                    {
+                        path: 'map',
+                        name: 'AgencyMap',
+                        component: () => import('../views/AgencyMap.vue'),
+                        meta: {breadcrumb: '地圖檢視'}
+                    },
+                    {
+                        path: 'info',
+                        name: 'AgencyInfo',
+                        component: () => import('../views/AgencyInfo.vue'),
+                        meta: {breadcrumb: '機構說明'}
+                    }
+                ]
             },
             {
                 path: '/qualification',

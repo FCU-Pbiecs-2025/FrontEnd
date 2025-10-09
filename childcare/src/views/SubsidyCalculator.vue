@@ -1,13 +1,6 @@
 <template>
   <div class="subsidy-page">
-    <!-- 頁面標題與路徑 -->
-    <div class="page-header">
-      <div class="breadcrumb">首頁 / 公托補助試算</div>
-      <div class="main-title-row">
-        <img class="main-title-icon" src="https://img.icons8.com/ios-filled/60/4a90e2/calculator.png" alt="icon" />
-        <span class="main-title">公共托育補助試算</span>
-      </div>
-    </div>
+
     <!-- 分頁導覽 -->
     <div class="section-btn-row">
       <div class="section-btn">身 分 資 格 輸 入</div>

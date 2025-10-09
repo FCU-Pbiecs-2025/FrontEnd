@@ -24,36 +24,30 @@
         <div class="news-title">
           <span>最新消息</span>
         </div>
-        <div class="news-box bulletin-box">
-          <!-- 載入狀態 -->
-          <div v-if="isLoading" class="loading-state">
-            <div class="loading-spinner"></div>
-            <p>載入中...</p>
-          </div>
-
-          <!-- 錯誤狀態 -->
-          <div v-else-if="error" class="error-state">
-            <p>{{ error }}</p>
-            <button @click="loadNewsData" class="retry-btn">重新載入</button>
-          </div>
-
-          <!-- 正常資料顯示 -->
-          <ul v-else-if="newsItems.length > 0">
-            <li class="news-item bulletin-item" v-for="item in newsItems" :key="item.id">
-              <div class="news-date">
-                <span class="news-year">{{ item.formattedDate.year }}</span>
-                <span class="news-month">{{ item.formattedDate.month }}</span>
-                <span class="news-day">{{ item.formattedDate.day }}</span>
-              </div>
+        <!-- 交換為 News.vue 的靜態區塊 -->
+        <div class="content-area">
+          <div class="news-list">
+            <div class="news-item">
+              <div class="news-date">2024/01/15</div>
               <div class="news-content">
-                {{ item.title }}
+                <h3>新竹縣公共托育服務申請流程更新通知</h3>
+                <p>為提供更優質的托育服務，本縣公共托育申請流程將於近期進行調整，請家長注意相關變更內容...</p>
               </div>
-            </li>
-          </ul>
-
-          <!-- 無資料狀態 -->
-          <div v-else class="empty-state">
-            <p>暫無最新消息</p>
+            </div>
+            <div class="news-item">
+              <div class="news-date">2024/01/10</div>
+              <div class="news-content">
+                <h3>托育補助申請期限提醒</h3>
+                <p>提醒各位家長，本年度托育補助申請將於月底截止，尚未申請的家長請儘速辦理相關手續...</p>
+              </div>
+            </div>
+            <div class="news-item">
+              <div class="news-date">2024/01/05</div>
+              <div class="news-content">
+                <h3>托育機構評鑑結果公告</h3>
+                <p>新竹縣各托育機構評鑑結果已公布，家長可至本系統查詢各機構的評鑑等級與服務品質...</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -69,6 +63,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getAllAnnouncements } from '../api/announcements.js'
+import { useAuthStore } from '../store/auth.js'
 
 // 路由器實例
 const router = useRouter()
@@ -76,7 +71,14 @@ const route = useRoute()
 // 判斷是否在首頁
 const isHome = computed(() => route.name === 'Home')
 // 導航到不同頁面
+const auth = useAuthStore()
 const goToPage = (page) => {
+  if (page === 'ApplicationStatus') {
+    if (!auth.isLoggedIn) {
+      router.push({ name: 'Login' }) // 請確認路由名稱是否為 'Login'，如有不同請調整
+      return
+    }
+  }
   router.push({ name: page })
 }
 
@@ -238,81 +240,38 @@ main {
   font-weight: 700;
 }
 
-.news-box {
-  background-color: #fff;
-  border: 2px solid #F9AFAE;
-  border-radius: 12px;
-  padding: 32px 32px 32px 32px;
-  min-height: 700px;
-  max-height: 90vh;
-  box-shadow: 0 4px 12px rgba(249, 175, 174, 0.15);
-  overflow-y: auto;
+/* 移除 .news-box, .bulletin-box 樣式，加入 .content-area, .news-list, .news-item 樣式 */
+.content-area {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 20px;
 }
 
-.news-box ul {
-  padding: 0;
-  margin: 0;
-  list-style: none;
+.news-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .news-item {
-  display: flex;
-  align-items: center;
-  padding: 32px 32px;
-  border-bottom: 1px solid #FFE5C2;
-  transition: background-color 0.2s;
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(249, 175, 174, 0.1);
+  border-left: 4px solid #F9AFAE;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .news-item:hover {
-  background-color: #FFF8F6;
-}
-
-.news-item:last-child {
-  border-bottom: none;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(249, 175, 174, 0.2);
 }
 
 .news-date {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100px;
-  min-width: 100px;
-  background: #F9AFAE;
-  border-radius: 8px;
-  padding: 12px;
-  margin-right: 24px;
-  text-align: center;
-}
-
-.news-year {
-  font-size: 14px;
-  color: #fff;
+  color: #F9AFAE;
   font-weight: bold;
-  line-height: 1;
-}
-
-.news-month {
-  font-size: 16px;
-  color: #fff;
-  font-weight: bold;
-  line-height: 1;
-  margin: 2px 0;
-}
-
-.news-day {
-  font-size: 14px;
-  color: #fff;
-  font-weight: bold;
-  line-height: 1;
-}
-
-.news-content {
-  flex: 1;
-  color: #333;
-  font-size: 16px;
-  line-height: 1.6;
-  font-weight: 500;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
 }
 
 /* 載入狀態樣式 */

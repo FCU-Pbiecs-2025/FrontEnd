@@ -1,13 +1,6 @@
 <template>
   <div class="apply-service-page">
     <!-- 頁面標題與路徑 -->
-    <div class="page-header">
-      <div class="breadcrumb">首頁 / 申請托育服務</div>
-      <div class="main-title-row">
-        <img class="main-title-icon" src="https://img.icons8.com/ios-filled/60/4a90e2/upload-to-cloud.png" alt="icon" />
-        <span class="main-title">申請托育服務</span>
-      </div>
-    </div>
 
     <!-- 步驟條 -->
     <div class="step-bar-outer">
