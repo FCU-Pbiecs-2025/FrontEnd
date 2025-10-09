@@ -55,6 +55,11 @@
         <button type="submit" :disabled="isLoading || (useReCaptchaV2 && !isRecaptchaValid)" class="login-btn">
           {{ isLoading ? '登入中...' : '登入' }}
         </button>
+
+        <!-- 測試登入按鈕 -->
+        <button type="button" class="test-login-btn" @click="handleTestLogin">
+          測試登入
+        </button>
       </form>
       <div class="login-links">
         <button class="link-btn" @click="goToForgotPassword">忘記密碼？</button>
@@ -218,6 +223,29 @@ const handleLogin = async () => {
   }
 }
 
+// 測試登入處理函數
+const handleTestLogin = async () => {
+  // 設定假的登入狀態以通過路由守衛
+  authStore.token = 'test-token'
+  authStore.user = {
+    id: 'test-user',
+    name: '測試用戶',
+    email: 'test@example.com'
+  }
+  authStore.isAuthenticated = true
+
+  // 將資訊存到 localStorage
+  localStorage.setItem('token', 'test-token')
+  localStorage.setItem('user', JSON.stringify({
+    id: 'test-user',
+    name: '測試用戶',
+    email: 'test@example.com'
+  }))
+
+  // 跳轉到會員中心
+  router.push({ name: 'MemberCenter' })
+}
+
 const refreshCaptcha = () => {
   captchaImg.value = generateCaptcha()
   loginForm.captcha = ''
@@ -306,6 +334,28 @@ const goToRegister = () => {
 }
 
 .login-btn:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.test-login-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 0.5rem;
+}
+
+.test-login-btn:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.test-login-btn:disabled {
   background-color: #6c757d;
   cursor: not-allowed;
 }
