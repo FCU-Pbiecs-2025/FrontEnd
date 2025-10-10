@@ -1,37 +1,54 @@
 <template>
   <div class="admin-layout">
     <!-- 側邊選單 -->
-    <aside class="admin-sidebar">
-      <button class="sidebar-toggle" @click="toggleSidebar">
+    <aside :class="['admin-sidebar', { 'is-open': sidebarOpen }]">
+      <button class="sidebar-toggle" @click="toggleSidebar" :aria-expanded="String(sidebarOpen)">
         <span class="icon">☰</span>
       </button>
-      <nav v-show="sidebarOpen" class="sidebar-menu">
+      <nav :class="['sidebar-menu', { 'is-open': sidebarOpen }]">
         <div class="menu-section">
-          <div class="menu-title">帳號管理 ▾</div>
-          <ul>
-            <li :class="{active: currentSection==='citizen'}" @click="currentSection='citizen'">民眾帳號</li>
-            <li :class="{active: currentSection==='admin'}" @click="currentSection='admin'">後台帳號</li>
-          </ul>
+          <div class="menu-title clickable" @click="toggleSection(0)">
+            帳號管理
+            <span class="arrow" :class="{open: openSections[0]}" />
+          </div>
+          <transition name="slide-fade">
+            <ul v-show="openSections[0]">
+              <li :class="{active: currentSection==='citizen'}" @click="currentSection='citizen'">民眾帳號</li>
+              <li :class="{active: currentSection==='admin'}" @click="currentSection='admin'">後台帳號</li>
+            </ul>
+          </transition>
         </div>
         <div class="menu-section">
-          <div class="menu-title">內容管理 ▾</div>
-          <ul>
-            <li :class="{active: currentSection==='banner'}" @click="currentSection='banner'">首頁海報</li>
-            <li>系統公告</li>
-            <li>規範說明</li>
-            <li>機構管理</li>
-            <li>班級管理</li>
-          </ul>
+          <div class="menu-title clickable" @click="toggleSection(1)">
+            內容管理
+            <span class="arrow" :class="{open: openSections[1]}" />
+          </div>
+          <transition name="slide-fade">
+            <ul v-show="openSections[1]">
+              <li>首頁海報</li>
+              <li>系統公告</li>
+              <li>規範說明</li>
+              <li>機構管理</li>
+              <li>班級管理</li>
+            </ul>
+          </transition>
         </div>
         <div class="menu-section">
-          <div class="menu-title">申請管理 ▾</div>
-          <ul>
-            <li>審核申請</li>
-            <li>撤銷審核</li>
-            <li>個案管理</li>
-            <li>候補清冊</li>
-            <li>補位抽籤</li>
-          </ul>
+          <div class="menu-title clickable" @click="toggleSection(2)">
+            申請管理
+            <span class="arrow" :class="{open: openSections[2]}" />
+          </div>
+          <transition name="slide-fade">
+            <ul v-show="openSections[2]">
+              <li>審核申請</li>
+              <li>撤銷審核</li>
+            </ul>
+          </transition>
+        </div>
+        <div class="menu-section">
+          <div class="menu-title">個案管理</div>
+          <div class="menu-title">候補清冊</div>
+          <div class="menu-title">補位抽籤</div>
         </div>
       </nav>
     </aside>
@@ -40,10 +57,6 @@
       <div class="admin-breadcrumb">後台首頁/</div>
       <div class="admin-announcement">
         <AdminCitizenAccount v-if="currentSection==='citizen'" />
-        <!-- If URL has adminAccountId, show the backend edit page -->
-        <AdminBackendEdit v-else-if="route.query.adminAccountId" />
-        <AdminBackendAccount v-else-if="currentSection==='admin'" />
-        <AdminBannerManager v-else-if="currentSection==='banner'" />
         <template v-else>
           <!-- 代辦事項通知區塊 -->
           <h2 class="section-title">代辦事項通知</h2>
@@ -83,19 +96,17 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import AdminCitizenAccount from './AdminCitizenAccount.vue'
-import AdminBackendAccount from './AdminBackendAccount.vue'
-import AdminBackendEdit from './AdminBackendEdit.vue'
-import AdminBannerManager from './AdminBannerManager.vue'
-const route = useRoute()
-const router = useRouter()
 const sidebarOpen = ref(true)
 const currentSection = ref('')
+// 控制每個 menu-section 的展開狀態
+const openSections = ref([true, true, true]) // 預設全部展開，可依需求調整
+const toggleSection = idx => {
+  openSections.value[idx] = !openSections.value[idx]
+}
 const toggleSidebar = () => {
   sidebarOpen.value = !sidebarOpen.value
 }
-// 假資料
 const todoList = [
   { id: 1, title: '審核新申請', content: '有 3 筆新申請待審核', date: '2025/10/10' },
   { id: 2, title: '補位抽籤', content: '本週需進行補位抽籤', date: '2025/10/09' }
@@ -107,34 +118,68 @@ const announcementList = [
 </script>
 
 <style scoped>
+
 .admin-layout {
   display: flex;
   min-height: 80vh;
-  background: #f9f7f3 url('https://img.icons8.com/ios/50/cccccc/cloud.png') repeat;
+  gap: 30px;
+  margin: 30px;
 }
+/* 預設為收合狀態：aside 與按鈕一樣大 */
 .admin-sidebar {
-  width: 220px;
+  width: 60px;
+  height: 60px;
   background: #fff;
-  border-radius: 16px 0 0 16px;
+  border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-  padding: 24px 0 24px 0;
+  padding: 4px;
   position: relative;
-  min-width: 180px;
+  overflow: hidden;
+  transition: width 0.3s cubic-bezier(.4,0,.2,1), height 0.3s cubic-bezier(.4,0,.2,1), padding 0.2s, border-radius 0.2s;
 }
+/* 展開狀態：回到完整側欄尺寸 */
+.admin-sidebar.is-open {
+  width: 180px;
+  height: auto; /* 高度自動撐開 */
+  padding: 10px ;
+  border-radius: 20px;
+
+}
+/* 切換按鈕：收合時填滿容器；展開時固定 40x40 */
 .sidebar-toggle {
-  position: absolute;
-  top: 12px;
-  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
   background: #ffd4d4;
   border: none;
   border-radius: 8px;
-  padding: 4px 10px;
   cursor: pointer;
   font-size: 1.2rem;
-  z-index: 10;
+
+  z-index: 1;
 }
+.admin-sidebar.is-open .sidebar-toggle {
+  width: 50px;
+  height: 50px;
+}
+
+/* 收合時，內容區域隱藏且不佔互動 */
 .sidebar-menu {
-  margin-top: 40px;
+  padding: 10px;
+  margin-top: 10px;
+  opacity: 0;
+  max-height: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, max-height 0.3s cubic-bezier(.4,0,.2,1), margin-top 0.2s ease;
+}
+/* 展開時顯示內容 */
+.sidebar-menu.is-open {
+  margin-top: 16px;
+  opacity: 1;
+  max-height: 1000px; /* 足夠大的值以容納內容 */
+  pointer-events: auto;
 }
 .menu-section {
   margin-bottom: 24px;
@@ -144,6 +189,26 @@ const announcementList = [
   color: #5f8ba8;
   margin-bottom: 8px;
   font-size: 1.1rem;
+}
+.menu-title.clickable {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.arrow {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-left: 6px;
+  border-right: 2px solid #5f8ba8;
+  border-bottom: 2px solid #5f8ba8;
+  transform: rotate(-45deg) translateY(-2px);
+  transition: transform 0.2s;
+}
+.arrow.open {
+  transform: rotate(45deg) translateY(2px);
 }
 .menu-section ul {
   list-style: none;
@@ -169,11 +234,11 @@ const announcementList = [
   flex: 1;
   padding: 36px 48px;
   background: #fff;
-  border-radius: 0 16px 16px 0;
+  border-radius: 20px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-  margin: 24px 0;
   display: flex;
   flex-direction: column;
+  max-width: 90%;
 }
 .section-title {
   font-size: 1.35rem;
@@ -249,5 +314,18 @@ const announcementList = [
   color: #aaa;
   text-align: center;
   padding: 24px 0;
+}
+.slide-fade-enter-active, .slide-fade-leave-active {
+  transition: all 0.25s cubic-bezier(.4,0,.2,1);
+}
+.slide-fade-enter-from, .slide-fade-leave-to {
+  opacity: 0;
+  max-height: 0;
+  transform: translateY(-8px);
+}
+.slide-fade-enter-to, .slide-fade-leave-from {
+  opacity: 1;
+  max-height: 500px;
+  transform: translateY(0);
 }
 </style>
