@@ -103,6 +103,18 @@ const routes = [
                 meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '後台' }
             },
             {
+                path: '/admin/banner/new',
+                name: 'AdminBannerNew',
+                component: () => import('../views/AdminBannerEdit.vue'),
+                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '新增海報' }
+            },
+            {
+                path: '/admin/banner/:id/edit',
+                name: 'AdminBannerEdit',
+                component: () => import('../views/AdminBannerEdit.vue'),
+                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '編輯海報' }
+            },
+            {
                 path: '/dashboard',
                 name: 'Dashboard',
                 component: () => import('../views/AdminHome.vue'),

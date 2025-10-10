@@ -16,7 +16,7 @@
         <div class="menu-section">
           <div class="menu-title">內容管理 ▾</div>
           <ul>
-            <li>首頁海報</li>
+            <li :class="{active: currentSection==='banner'}" @click="currentSection='banner'">首頁海報</li>
             <li>系統公告</li>
             <li>規範說明</li>
             <li>機構管理</li>
@@ -40,6 +40,10 @@
       <div class="admin-breadcrumb">後台首頁/</div>
       <div class="admin-announcement">
         <AdminCitizenAccount v-if="currentSection==='citizen'" />
+        <!-- If URL has adminAccountId, show the backend edit page -->
+        <AdminBackendEdit v-else-if="route.query.adminAccountId" />
+        <AdminBackendAccount v-else-if="currentSection==='admin'" />
+        <AdminBannerManager v-else-if="currentSection==='banner'" />
         <template v-else>
           <!-- 代辦事項通知區塊 -->
           <h2 class="section-title">代辦事項通知</h2>
@@ -79,7 +83,13 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AdminCitizenAccount from './AdminCitizenAccount.vue'
+import AdminBackendAccount from './AdminBackendAccount.vue'
+import AdminBackendEdit from './AdminBackendEdit.vue'
+import AdminBannerManager from './AdminBannerManager.vue'
+const route = useRoute()
+const router = useRouter()
 const sidebarOpen = ref(true)
 const currentSection = ref('')
 const toggleSidebar = () => {

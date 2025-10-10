@@ -202,8 +202,10 @@
               <option value="停用">停用</option>
             </select>
           </div>
-          <button class="service-btn" @click="saveAccountStatus">儲存狀態</button>
-          <button class="service-btn ghost" @click="clearAccountQuery">關閉</button>
+          <div class="actions-row">
+            <button class="service-btn" @click="saveAccountStatus">儲存狀態</button>
+            <button class="service-btn ghost" @click="clearAccountQuery">關閉</button>
+          </div>
         </div>
       </div>
     </div>
@@ -791,16 +793,18 @@ function addChild() {
 }
 
 .account-management-section {
-  background: #FFF8F6;
+  background: linear-gradient(180deg, #fff8f6, #fff6f3);
   border-radius: 12px;
-  padding: 24px;
+  padding: 20px 24px;
   margin-top: 32px;
+  box-shadow: 0 6px 18px rgba(249, 175, 174, 0.08);
+  border-left: 6px solid #F9AFAE; /* 左側強調條 */
 }
 
 .account-status-card {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .status-toggle {
@@ -812,6 +816,13 @@ function addChild() {
 .status-toggle span {
   color: #333;
   font-weight: bold;
+}
+
+.account-status-card .actions-row {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
 }
 
 @media (max-width: 768px) {

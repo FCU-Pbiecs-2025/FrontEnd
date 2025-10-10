@@ -4,13 +4,20 @@
     <template v-if="isHome">
       <section class="main-section">
 
+        <!-- clickable banner strip -->
+        <div v-if="visibleBanners.length" class="banner-strip">
+          <div class="banner-item" v-for="b in visibleBanners" :key="b.id">
+            <img :src="b.image" :alt="b.link || 'banner'" @click="openBanner(b)" style="cursor:pointer;" />
+          </div>
+        </div>
+
         <div class="card-container">
           <div class="card" @click="goToPage('ApplicationStatus')" style="cursor:pointer;">
-            <img src="https://img.icons8.com/ios/100/ffe8e8/id-verified.png" alt="申請進度查詢">
+            <img src="https://img.icons8.com/ios/100/000000/id-verified.png" alt="申請進度查詢">
             <p>申請進度查詢</p>
           </div>
           <div class="card" @click="goToPage('ApplyService')" style="cursor:pointer;">
-            <img src="https://img.icons8.com/ios/100/ffe8e8/document.png" alt="申請托育服務">
+            <img src="https://img.icons8.com/ios/100/000000/document.png" alt="申請托育服務">
             <p>申請托育服務</p>
           </div>
           <div class="card" @click="goToPage('SubsidyCalculator')" style="cursor:pointer;">
@@ -60,7 +67,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getAllAnnouncements } from '../api/announcements.js'
 import { useAuthStore } from '../store/auth.js'
@@ -80,6 +87,51 @@ const goToPage = (page) => {
     }
   }
   router.push({ name: page })
+}
+
+// 新增：從 localStorage 載入前台海報
+const storageKey = 'siteBanners'
+const banners = ref([])
+const visibleBanners = computed(() => banners.value.filter(b => (b.status || '顯示') === '顯示'))
+
+const loadBanners = () => {
+  try {
+    const raw = localStorage.getItem(storageKey)
+    banners.value = raw ? JSON.parse(raw) : []
+  } catch (e) {
+    banners.value = []
+    console.error('載入 siteBanners 失敗', e)
+  }
+}
+
+// reload banners if localStorage is changed in another tab/window
+const onStorage = (e) => {
+  if (!e) return
+  if (e.key === storageKey) loadBanners()
+}
+
+// 點擊海報：如果是內部路徑 (以 / 開頭) 使用 router 推轉，否則在新分頁開啟
+const openBanner = (b) => {
+  const link = (b && b.link) || ''
+  if (!link) return
+  if (/^https?:\/\//i.test(link)) {
+    window.open(link, '_blank')
+    return
+  }
+  if (link.startsWith('/')) {
+    // 使用 path 導航
+    router.push({ path: link }).catch(() => {})
+    return
+  }
+  // 否則嘗試當成 route name
+  try {
+    router.push({ name: link }).catch(() => {
+      // fallback: open as relative path
+      router.push(link).catch(() => {})
+    })
+  } catch (e) {
+    console.warn('無法導航至海報連結', link)
+  }
 }
 
 // 響應式資料
@@ -149,6 +201,12 @@ const loadNewsData = async () => {
 // 組件掛載時載入資料
 onMounted(() => {
   loadNewsData()
+  loadBanners()
+  window.addEventListener('storage', onStorage)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('storage', onStorage)
 })
 </script>
 
@@ -157,6 +215,23 @@ onMounted(() => {
 main {
   min-height: 100vh;
   padding-bottom: 40px;
+}
+
+/* banner strip */
+.banner-strip {
+  max-width: 900px;
+  margin: 16px auto;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+}
+.banner-item img {
+  max-width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
 .main-section {
@@ -188,7 +263,7 @@ main {
 }
 
 .card {
-  background: #e15c69;
+  background: #e15c96;
   border-radius: 16px;
   box-shadow: 0 2px 8px #f8b6b633;
   padding: 32px 40px;
@@ -199,7 +274,6 @@ main {
   transition: box-shadow 0.2s, transform 0.2s;
   cursor: pointer;
 }
-
 
 .card:hover {
   box-shadow: 0 6px 24px #f8b6b699;
@@ -214,6 +288,7 @@ main {
 .card p {
   color: #ffe8e8;
   font-size: 1.2rem;
+  font-weight: bold;
   margin: 0;
 }
 
@@ -298,65 +373,6 @@ main {
   100% { transform: rotate(360deg); }
 }
 
-/* 錯誤狀態樣式 */
-.error-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: #e74c3c;
-}
-
-.error-state p {
-  margin-bottom: 16px;
-  font-size: 14px;
-}
-
-.retry-btn {
-  background: #F9AFAE;
-  color: #333;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 16px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background 0.2s;
-}
-
-.retry-btn:hover {
-  background: #f5a1a1;
-}
-
-/* 空資料狀態樣式 */
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: #999;
-  font-size: 14px;
-}
-
-/* 公告欄樣式 */
-.bulletin-box {
-  background: #fffbe6;
-  border: 2px dashed #ffb6b9;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(255,182,185,0.08);
-  padding: 18px 24px;
-  min-height: 120px;
-  height: 160px;
-  overflow-y: auto;
-}
-
-.bulletin-item {
-  border-bottom: 1px dashed #ffd9b3;
-  padding-bottom: 10px;
-  margin-bottom: 10px;
-}
-
-.bulletin-item:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
-}
-
-/* 響應式設計 */
 @media (max-width: 900px) {
   main {
     padding: 0 8px;
