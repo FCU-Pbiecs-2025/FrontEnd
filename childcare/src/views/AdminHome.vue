@@ -41,8 +41,8 @@
           </div>
           <transition name="slide-fade">
             <ul v-show="openSections[2]">
-              <li>審核申請</li>
-              <li>撤銷審核</li>
+              <li :class="{active: isActive('/admin/application-review')}" @click="navigate('/admin/application-review')">審核申請</li>
+              <li :class="{active: isActive('/admin/application-revoke')}" @click="navigate('/admin/application-revoke')">撤銷審核</li>
             </ul>
           </transition>
         </div>
