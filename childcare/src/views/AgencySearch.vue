@@ -58,8 +58,10 @@
         </div>
 
         <div class="results-section">
-          <h2>搜尋結果</h2>
-
+          <div>
+            <div class="list-title" >搜尋結果</div>
+            <div class="title-decoration"></div>
+          </div>
           <div class="agency-list">
             <div class="agency-item" v-for="agency in agencies" :key="agency.id" @click="goToInfo(agency)" style="cursor:pointer;">
               <div class="agency-info">
@@ -129,6 +131,20 @@ export default {
 .agency-search-page {
   min-height: calc(100vh - 160px);
 
+}
+.list-title{
+  text-align:center;
+  font-size:1.5rem;
+  font-weight:bold;
+  margin:50px 0 16px 0;
+  letter-spacing:2px;
+}
+.title-decoration{
+  width: 80%;
+  height: 2px;
+  border-radius: 4px;
+  background: var(--4th-text-color);
+  margin: 10px auto;
 }
 
 .view-toggle{

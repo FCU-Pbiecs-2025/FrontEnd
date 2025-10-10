@@ -29,9 +29,11 @@
 
       <section class="news">
         <div class="news-title">
-          <span>最新消息</span>
+          <div class="list-title">最新消息</div>
+          <div class="title-decoration"></div>
           <RouterLink to="/news" class="more-news-link">更多消息</RouterLink>
         </div>
+
         <!-- 交換為 News.vue 的靜態區塊 -->
         <div class="content-area">
           <div class="news-list">
@@ -266,7 +268,20 @@ main {
   gap: 32px;
   justify-content: center;
 }
-
+.list-title{
+  text-align:center;
+  font-size:1.5rem;
+  font-weight:bold;
+  margin:50px 0 16px 0;
+  letter-spacing:2px;
+}
+.title-decoration{
+  width: 65%;
+  height: 2px;
+  border-radius: 4px;
+  background: var(--4th-text-color);
+  margin: 0 auto;
+}
 .card {
   background: #e48891;
   border-radius: 16px;
@@ -308,20 +323,18 @@ main {
 }
 
 .news-title {
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   margin-bottom: 32px;
-  margin-left: 50px;
-}
-
-.news-title span {
-  color: #333;
-  font-size: 30px;
-  font-weight: 700;
-  letter-spacing: 2px;
+  min-height: 48px;
 }
 
 .more-news-link {
+  position: absolute;
+  right: 8%;
+  top: 80%;
   padding: 8px 16px;
   background: #f9aFAe;
   color: white;
@@ -329,7 +342,7 @@ main {
   text-decoration: none;
   font-weight: 500;
   transition: background 0.3s;
-  margin-left: 70%;
+  display: inline-block;
 }
 
 .more-news-link:hover {

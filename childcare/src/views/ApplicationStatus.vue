@@ -1,7 +1,9 @@
 <template>
   <div class="status-page">
-
-    <h1 class="status-title">申請進度查詢</h1>
+    <div>
+      <div class="list-title" >申請進度查詢</div>
+      <div class="title-decoration"></div>
+    </div>
     <div class="status-list">
       <div class="status-header">
         <span>案號</span>
@@ -74,6 +76,20 @@ const applications = ref([
   color: #333;
   margin-bottom: 32px;
   text-align: center;
+}
+.list-title{
+  text-align:center;
+  font-size:1.5rem;
+  font-weight:bold;
+  margin:50px 0 16px 0;
+  letter-spacing:2px;
+}
+.title-decoration{
+  width: 80%;
+  height: 2px;
+  border-radius: 4px;
+  background: var(--4th-text-color);
+  margin: 10px auto;
 }
 .status-list {
   background: #fff;

@@ -18,6 +18,10 @@
           </svg>
         </button>
       </div>
+      <div>
+        <div class="news-list-title" >消息列表</div>
+        <div class="news-title-decoration"></div>
+      </div>
       <!-- 公告列表區塊 -->
       <div class="news-list-section">
         <div class="news-list-header">
@@ -214,8 +218,8 @@ export default {
   gap: 12px;
 }
 .carousel-image-box {
-  width: 100%; /* 420 * 1.5 */
-  height: 330px; /* 220 * 1.5 */
+  width: 100%;
+  height: 450px;
   overflow: hidden;
   border-radius: 24px; /* 16 * 1.5 */
   box-shadow: 0 3px 18px rgba(249, 175, 174, 0.15);
@@ -258,7 +262,7 @@ export default {
   border-radius: 16px;
   box-shadow: 0 4px 16px rgba(249, 175, 174, 0.12);
   padding: 32px 24px;
-  margin: 48px auto 0 auto;
+  margin: 10px auto 0 auto;
   max-width: 900px;
 }
 .news-list-header,
@@ -269,9 +273,20 @@ export default {
   justify-content: stretch;
   gap: 12px;
 }
+
+.news-title-decoration{
+  width: 65%;
+  height: 2px;
+  border-radius: 4px;
+  background: var(--4th-text-color);
+  margin: 20px auto;
+
+}
 .news-list-header {
   font-weight: bold;
-  color: #f9afae;
+
+
+  color: var(--4th-text-color);
   font-size: 1.1rem;
   border-bottom: 2px solid #ffe5c2;
   padding-bottom: 12px;
@@ -291,17 +306,25 @@ export default {
   background: #fff8f6;
 }
 .news-date-cell {
-  color: #f9afae;
+  color: var(--secondary-color);
   min-width: 100px;
   text-align: left;
 }
 .news-title-cell {
-  font-weight: bold;
-  color: #a67c52;
+  font-weight: 500;
+  letter-spacing: 1px;
+  color: var(--primary-text-color);
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.news-list-title{
+  text-align:center;
+  font-size:1.5rem;
+  font-weight:bold;
+  margin:50px 0 16px 0;
+  letter-spacing:2px;
 }
 .news-content-cell {
   color: #333;
@@ -318,12 +341,12 @@ export default {
   margin-top: 24px;
 }
 .pagination-bar button {
-  background: #fffbe6;
-  border: 1px solid #ffb6b9;
+  background: var(--secondary-color);
+  border: none;
   border-radius: 8px;
   padding: 6px 18px;
-  color: #f9afae;
-  font-weight: bold;
+  color: #FFF;
+  font-weight: 500;
   font-size: 1rem;
   cursor: pointer;
   transition: background 0.2s;
