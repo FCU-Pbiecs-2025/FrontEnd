@@ -12,7 +12,15 @@ const routes = [
                 path: '/news',
                 name: 'News',
                 component: () => import('../views/News.vue'),
-                meta: {breadcrumb: '最新消息'}
+                meta: {breadcrumb: '最新消息'},
+                children: [
+                    {
+                        path: ':id',
+                        name: 'NewsDetail',
+                        component: () => import('../views/NewsDetail.vue'),
+                        meta: {breadcrumb: '公告說明'}
+                    }
+                ]
             },
             {
                 path: '/agency-search',

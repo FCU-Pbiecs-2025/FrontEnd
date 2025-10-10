@@ -30,29 +30,22 @@
       <section class="news">
         <div class="news-title">
           <span>最新消息</span>
+          <RouterLink to="/news" class="more-news-link">更多消息</RouterLink>
         </div>
         <!-- 交換為 News.vue 的靜態區塊 -->
         <div class="content-area">
           <div class="news-list">
-            <div class="news-item">
-              <div class="news-date">2024/01/15</div>
+            <div
+              v-for="item in homeNewsList"
+              :key="item.id"
+              class="news-item"
+              @click="goToNewsDetail(item.id)"
+              style="cursor:pointer;"
+            >
+              <div class="news-date">{{ item.date }}</div>
               <div class="news-content">
-                <h3>新竹縣公共托育服務申請流程更新通知</h3>
-                <p>為提供更優質的托育服務，本縣公共托育申請流程將於近期進行調整，請家長注意相關變更內容...</p>
-              </div>
-            </div>
-            <div class="news-item">
-              <div class="news-date">2024/01/10</div>
-              <div class="news-content">
-                <h3>托育補助申請期限提醒</h3>
-                <p>提醒各位家長，本年度托育補助申請將於月底截止，尚未申請的家長請儘速辦理相關手續...</p>
-              </div>
-            </div>
-            <div class="news-item">
-              <div class="news-date">2024/01/05</div>
-              <div class="news-content">
-                <h3>托育機構評鑑結果公告</h3>
-                <p>新竹縣各托育機構評鑑結果已公布，家長可至本系統查詢各機構的評鑑等級與服務品質...</p>
+                <h3>{{ item.title }}</h3>
+                <p>{{ item.content }}</p>
               </div>
             </div>
           </div>
@@ -208,6 +201,18 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('storage', onStorage)
 })
+
+// 新增：首頁最新消息列表資料
+const homeNewsList = [
+  { id: '1', title: '新竹縣公共托育服務申請流程更新通知', content: '為提供更優質的托育服務，本縣公共托育申請流程將於近期進行調整，請家長注意相關變更內容...', date: '2024/01/15' },
+  { id: '2', title: '托育補助申請期限提醒', content: '提醒各位家長，本年度托育補助申請將於月底截止，尚未申請的家長請儘速辦理相關手續...', date: '2024/01/10' },
+  { id: '3', title: '托育機構評鑑結果公告', content: '新竹縣各托育機構評鑑結果已公布，家長可至本系統查詢各機構的評鑑等級與服務品質...', date: '2024/01/05' }
+]
+
+// 新增：導航至新聞詳情頁面
+function goToNewsDetail(id) {
+  router.push({ name: 'NewsDetail', params: { id } })
+}
 </script>
 
 <style scoped>
@@ -306,12 +311,29 @@ main {
   display: flex;
   align-items: center;
   margin-bottom: 32px;
+  margin-left: 50px;
 }
 
 .news-title span {
   color: #333;
-  font-size: 24px;
+  font-size: 30px;
   font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.more-news-link {
+  padding: 8px 16px;
+  background: #f9aFAe;
+  color: white;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: background 0.3s;
+  margin-left: 70%;
+}
+
+.more-news-link:hover {
+  background: #f8b6b6;
 }
 
 /* 移除 .news-box, .bulletin-box 樣式，加入 .content-area, .news-list, .news-item 樣式 */

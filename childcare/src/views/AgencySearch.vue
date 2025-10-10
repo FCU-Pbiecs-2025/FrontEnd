@@ -128,23 +128,15 @@ export default {
 <style scoped>
 .agency-search-page {
   min-height: calc(100vh - 160px);
-  padding: 40px 0;
-  position: relative; /* 讓絕對定位的 .view-toggle 以此為基準 */
+
 }
 
-.page-wrapper {
-  padding-top: 60px;
-}
-
-.view-toggle {
-  position: absolute;
-  top: 0;
-  right: 0;
+.view-toggle{
   display: flex;
-  gap: 10px;
-  z-index: 10;
+  gap: 5px;
+  margin-left: 71%;
+  margin-bottom: 20px;
 }
-
 .toggle-btn {
   background: white;
   border: 2px solid #F9AFAE;

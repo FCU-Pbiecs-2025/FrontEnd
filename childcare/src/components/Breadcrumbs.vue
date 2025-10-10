@@ -60,6 +60,7 @@ const crumbs = computed<Crumb[]>(() => {
   gap: 0.25rem;
   white-space: nowrap;
   overflow-x: auto;
+  margin-bottom: 20px;
 }
 .breadcrumb-item {
   display: flex;

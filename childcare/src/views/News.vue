@@ -1,46 +1,58 @@
 <template>
   <div class="news-page">
-    <!-- 輪播圖區塊 -->
-    <div class="carousel-wrapper">
-      <button class="carousel-btn left" @click="prevSlide">
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <polyline points="20,8 12,16 20,24" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        </svg>
-      </button>
-      <div class="carousel-image-box">
-        <img :src="carouselImages[currentSlide]" alt="輪播圖" class="carousel-image" />
+    <!-- 詳情頁時只顯示 <router-view />，否則顯示列表與 <router-view /> -->
+    <template v-if="$route.name === 'News'">
+      <!-- 輪播圖區塊 -->
+      <div class="carousel-wrapper">
+        <button class="carousel-btn left" @click="prevSlide">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polyline points="20,8 12,16 20,24" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </button>
+        <div class="carousel-image-box">
+          <img :src="carouselImages[currentSlide]" alt="輪播圖" class="carousel-image" />
+        </div>
+        <button class="carousel-btn right" @click="nextSlide">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polyline points="12,8 20,16 12,24" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </button>
       </div>
-      <button class="carousel-btn right" @click="nextSlide">
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <polyline points="12,8 20,16 12,24" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        </svg>
-      </button>
-    </div>
-    <!-- 交換為 Home.vue 的動態區塊（但保留靜態資料） -->
-
-    <!-- 公告列表區塊 -->
-    <div class="news-list-section">
-      <div class="news-list-header">
-        <span>發布日期</span>
-        <span>公告標題</span>
-        <span>公告內容</span>
+      <!-- 公告列表區塊 -->
+      <div class="news-list-section">
+        <div class="news-list-header">
+          <span>發布日期</span>
+          <span>公告標題</span>
+          <span>公告內容</span>
+        </div>
+        <div
+          v-for="item in pagedNews"
+          :key="item.id"
+          class="news-list-row"
+          @click="goToDetail(item.id)"
+          style="cursor:pointer;"
+        >
+          <span class="news-date-cell">{{ item.date }}</span>
+          <span class="news-title-cell" :title="item.title">{{ item.title.length > 18 ? item.title.slice(0, 18) + '...' : item.title }}</span>
+          <span class="news-content-cell">{{ item.content }}</span>
+        </div>
+        <div v-if="pagedNews.length === 0" class="empty-tip">目前沒有公告</div>
+        <div class="pagination-bar" v-if="totalPages > 1">
+          <button :disabled="currentPage === 1" @click="currentPage--">上一頁</button>
+          <span>第 {{ currentPage }} / {{ totalPages }} 頁</span>
+          <button :disabled="currentPage === totalPages" @click="currentPage++">下一頁</button>
+        </div>
       </div>
-      <div v-for="item in pagedNews" :key="item.id" class="news-list-row">
-        <span class="news-date-cell">{{ item.date }}</span>
-        <span class="news-title-cell" :title="item.title">{{ item.title.length > 18 ? item.title.slice(0, 18) + '...' : item.title }}</span>
-        <span class="news-content-cell">{{ item.content }}</span>
-      </div>
-      <div v-if="pagedNews.length === 0" class="empty-tip">目前沒有公告</div>
-      <div class="pagination-bar" v-if="totalPages > 1">
-        <button :disabled="currentPage === 1" @click="currentPage--">上一頁</button>
-        <span>第 {{ currentPage }} / {{ totalPages }} 頁</span>
-        <button :disabled="currentPage === totalPages" @click="currentPage++">下一頁</button>
-      </div>
-    </div>
+    </template>
+    <template v-else>
+      <!-- 僅顯示詳情頁 -->
+      <router-view />
+    </template>
   </div>
 </template>
 
 <script>
+import { useRouter } from 'vue-router'
 export default {
   name: 'News',
   data() {
@@ -86,6 +98,9 @@ export default {
     },
     prevSlide() {
       this.currentSlide = (this.currentSlide - 1 + this.carouselImages.length) % this.carouselImages.length;
+    },
+    goToDetail(id) {
+      this.$router.push({ name: 'NewsDetail', params: { id } })
     }
   }
 }
@@ -94,7 +109,7 @@ export default {
 <style scoped>
 .news-page {
   min-height: calc(100vh - 160px); /* 減去 header 和 footer 的高度 */
-  padding: 40px 0;
+
 }
 
 .page-header {
