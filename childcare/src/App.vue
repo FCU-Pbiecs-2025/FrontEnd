@@ -4,24 +4,32 @@
     <header>
       <div class="header-left" @click="goToPage('Home')" style="cursor:pointer;">
         <img class="logo" src="https://img.icons8.com/ios-filled/50/ffffff/baby.png" alt="logo" />
-        <span class="system-title">新竹公共托育系統</span>
+        <div class="vertical-stack">
+          <span>新竹縣政府 社會處</span>
+          <span class="system-title">社區公共托育家園</span>
+        </div>
+
       </div>
       <nav class="header-nav">
         <div class="nav-item" @click="goToPage('News')" style="cursor:pointer;">
-          <img src="https://img.icons8.com/ios-filled/40/5f8ba8/news.png" alt="最新消息" />
-          <span>最新消息</span>
+          <span>最新消息
+          <div class="nav-option"></div></span>
+
         </div>
         <div class="nav-item" @click="goToPage('AgencySearch')" style="cursor:pointer;">
-          <img src="https://img.icons8.com/ios-filled/40/5f8ba8/search--v1.png" alt="查詢托育機構" />
-          <span>查詢托育機構</span>
+          <span>查詢托育機構
+          <div class="nav-option"></div></span>
+
         </div>
         <div class="nav-item" @click="goToPage('Qualification')" style="cursor:pointer;">
-          <img src="https://img.icons8.com/ios-filled/40/5f8ba8/info.png" alt="公托資格說明" />
-          <span>公托資格說明</span>
+          <span>公托資格說明
+          <div class="nav-option"></div></span>
+
         </div>
         <div class="nav-item" @click="goToPage('MemberCenter')" style="cursor:pointer;">
-          <img src="https://img.icons8.com/ios-filled/40/5f8ba8/user-male-circle.png" alt="會員中心" />
-          <span>會員中心</span>
+          <span>會員中心
+          <div class="nav-option"></div></span>
+
         </div>
         <!-- 後台管理入口，僅 admin 角色顯示 -->
         <div
@@ -30,8 +38,10 @@
           @click="goToPage('AdminHome')"
           style="cursor:pointer;"
         >
-          <img src="https://img.icons8.com/ios-filled/40/e35d6a/settings.png" alt="後台管理" />
-          <span>後台管理</span>
+          <span>後台管理
+          <div class="nav-option"></div></span>
+
+
         </div>
         <!-- 登入/登出與用戶名稱包在同一個區塊，固定在 header 右上角 -->
         <div v-if="authStore.isLoggedIn && authStore.user" class="user-actions">
@@ -42,7 +52,7 @@
           <button class="account-btn" type="button" @click="openAccountModal">
 
             <svg class="caret" width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M6 9l6 6 6-6" stroke="#5f8ba8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M6 9l6 6 6-6" stroke="#e35d6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
         </div>
@@ -181,16 +191,15 @@ header {
   left: 0;
   width: 100%;
   z-index: 100;
+  padding: 5px;
 }
 .header-left {
   display: flex;
+  margin-left: 20px;
   align-items: center;
   height: 70px;
-  position: absolute;
-  top: 50%;
-  left: 40px;
-  transform: translateY(-50%);
-  align-self: flex-start;
+  margin-top: auto;
+  margin-bottom: auto;
 }
 .header-nav {
   display: flex;
@@ -199,8 +208,11 @@ header {
   justify-content: flex-end;
   align-items: flex-end;
   margin-top: auto;
-  padding-bottom: 8px; /* 與 header 底部有點距離 */
+
+
 }
+
+
 .content-area {
 
   background: rgba(255, 248, 246, 0.84);
@@ -214,40 +226,70 @@ header {
   width: 48px;
   margin-right: 12px;
 }
-
+.vertical-stack {
+  color: #3a1f1f;
+  font-weight: bold;
+  display: flex;
+  flex-direction: column;
+  letter-spacing: 2px;
+  align-items: flex-start; /* 可根據需求調整對齊方式 */
+}
 .system-title {
-  color: #333;
+
   font-size: 2rem;
   font-weight: bold;
-  letter-spacing: 2px;
+  letter-spacing: 3px;
 }
 
 .header-nav {
   display: flex;
+  height: 40px;
   gap: 32px;
+  margin-bottom: 0;
 
 }
+.nav-option {
+  background: #e35d6a;
+  height: 5px;
+  width:100%;
+  margin-top: 5px;
+  margin-bottom: 0;
+
+  display: none;
+  border-radius: 10px;
+}
+.nav-item:hover .nav-option {
+  display: flex;
+
+}
+
+.nav-item:hover{
+  background: #ffe8e8;
+}
+
 
 .nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: #5f8ba8;
+  color: #e35d6a;
   cursor: pointer;
   transition: color 0.2s, background 0.2s;
   font-size: 13px;
   border-radius: 10px;
   padding: 4px 10px;
-  width:100px;
+  width:110px;
   font-weight: bold;
+  letter-spacing: 1px;
+
 }
 
 .nav-item:hover span {
-  color: #87a6ba;
+  color: #e35d6a;
 }
 
 .nav-item:hover img {
-  filter: brightness(1.2) drop-shadow(0 2px 4px #87a6ba);
+  filter: brightness(1.2) drop-shadow(0 2px 4px #e35d6a);
 }
 
 /* Main Content */
@@ -262,13 +304,12 @@ header {
 /* Footer 樣式 */
 footer {
   background: #ffd4d4;
-  color: #333;
+  color: #3a1f1f;
   text-align: center;
   padding: 16px 0 8px 0;
   font-size: 0.95rem;
   letter-spacing: 1px;
   margin-top: 32px;
-  border-top: 1px solid #f8b6b6;
 }
 
 .user-info {
@@ -316,21 +357,19 @@ footer {
 }
 
 .account-btn {
-  background: #fff;
-  color: #5f8ba8;
+  background: #fdd2d2;
+  color: #e35d6a;
   border: none;
-  border-radius: 8px;
-  padding: 4px 10px;
+  border-radius: 50%;
+  padding: 6px 6px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
   font-weight: bold;
   cursor: pointer;
 }
 .account-btn img { width: 18px; height: 18px; display: block; }
 .account-btn .caret { display: block; }
-.account-btn:hover { background: #eef5fa; }
+.account-btn:hover { background: #ffe8e8; }
 
 /* Modal 基礎樣式 */
 .modal-overlay {

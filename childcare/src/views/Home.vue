@@ -6,15 +6,15 @@
 
         <div class="card-container">
           <div class="card" @click="goToPage('ApplicationStatus')" style="cursor:pointer;">
-            <img src="https://img.icons8.com/ios/100/000000/id-verified.png" alt="申請進度查詢">
+            <img src="https://img.icons8.com/ios/100/ffe8e8/id-verified.png" alt="申請進度查詢">
             <p>申請進度查詢</p>
           </div>
           <div class="card" @click="goToPage('ApplyService')" style="cursor:pointer;">
-            <img src="https://img.icons8.com/ios/100/000000/document.png" alt="申請托育服務">
+            <img src="https://img.icons8.com/ios/100/ffe8e8/document.png" alt="申請托育服務">
             <p>申請托育服務</p>
           </div>
           <div class="card" @click="goToPage('SubsidyCalculator')" style="cursor:pointer;">
-            <img src="https://img.icons8.com/ios/100/000000/upload.png" alt="補助試算">
+            <img src="https://img.icons8.com/ios/100/ffe8e8/upload.png" alt="補助試算">
             <p>補助試算</p>
           </div>
         </div>
@@ -188,7 +188,7 @@ main {
 }
 
 .card {
-  background: #FFE5C2;
+  background: #e15c69;
   border-radius: 16px;
   box-shadow: 0 2px 8px #f8b6b633;
   padding: 32px 40px;
@@ -199,6 +199,7 @@ main {
   transition: box-shadow 0.2s, transform 0.2s;
   cursor: pointer;
 }
+
 
 .card:hover {
   box-shadow: 0 6px 24px #f8b6b699;
@@ -211,9 +212,8 @@ main {
 }
 
 .card p {
-  color: #333;
+  color: #ffe8e8;
   font-size: 1.2rem;
-  font-weight: bold;
   margin: 0;
 }
 
