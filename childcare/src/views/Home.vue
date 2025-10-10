@@ -13,11 +13,11 @@
 
         <div class="card-container">
           <div class="card" @click="goToPage('ApplicationStatus')" style="cursor:pointer;">
-            <img src="https://img.icons8.com/ios/100/000000/id-verified.png" alt="申請進度查詢">
+            <img src="https://img.icons8.com/ios/100/ffe8e8/id-verified.png" alt="申請進度查詢">
             <p>申請進度查詢</p>
           </div>
           <div class="card" @click="goToPage('ApplyService')" style="cursor:pointer;">
-            <img src="https://img.icons8.com/ios/100/000000/document.png" alt="申請托育服務">
+            <img src="https://img.icons8.com/ios/100/ffe8e8/document.png" alt="申請托育服務">
             <p>申請托育服務</p>
           </div>
           <div class="card" @click="goToPage('SubsidyCalculator')" style="cursor:pointer;">
@@ -263,7 +263,7 @@ main {
 }
 
 .card {
-  background: #e15c96;
+  background: #e48891;
   border-radius: 16px;
   box-shadow: 0 2px 8px #f8b6b633;
   padding: 32px 40px;
