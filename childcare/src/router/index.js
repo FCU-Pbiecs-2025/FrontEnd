@@ -57,6 +57,12 @@ const routes = [
                 component: () => import('../views/Register.vue')
             },
             {
+                path: '/family-register',
+                name: 'FamilyRegister',
+                component: () => import('../views/FamilyRegister.vue'),
+                meta: {breadcrumb: '家庭註冊'}
+            },
+            {
                 path: '/register-terms',
                 name: 'RegisterTerms',
                 component: () => import('../views/RegisterTerms.vue')
@@ -89,6 +95,24 @@ const routes = [
                 name: 'Login',
                 component: () => import('../views/LoginView.vue'),
                 meta: { requiresGuest: true } // 已登入用戶不能訪問登入頁
+            },
+            {
+                path: '/admin',
+                name: 'AdminHome',
+                component: () => import('../views/AdminHome.vue'),
+                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '後台' }
+            },
+            {
+                path: '/dashboard',
+                name: 'Dashboard',
+                component: () => import('../views/AdminHome.vue'),
+                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '後台' }
+            },
+            {
+                path: '/manage',
+                name: 'Manage',
+                component: () => import('../views/AdminHome.vue'),
+                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '後台' }
             }
         ]
     },
@@ -110,6 +134,13 @@ router.beforeEach((to, from, next) => {
             path: '/login',
             query: { redirect: to.fullPath }
         })
+        return
+    }
+
+    // 檢查是否需要 admin 權限
+    if (to.meta.requiresAdmin && authStore.user?.role !== 'admin') {
+        // 非 admin 角色，導向首頁
+        next('/')
         return
     }
 

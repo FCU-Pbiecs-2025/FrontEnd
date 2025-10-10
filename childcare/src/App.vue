@@ -23,6 +23,16 @@
           <img src="https://img.icons8.com/ios-filled/40/5f8ba8/user-male-circle.png" alt="會員中心" />
           <span>會員中心</span>
         </div>
+        <!-- 後台管理入口，僅 admin 角色顯示 -->
+        <div
+          v-if="authStore.user?.role === 'admin'"
+          class="nav-item"
+          @click="goToPage('AdminHome')"
+          style="cursor:pointer;"
+        >
+          <img src="https://img.icons8.com/ios-filled/40/e35d6a/settings.png" alt="後台管理" />
+          <span>後台管理</span>
+        </div>
         <!-- 登入/登出與用戶名稱包在同一個區塊，固定在 header 右上角 -->
         <div v-if="authStore.isLoggedIn && authStore.user" class="user-actions">
           <div class="user-info">

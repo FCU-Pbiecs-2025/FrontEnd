@@ -51,7 +51,7 @@ export function resetPassword(email, resetToken, newPassword) {
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, token: resetToken, newPassword })
+        body: JSON.stringify({ email, resetToken, newPassword })
     }).then(response => response.json());
 }
 
@@ -67,4 +67,20 @@ export function verifyResetToken(email, resetToken) {
         },
         body: JSON.stringify({ email, token: resetToken })
     }).then(response => response.json());
+}
+
+// 更新個人資料
+export function updateUserProfile(profileData) {
+    if (USE_MOCK_API) {
+        return mockAuth.updateUserProfile(profileData);
+    }
+    return http.put("/auth/profile", profileData);
+}
+
+// 獲取個人資料
+export function getUserProfile() {
+    if (USE_MOCK_API) {
+        return mockAuth.getUserProfile();
+    }
+    return http.get("/auth/profile");
 }

@@ -60,6 +60,10 @@
         <button type="button" class="test-login-btn" @click="handleTestLogin">
           測試登入
         </button>
+        <!-- 後台帳號測試登入按鈕 -->
+        <button type="button" class="admin-test-login-btn" @click="handleAdminTestLogin">
+          後台帳號測試登入
+        </button>
       </form>
       <div class="login-links">
         <button class="link-btn" @click="goToForgotPassword">忘記密碼？</button>
@@ -196,9 +200,14 @@ const handleLogin = async () => {
     )
 
     if (result.success) {
-      // 登入成功，導向首頁或原本要訪問的頁面
-      const redirect = router.currentRoute.value.query.redirect || '/'
-      router.push(redirect)
+      // 登入成功，若為管理員則跳轉後台首頁
+      if (authStore.user?.role === 'admin') {
+        router.push('/admin')
+      } else {
+        // 一般用戶導向首頁或原本要訪問的頁面
+        const redirect = router.currentRoute.value.query.redirect || '/'
+        router.push(redirect)
+      }
     } else {
       errorMessage.value = result.message
       // 重置驗證
@@ -244,6 +253,23 @@ const handleTestLogin = async () => {
 
   // 跳轉到會員中心
   router.push({ name: 'MemberCenter' })
+}
+
+// 後台帳號測試登入處理函數
+const handleAdminTestLogin = async () => {
+  // 設定假的 admin 登入狀態
+  authStore.token = 'admin-test-token'
+  authStore.user = {
+    id: 'admin-test',
+    name: '後台管理員',
+    email: 'admin@example.com',
+    role: 'admin'
+  }
+  authStore.isAuthenticated = true
+  localStorage.setItem('token', 'admin-test-token')
+  localStorage.setItem('user', JSON.stringify(authStore.user))
+  // 跳轉到後台首頁
+  router.push('/admin')
 }
 
 const refreshCaptcha = () => {
@@ -355,6 +381,28 @@ const goToRegister = () => {
 }
 
 .test-login-btn:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.admin-test-login-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 0.5rem;
+}
+
+.admin-test-login-btn:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.admin-test-login-btn:disabled {
   background-color: #6c757d;
   cursor: not-allowed;
 }

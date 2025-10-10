@@ -152,29 +152,28 @@ export const mockAuth = {
   resetPassword: (email, resetToken, newPassword) => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        const user = mockAuth.users.find(u => u.email === email)
-        if (!user) {
-          resolve({ success: false, message: '用戶不存在' })
-          return
-        }
-
         const storedToken = sessionStorage.getItem(`reset_token_${email}`)
         const tokenExpiry = sessionStorage.getItem(`reset_token_expiry_${email}`)
 
         if (!storedToken || storedToken !== resetToken) {
-          resolve({ success: false, message: '重置 token 無效' })
+          resolve({ success: false, message: '無效的重置連結' })
           return
         }
 
-        if (!tokenExpiry || Date.now() > parseInt(tokenExpiry)) {
-          sessionStorage.removeItem(`reset_token_${email}`)
-          sessionStorage.removeItem(`reset_token_expiry_${email}`)
-          resolve({ success: false, message: '重置 token 已過期，請重新申請' })
+        if (Date.now() > parseInt(tokenExpiry)) {
+          resolve({ success: false, message: '重置連結已過期，請重新申請' })
+          return
+        }
+
+        // 找到用戶並更新密碼
+        const userIndex = mockAuth.users.findIndex(u => u.email === email)
+        if (userIndex === -1) {
+          resolve({ success: false, message: '用戶不存在' })
           return
         }
 
         // 更新密碼
-        user.password = newPassword
+        mockAuth.users[userIndex].password = newPassword
 
         // 清除重置 token
         sessionStorage.removeItem(`reset_token_${email}`)
@@ -188,7 +187,7 @@ export const mockAuth = {
     })
   },
 
-  // 模擬驗證重置 token
+  // 模擬驗證重置密碼 token
   verifyResetToken: (email, resetToken) => {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -196,19 +195,92 @@ export const mockAuth = {
         const tokenExpiry = sessionStorage.getItem(`reset_token_expiry_${email}`)
 
         if (!storedToken || storedToken !== resetToken) {
-          resolve({ success: false, message: '重置 token 無效' })
+          resolve({ success: false, message: '無效的重置連結' })
           return
         }
 
-        if (!tokenExpiry || Date.now() > parseInt(tokenExpiry)) {
-          sessionStorage.removeItem(`reset_token_${email}`)
-          sessionStorage.removeItem(`reset_token_expiry_${email}`)
-          resolve({ success: false, message: '重置 token 已過期' })
+        if (Date.now() > parseInt(tokenExpiry)) {
+          resolve({ success: false, message: '重置連結已過期，請重新申請' })
           return
         }
 
-        resolve({ success: true, message: 'Token 有效' })
+        resolve({
+          success: true,
+          message: 'Token 驗證成功'
+        })
       }, 500)
+    })
+  },
+
+  // 模擬更新個人資料 API
+  updateUserProfile: (profileData) => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const token = localStorage.getItem('token')
+        if (!token || !token.startsWith('mock_jwt_token_')) {
+          resolve({ success: false, message: '未授權，請重新登入' })
+          return
+        }
+
+        const userId = token.split('_')[3]
+        const userIndex = mockAuth.users.findIndex(u => u.id.toString() === userId)
+
+        if (userIndex === -1) {
+          resolve({ success: false, message: '用戶不存在' })
+          return
+        }
+
+        // 更新用戶資料
+        mockAuth.users[userIndex] = {
+          ...mockAuth.users[userIndex],
+          name: profileData.name,
+          email: profileData.email,
+          phone: profileData.phone,
+          address: profileData.address
+        }
+
+        resolve({
+          success: true,
+          message: '個人資料更新成功',
+          data: {
+            name: profileData.name,
+            email: profileData.email,
+            phone: profileData.phone,
+            address: profileData.address
+          }
+        })
+      }, 1000) // 模擬網路延遲
+    })
+  },
+
+  // 模擬獲取個人資料 API
+  getUserProfile: () => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const token = localStorage.getItem('token')
+        if (!token || !token.startsWith('mock_jwt_token_')) {
+          resolve({ success: false, message: '未授權，請重新登入' })
+          return
+        }
+
+        const userId = token.split('_')[3]
+        const user = mockAuth.users.find(u => u.id.toString() === userId)
+
+        if (!user) {
+          resolve({ success: false, message: '用戶不存在' })
+          return
+        }
+
+        resolve({
+          success: true,
+          data: {
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            address: user.address
+          }
+        })
+      }, 500) // 模擬網路延遲
     })
   }
 }
