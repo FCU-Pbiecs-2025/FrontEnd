@@ -143,6 +143,18 @@ const routes = [
                         meta: { breadcrumb: '機構管理' }
                     },
                     {
+                        path: 'application-review',
+                        name: 'AdminApplicationReview',
+                        component: () => import('../views/AdminApplicationReview.vue'),
+                        meta: { breadcrumb: '審核申請' }
+                    },
+                    {
+                        path: 'application-revoke',
+                        name: 'AdminApplicationRevoke',
+                        component: () => import('../views/AdminApplicationRevoke.vue'),
+                        meta: { breadcrumb: '撤銷審核' }
+                    },
+                    {
                         path: 'class',
                         name: 'AdminClassManager',
                         component: () => import('../views/AdminClassManager.vue'),
