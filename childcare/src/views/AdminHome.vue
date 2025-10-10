@@ -13,8 +13,8 @@
           </div>
           <transition name="slide-fade">
             <ul v-show="openSections[0]">
-              <li :class="{active: currentSection==='citizen'}" @click="currentSection='citizen'">民眾帳號</li>
-              <li :class="{active: currentSection==='admin'}" @click="currentSection='admin'">後台帳號</li>
+              <li :class="{active: isActive('/admin/citizen')}" @click="navigate('/admin/citizen')">民眾帳號</li>
+              <li :class="{active: isActive('/admin/backend')}" @click="navigate('/admin/backend')">後台帳號</li>
             </ul>
           </transition>
         </div>
@@ -25,9 +25,9 @@
           </div>
           <transition name="slide-fade">
             <ul v-show="openSections[1]">
-              <li>首頁海報</li>
-              <li>系統公告</li>
-              <li>規範說明</li>
+              <li @click="navigate('/admin/banner')">首頁海報</li>
+              <li :class="{active: isActive('/admin/announcement')}" @click="navigate('/admin/announcement')">系統公告</li>
+              <li :class="{active: isActive('/admin/guidelines') }" @click="navigate('/admin/guidelines')">規範說明</li>
               <li>機構管理</li>
               <li>班級管理</li>
             </ul>
@@ -54,51 +54,21 @@
     </aside>
     <!-- 右側內容 -->
     <main class="admin-main">
-      <div class="admin-breadcrumb">後台首頁/</div>
-      <div class="admin-announcement">
-        <AdminCitizenAccount v-if="currentSection==='citizen'" />
-        <template v-else>
-          <!-- 代辦事項通知區塊 -->
-          <h2 class="section-title">代辦事項通知</h2>
-          <div class="news-list-section">
-            <div class="news-list-header">
-              <span>發布日期</span>
-              <span>事項標題</span>
-              <span>內容</span>
-            </div>
-            <div v-for="item in todoList" :key="item.id" class="news-list-row">
-              <span class="news-date-cell">{{ item.date }}</span>
-              <span class="news-title-cell" :title="item.title">{{ item.title.length > 18 ? item.title.slice(0, 18) + '...' : item.title }}</span>
-              <span class="news-content-cell">{{ item.content }}</span>
-            </div>
-            <div v-if="todoList.length === 0" class="empty-tip">目前沒有代辦事項</div>
-          </div>
-          <!-- 後台系統公告區塊 -->
-          <h2 class="section-title">後台系統公告</h2>
-          <div class="news-list-section">
-            <div class="news-list-header">
-              <span>發布日期</span>
-              <span>公告標題</span>
-              <span>公告內容</span>
-            </div>
-            <div v-for="item in announcementList" :key="item.id" class="news-list-row">
-              <span class="news-date-cell">{{ item.date }}</span>
-              <span class="news-title-cell" :title="item.title">{{ item.title.length > 18 ? item.title.slice(0, 18) + '...' : item.title }}</span>
-              <span class="news-content-cell">{{ item.content }}</span>
-            </div>
-            <div v-if="announcementList.length === 0" class="empty-tip">目前沒有公告</div>
-          </div>
-        </template>
-      </div>
+      <div class="admin-breadcrumb">{{ breadcrumb }} /</div>
+      <!-- Use router-view to render child admin pages (dashboard, citizen, backend, etc.) -->
+      <router-view />
     </main>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import AdminCitizenAccount from './AdminCitizenAccount.vue'
+import { ref, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+
+const router = useRouter()
+const route = useRoute()
 const sidebarOpen = ref(true)
-const currentSection = ref('')
+
 // 控制每個 menu-section 的展開狀態
 const openSections = ref([true, true, true]) // 預設全部展開，可依需求調整
 const toggleSection = idx => {
@@ -107,14 +77,21 @@ const toggleSection = idx => {
 const toggleSidebar = () => {
   sidebarOpen.value = !sidebarOpen.value
 }
-const todoList = [
-  { id: 1, title: '審核新申請', content: '有 3 筆新申請待審核', date: '2025/10/10' },
-  { id: 2, title: '補位抽籤', content: '本週需進行補位抽籤', date: '2025/10/09' }
-]
-const announcementList = [
-  { id: 1, title: '系統維護通知', content: '後台系統將於本週末進行維護，請提前完成重要作業。', date: '2025/10/08' },
-  { id: 2, title: '新功能上線', content: '公告管理功能已上線，歡迎使用。', date: '2025/10/05' }
-]
+
+const navigate = (path) => {
+  router.push(path)
+}
+
+const isActive = (path) => {
+  // treat active when current route path equals or starts with the provided path
+  return route.path === path || route.path.startsWith(path + '/')
+}
+
+// dynamic breadcrumb: find the deepest matched route that has a breadcrumb meta
+const breadcrumb = computed(() => {
+  const matched = route.matched.slice().reverse().find(r => r.meta && r.meta.breadcrumb)
+  return matched ? matched.meta.breadcrumb : (route.name || '後台')
+})
 </script>
 
 <style scoped>

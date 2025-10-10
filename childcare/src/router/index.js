@@ -100,7 +100,43 @@ const routes = [
                 path: '/admin',
                 name: 'AdminHome',
                 component: () => import('../views/AdminHome.vue'),
-                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '後台' }
+                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '後台' },
+                children: [
+                    {
+                        path: '',
+                        redirect: { name: 'AdminDashboard' }
+                    },
+                    {
+                        path: 'citizen',
+                        name: 'AdminCitizenAccount',
+                        component: () => import('../views/AdminCitizenAccount.vue'),
+                        meta: { breadcrumb: '民眾帳號' }
+                    },
+                    {
+                        path: 'backend',
+                        name: 'AdminBackendAccount',
+                        component: () => import('../views/AdminBackendAccount.vue'),
+                        meta: { breadcrumb: '後台帳號' }
+                    },
+                    {
+                        path: 'banner',
+                        name: 'AdminBannerManager',
+                        component: () => import('../views/AdminBannerManager.vue'),
+                        meta: { breadcrumb: '首頁海報' }
+                    },
+                    {
+                        path: 'announcement',
+                        name: 'AdminAnnouncement',
+                        component: () => import('../views/AdminAnnouncement.vue'),
+                        meta: { breadcrumb: '系統公告' }
+                    },
+                    {
+                        path: '',
+                        name: 'AdminDashboard',
+                        component: () => import('../views/AdminDashboard.vue'),
+                        meta: { breadcrumb: '後台首頁' }
+                    }
+                ]
             },
             {
                 path: '/admin/banner/new',
@@ -113,6 +149,12 @@ const routes = [
                 name: 'AdminBannerEdit',
                 component: () => import('../views/AdminBannerEdit.vue'),
                 meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '編輯海報' }
+            },
+            {
+                path: '/admin/announcement/:id/edit',
+                name: 'AdminAnnouncementEdit',
+                component: () => import('../views/AdminAnnouncementEdit.vue'),
+                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '系統公告編輯' }
             },
             {
                 path: '/dashboard',

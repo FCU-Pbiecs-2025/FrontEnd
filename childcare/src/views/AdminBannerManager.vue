@@ -3,7 +3,6 @@
     <div class="banner-card">
       <h2>前台海報管理</h2>
       <div class="query-row">
-        <input v-model="search" placeholder="搜尋 Banner 或 Link" />
         <button class="btn" @click="openNew()">新增</button>
         <button class="btn ghost" @click="goBack">返回</button>
       </div>
@@ -19,7 +18,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(b, idx) in filteredBanners" :key="b.id">
+          <tr v-for="(b, idx) in banners" :key="b.id">
             <td class="img-cell"><img :src="b.image" alt="banner" /></td>
             <td>{{ b.link }}</td>
             <td>{{ b.displayDate }}</td>
@@ -29,7 +28,7 @@
                <button class="small danger" @click="remove(idx)">刪除</button>
              </td>
            </tr>
-           <tr v-if="filteredBanners.length === 0">
+           <tr v-if="banners.length === 0">
              <td colspan="5" class="empty">目前沒有海報</td>
            </tr>
          </tbody>
@@ -41,15 +40,12 @@
  </template>
 
  <script setup>
- import { ref, computed, onMounted } from 'vue'
+ import { ref, onMounted } from 'vue'
  import { useRouter } from 'vue-router'
 
  const router = useRouter()
  const storageKey = 'siteBanners'
  const banners = ref([])
- const search = ref('')
-
- // no modal state here; editing handled on separate page
 
  const load = () => {
    const raw = localStorage.getItem(storageKey)
@@ -58,12 +54,6 @@
  const persist = () => localStorage.setItem(storageKey, JSON.stringify(banners.value))
 
  onMounted(load)
-
- const filteredBanners = computed(() => {
-   if (!search.value) return banners.value
-   const q = search.value.toLowerCase()
-   return banners.value.filter(b => (b.link || '').toLowerCase().includes(q) || (b.image || '').toLowerCase().includes(q))
- })
 
  const openNew = () => {
    router.push({ name: 'AdminBannerNew' })
@@ -89,7 +79,6 @@
  .banner-card { width: 820px; background: #fff; border:1px solid #F1E9E9; border-radius:10px; padding:18px; box-shadow:0 8px 24px rgba(0,0,0,0.04)}
  .banner-card h2 { color:#2e6fb7; margin-bottom:12px }
  .query-row { display:flex; gap:8px; align-items:center; margin-bottom:12px }
- .query-row input { flex:1; padding:8px 10px; border-radius:6px; border:1px solid #e5e7eb }
  .btn { padding:8px 14px; border-radius:8px; border:none; background:#3b82f6; color:#fff; cursor:pointer }
  .btn.ghost { background:transparent; border:1px solid #3b82f6; color:#2563eb }
  .banner-table { width:100%; border-collapse:collapse; }
