@@ -28,8 +28,9 @@
               <li @click="navigate('/admin/banner')">首頁海報</li>
               <li :class="{active: isActive('/admin/announcement')}" @click="navigate('/admin/announcement')">系統公告</li>
               <li :class="{active: isActive('/admin/guidelines') }" @click="navigate('/admin/guidelines')">規範說明</li>
-              <li>機構管理</li>
-              <li>班級管理</li>
+              <li :class="{active: isActive('/admin/institution')}" @click="navigate('/admin/institution')">機構管理</li>
+              <!-- make 班級管理 navigable and active-aware -->
+              <li :class="{active: isActive('/admin/class')}" @click="navigate('/admin/class')">班級管理</li>
             </ul>
           </transition>
         </div>

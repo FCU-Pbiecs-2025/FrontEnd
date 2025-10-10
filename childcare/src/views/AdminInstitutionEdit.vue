@@ -1,0 +1,167 @@
+<template>
+  <div class="institution-edit-page">
+    <div class="institution-edit-card">
+      <div class="title-row">
+        <img src="https://img.icons8.com/ios/48/2e6fb7/organization.png" class="icon" alt="icon" />
+        <span class="main-title">機構管理</span>
+      </div>
+      <div class="tab-row">
+        <span class="tab-title">新增各托機構</span>
+      </div>
+      <div class="edit-form-card">
+        <div class="form-row">
+          <label class="form-label">參與縣市：</label>
+          <input v-model="form.city" class="form-input" placeholder="請輸入縣市" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">聯絡人：</label>
+          <input v-model="form.contact" class="form-input" placeholder="請輸入聯絡人" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">電話：</label>
+          <input v-model="form.phone" class="form-input" placeholder="請輸入電話" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">傳真：</label>
+          <input v-model="form.fax" class="form-input" placeholder="請輸入傳真" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">地址：</label>
+          <input v-model="form.address" class="form-input" placeholder="請輸入地址" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">附檔圖：</label>
+          <input v-model="form.attachment" class="form-input" placeholder="請輸入附檔圖" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">立案證書：</label>
+          <textarea v-model="form.license" class="form-textarea" rows="4" placeholder="請輸入立案證書資訊"></textarea>
+        </div>
+        <div class="form-row">
+          <label class="form-label">環境照資訊：</label>
+          <button class="btn secondary" @click="uploadPhoto">瀏覽檔案</button>
+        </div>
+      </div>
+      <div class="bottom-row">
+        <button class="btn ghost" @click="goBack">返回</button>
+        <button class="btn primary" @click="save">儲存</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+const route = useRoute()
+const router = useRouter()
+const storageKey = 'institutionData'
+
+const form = ref({
+  id: null,
+  city: '',
+  contact: '',
+  phone: '',
+  fax: '',
+  address: '',
+  attachment: '',
+  license: ''
+})
+
+const institutions = ref([])
+
+const isNew = computed(() => route.name === 'AdminInstitutionNew' || !route.params.id)
+
+const load = () => {
+  const raw = localStorage.getItem(storageKey)
+  institutions.value = raw ? JSON.parse(raw) : []
+}
+
+onMounted(() => {
+  load()
+  if (!isNew.value) {
+    const id = Number(route.params.id)
+    const found = institutions.value.find(item => Number(item.id) === id)
+    if (found) {
+      form.value = { ...found }
+    } else {
+      router.replace({ path: '/admin/institution' })
+    }
+  }
+})
+
+const persist = () => localStorage.setItem(storageKey, JSON.stringify(institutions.value))
+
+const validate = () => {
+  if (!form.value.city) {
+    alert('請輸入參與縣市')
+    return false
+  }
+  if (!form.value.contact) {
+    alert('請輸入聯絡人')
+    return false
+  }
+  if (!form.value.phone) {
+    alert('請輸入電話')
+    return false
+  }
+  return true
+}
+
+const save = () => {
+  if (!validate()) return
+  load()
+  if (isNew.value) {
+    const newItem = {
+      id: Date.now(),
+      name: form.value.city + '托育機構', // 簡單組合名稱
+      director: form.value.contact,
+      ...form.value
+    }
+    institutions.value.push(newItem)
+  } else {
+    const id = Number(route.params.id)
+    const idx = institutions.value.findIndex(item => Number(item.id) === id)
+    if (idx !== -1) {
+      institutions.value[idx] = {
+        ...institutions.value[idx],
+        name: form.value.city + '托育機構',
+        director: form.value.contact,
+        ...form.value
+      }
+    }
+  }
+  persist()
+  router.replace({ path: '/admin/institution' })
+}
+
+const uploadPhoto = () => {
+  alert('檔案上傳功能可串接後端')
+}
+
+const goBack = () => {
+  router.replace({ path: '/admin/institution' })
+}
+</script>
+
+<style scoped>
+.institution-edit-page { display:flex; justify-content:center; padding:32px 0; }
+.institution-edit-card { width:820px; background: #fff; border:1.5px solid #e6e6ea; border-radius:16px; padding:28px 32px; box-shadow:0 8px 24px rgba(16,24,40,0.04); }
+.title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.icon { width:32px; height:32px; }
+.main-title { font-size:1.45rem; color:#2e6fb7; font-weight:700; letter-spacing:1px; }
+.tab-row { display:flex; justify-content:center; margin-bottom:18px; }
+.tab-title { background: #f9dada; color:#e35d6a; font-weight:700; font-size:1.15rem; padding:6px 38px; border-radius:18px; letter-spacing:2px; }
+.edit-form-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:18px 24px; margin-bottom:22px; box-shadow:0 2px 8px rgba(16,24,40,0.04); }
+.form-row { display:flex; align-items:flex-start; gap:18px; margin-bottom:16px; }
+.form-label { font-weight:600; color:#2e6fb7; min-width:100px; margin-top:8px; }
+.form-input { width:320px; max-width:100%; padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; }
+.form-textarea { width:420px; max-width:100%; padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; resize:vertical; }
+.btn { padding:7px 18px; border-radius:8px; border:none; cursor:pointer; font-weight:600; font-size:1rem; }
+.btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff }
+.btn.ghost { background:transparent; border:1px solid #3b82f6; color:#2563eb }
+.btn.secondary { background:#f3f4f6; color:#333; border:1px solid #d8dbe0; }
+.bottom-row { display:flex; justify-content:flex-end; gap:12px; margin-top:8px; }
+@media (max-width:900px){ .institution-edit-card{ width:100%; padding:16px } .form-input, .form-textarea{ width:100% } }
+</style>

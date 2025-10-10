@@ -131,6 +131,24 @@ const routes = [
                         meta: { breadcrumb: '系統公告' }
                     },
                     {
+                        path: 'guidelines',
+                        name: 'AdminGuidelines',
+                        component: () => import('../views/AdminGuidelines.vue'),
+                        meta: { breadcrumb: '規範說明', requiresAuth: true, requiresAdmin: true }
+                    },
+                    {
+                        path: 'institution',
+                        name: 'AdminInstitution',
+                        component: () => import('../views/AdminInstitution.vue'),
+                        meta: { breadcrumb: '機構管理' }
+                    },
+                    {
+                        path: 'class',
+                        name: 'AdminClassManager',
+                        component: () => import('../views/AdminClassManager.vue'),
+                        meta: { breadcrumb: '班級管理' }
+                    },
+                    {
                         path: '',
                         name: 'AdminDashboard',
                         component: () => import('../views/AdminDashboard.vue'),
@@ -155,6 +173,30 @@ const routes = [
                 name: 'AdminAnnouncementEdit',
                 component: () => import('../views/AdminAnnouncementEdit.vue'),
                 meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '系統公告編輯' }
+            },
+            {
+                path: '/admin/institution/new',
+                name: 'AdminInstitutionNew',
+                component: () => import('../views/AdminInstitutionEdit.vue'),
+                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '新增機構' }
+            },
+            {
+                path: '/admin/institution/:id/edit',
+                name: 'AdminInstitutionEdit',
+                component: () => import('../views/AdminInstitutionEdit.vue'),
+                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '編輯機構' }
+            },
+            {
+                path: '/admin/class/new',
+                name: 'AdminClassNew',
+                component: () => import('../views/AdminClassEdit.vue'),
+                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '新增班級' }
+            },
+            {
+                path: '/admin/class/:id/edit',
+                name: 'AdminClassEdit',
+                component: () => import('../views/AdminClassEdit.vue'),
+                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '編輯班級' }
             },
             {
                 path: '/dashboard',
