@@ -55,7 +55,6 @@
     </aside>
     <!-- 右側內容 -->
     <main class="admin-main">
-      <div class="admin-breadcrumb">{{ breadcrumb }} /</div>
       <!-- Use router-view to render child admin pages (dashboard, citizen, backend, etc.) -->
       <router-view />
     </main>
@@ -210,12 +209,11 @@ const breadcrumb = computed(() => {
 }
 .admin-main {
   flex: 1;
-  padding: 36px 48px;
   background: #fff;
   border-radius: 20px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.08);
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   max-width: 90%;
 }
 .section-title {

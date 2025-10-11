@@ -33,3 +33,14 @@ img {
   max-width: 100%;
   height: auto;
 }
+
+:root {
+  --primary-color: #fdd2d2;
+  --secondary-color: #e28790;
+  --third-color: #fde6e6;
+  --primary-text-color: #3a1f1f;
+  --secondary-text-color: #666;
+  --third-text-color: #628dad;
+  --4th-text-color: #e15c69;
+
+}

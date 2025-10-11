@@ -5,18 +5,17 @@
         <img src="https://img.icons8.com/ios/48/2e6fb7/organization.png" class="icon" alt="icon" />
         <span class="main-title">機構管理</span>
       </div>
-      <div class="tab-row">
-        <span class="tab-title">機構查詢</span>
-      </div>
+
       <div class="query-card">
         <div class="query-row">
-          <label class="search-label">查詢條件：</label>
-          <input type="text" v-model="searchKeyword" placeholder="機構名稱" class="search-input" />
-        </div>
-        <div class="query-row">
+          <div class="search-area">
+            <label class="search-label" for="queryInstitution">查詢條件：</label>
+            <input id="queryInstitution" type="text" v-model="searchKeyword" placeholder="機構名稱" class="search-input" />
+          </div>
           <button class="btn query" @click="doQuery">查詢</button>
         </div>
       </div>
+
       <div class="table-section">
         <table class="institution-table">
           <thead>
@@ -28,99 +27,141 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in filteredList" :key="item.id">
-              <td>{{ item.name }}</td>
-              <td>{{ item.director }}</td>
-              <td>{{ item.phone }}</td>
-              <td>
+            <tr v-for="item in resultList" :key="item.id">
+              <td class="name-cell">{{ item.name }}</td>
+              <td class="director-cell">{{ item.director }}</td>
+              <td class="phone-cell">{{ item.phone }}</td>
+              <td class="action-cell">
                 <button class="btn small" @click="edit(item)">編輯</button>
                 <button class="btn small danger" @click="remove(item)">刪除</button>
               </td>
             </tr>
-            <tr v-if="filteredList.length === 0">
+            <tr v-if="resultList.length === 0">
               <td colspan="4" class="empty-tip">目前沒有機構資料</td>
             </tr>
           </tbody>
         </table>
       </div>
+
       <div class="bottom-row">
         <button class="btn primary" @click="addNew">新增</button>
-        <button class="btn ghost" @click="goBack">返回</button>
+        <button class="btn primary" v-show="showBack" @click="goBack">返回</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 const router = useRouter()
+
+const STORAGE_KEY = 'institutionData'
 
 // 查詢條件
 const searchKeyword = ref('')
 
 // 機構列表（可串接API或localStorage）
-const list = ref([
-  // 範例資料
-  { id: 1, name: '愛心托育中心', director: '張美玉', phone: '03-1234567' },
-  { id: 2, name: '快樂兒童之家', director: '李志明', phone: '03-2345678' },
-  { id: 3, name: '陽光幼兒園', director: '王小華', phone: '03-3456789' }
-])
+const list = ref([])
+const resultList = ref([])
+const showBack = ref(false)
 
-const filteredList = computed(() => {
-  if (!searchKeyword.value) return list.value
-  const keyword = searchKeyword.value.toLowerCase()
-  return list.value.filter(item => {
+const loadList = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) {
+      list.value = JSON.parse(raw)
+    } else {
+      // 初始範例資料
+      list.value = [
+        { id: 1, name: '愛心托育中心', director: '張美玉', phone: '03-1234567', city: '台中市', contact: '張美玉', fax: '03-1234568', address: '台中市西屯區XX路XX號', attachment: '', license: '' },
+        { id: 2, name: '快樂兒童之家', director: '李志明', phone: '03-2345678', city: '台北市', contact: '李志明', fax: '03-2345679', address: '台北市大安區XX路XX號', attachment: '', license: '' },
+        { id: 3, name: '陽光幼兒園', director: '王小華', phone: '03-3456789', city: '新竹市', contact: '王小華', fax: '03-3456790', address: '新竹市東區XX路XX號', attachment: '', license: '' }
+      ]
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list.value))
+    }
+  } catch (e) {
+    console.error('loadList error', e)
+  }
+}
+
+const saveList = () => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list.value))
+}
+
+onMounted(() => {
+  loadList()
+  resultList.value = [...list.value]
+})
+
+const doQuery = () => {
+  const keyword = (searchKeyword.value || '').toLowerCase().trim()
+  resultList.value = list.value.filter(item => {
+    if (!keyword) return true
     return (
       (item.name || '').toLowerCase().includes(keyword) ||
       (item.director || '').toLowerCase().includes(keyword) ||
       (item.phone || '').toLowerCase().includes(keyword)
     )
   })
-})
-
-const doQuery = () => {
-  // 實際查詢可串API，這裡直接用 computed
+  showBack.value = true
 }
+
 const addNew = () => {
   router.push({ name: 'AdminInstitutionNew' })
 }
+
 const edit = (item) => {
   router.push({ name: 'AdminInstitutionEdit', params: { id: item.id } })
 }
+
 const remove = (item) => {
   if (confirm('確定要刪除這個機構嗎？')) {
     list.value = list.value.filter(i => i.id !== item.id)
+    saveList()
+    // 重新查詢以更新顯示
+    doQuery()
   }
 }
+
 const goBack = () => {
-  router.replace({ path: '/admin' })
+  searchKeyword.value = ''
+  loadList()
+  resultList.value = [...list.value]
+  showBack.value = false
 }
 </script>
 
 <style scoped>
-.institution-page { display:flex; justify-content:center; padding:32px 0; }
-.institution-card { width:820px; background: #fff; border:1.5px solid #e6e6ea; border-radius:16px; padding:28px 32px; box-shadow:0 8px 24px rgba(16,24,40,0.04); }
-.title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.institution-page {
+  display: flex;
+
+  justify-content: center;
+}
+.institution-card {
+  width: 820px;
+}
+.title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px;margin-top: 60px }
 .icon { width:32px; height:32px; }
-.main-title { font-size:1.45rem; color:#2e6fb7; font-weight:700; letter-spacing:1px; }
-.tab-row { display:flex; justify-content:center; margin-bottom:18px; }
-.tab-title { background: #f9dada; color:#e35d6a; font-weight:700; font-size:1.15rem; padding:6px 38px; border-radius:18px; letter-spacing:2px; }
-.query-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:18px 24px; margin-bottom:22px; box-shadow:0 2px 8px rgba(16,24,40,0.04); }
-.query-row { display:flex; align-items:center; gap:18px; margin-bottom:12px; }
-.search-label { font-weight:600; color:#2e6fb7; margin-right:6px; }
-.search-input { width:300px; max-width:100%; padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; }
-.btn { padding:7px 18px; border-radius:8px; border:none; cursor:pointer; font-weight:600; font-size:1rem; }
+.main-title { font-size:1.35rem; color:#2e6fb7; font-weight:700 }
+.query-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:14px 18px; margin-bottom:50px; box-shadow:0 2px 8px rgba(16,24,40,0.04); margin-top:50px; }
+.query-row { display:flex; align-items:center; gap:12px; flex-direction: column; }
+.search-area{gap: 30px; display: flex; align-items: center; margin-bottom: 8px;}
+.search-label { font-weight:600; color:#2e6fb7 }
+.search-input { padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; width:300px }
+.btn { padding:7px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:600 }
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff }
-.btn.ghost { background:transparent; border:1px solid #3b82f6; color:#2563eb }
-.btn.query { background:#e6f2ff; color:#2e6fb7; border:1px solid #b3d4fc; }
-.btn.small { padding:5px 12px; font-size:0.95rem; margin-right:6px; background:#f3f4f6; }
+.btn.query { background:#e6f2ff; color:#2e6fb7; border:1px solid #b3d4fc }
+.btn.small { padding:6px 12px; font-size:0.95rem; background:#f3f4f6; margin-right:6px; }
 .btn.danger { background:#ff7b8a; color:#fff }
-.table-section { margin-bottom:18px; }
-.institution-table { width:100%; border-collapse:collapse; background:transparent; border-radius:10px; overflow:hidden; }
-.institution-table th { background:#cfe8ff; color:#2e6fb7; font-weight:700; padding:10px; text-align:left; }
-.institution-table td { padding:10px; border-bottom:1px solid #f3f4f6; }
-.empty-tip { color: #aaa; text-align: center; padding: 24px 0; }
-.bottom-row { display:flex; justify-content:flex-end; gap:12px; margin-top:8px; }
+.institution-table { width:100%; border-collapse:collapse }
+.institution-table thead th { background:#cfe8ff; color:#2e6fb7; padding:10px; text-align:left; font-weight:700; }
+.institution-table td { padding:12px; border-bottom:1px solid #f3f4f6; vertical-align: middle; }
+.name-cell { font-weight:600; color:#334e5c }
+.director-cell { color:#334e5c }
+.phone-cell { color:#6b6f76 }
+.action-cell { text-align:right }
+.empty-tip { color:#999; text-align:center; padding:18px 0 }
+.bottom-row { display:flex; justify-content:center; gap:12px; margin-top:10vh; }
 @media (max-width:900px){ .institution-card{ width:100%; padding:16px } .search-input{ width:100% } }
 </style>

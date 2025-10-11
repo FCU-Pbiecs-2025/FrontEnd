@@ -4,24 +4,23 @@
     <template v-if="isHome">
       <section class="main-section">
 
-        <!-- clickable banner strip -->
-        <div v-if="visibleBanners.length" class="banner-strip">
-          <div class="banner-item" v-for="b in visibleBanners" :key="b.id">
-            <img :src="b.image" :alt="b.link || 'banner'" @click="openBanner(b)" style="cursor:pointer;" />
-          </div>
-        </div>
+        
 
         <div class="card-container">
           <div class="card" @click="goToPage('ApplicationStatus')" style="cursor:pointer;">
-            <img src="https://img.icons8.com/ios/100/ffe8e8/id-verified.png" alt="申請進度查詢">
+            <img src="../imgs/search-file.png" alt="申請進度查詢">
+<!--            <img src="https://img.icons8.com/ios/100/ffe8e8/id-verified.png" alt="申請進度查詢">-->
             <p>申請進度查詢</p>
           </div>
           <div class="card" @click="goToPage('ApplyService')" style="cursor:pointer;">
-            <img src="https://img.icons8.com/ios/100/ffe8e8/document.png" alt="申請托育服務">
+            <img src="../imgs/application.png" alt="申請托育服務">
+<!--            <img src="https://img.icons8.com/ios/100/ffe8e8/document.png" alt="申請托育服務">-->
             <p>申請托育服務</p>
           </div>
           <div class="card" @click="goToPage('SubsidyCalculator')" style="cursor:pointer;">
-            <img src="https://img.icons8.com/ios/100/ffe8e8/upload.png" alt="補助試算">
+            <img src="../imgs/salary.png" alt="補助試算">
+<!--            <img src="https://img.icons8.com/ios/100/ffe8e8/upload.png" alt="補助試算">-->
+
             <p>補助試算</p>
           </div>
         </div>
@@ -222,23 +221,6 @@ function goToNewsDetail(id) {
 main {
   min-height: 100vh;
   padding-bottom: 40px;
-}
-
-/* banner strip */
-.banner-strip {
-  max-width: 900px;
-  margin: 16px auto;
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  align-items: center;
-}
-.banner-item img {
-  max-width: 100%;
-  height: 140px;
-  object-fit: cover;
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
 .main-section {

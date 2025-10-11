@@ -1,25 +1,52 @@
 <template>
   <div class="banner-edit-page">
-    <div class="edit-card">
-      <h2>海報管理</h2>
-      <div class="edit-form">
-        <label>Banner 圖片 URL：<input v-model="form.image" placeholder="https://..." /></label>
-        <label>連結：<input v-model="form.link" placeholder="/apply-service 或 https://... 或 RouteName" /></label>
-        <label>顯示日期：<input type="date" v-model="form.displayDate" /></label>
-        <div class="perm-row">
-          <span class="perm-label">狀態：</span>
-          <label><input type="radio" value="顯示" v-model="form.status" /> 顯示</label>
-          <label><input type="radio" value="隱藏" v-model="form.status" /> 隱藏</label>
+    <div class="banner-edit-card">
+      <div class="title-row">
+        <img src="https://img.icons8.com/ios/48/2e6fb7/image.png" class="icon" alt="icon" />
+        <span class="main-title">海報管理</span>
+      </div>
+      <div class="tab-row">
+        <span class="tab-title">{{ isNew ? '新增海報' : '編輯海報' }}</span>
+      </div>
+      <div class="edit-form-card">
+        <div class="form-row">
+          <label class="form-label">Banner 圖片 URL：</label>
+          <input v-model="form.image" class="form-input" placeholder="https://..." />
         </div>
-        <div class="actions-row">
-          <button class="btn ghost" @click="cancel">返回</button>
-          <button class="btn primary" @click="save">儲存</button>
-          <button v-if="!isNew" class="btn danger" @click="doDelete">刪除</button>
+        <div class="form-row">
+          <label class="form-label">連結：</label>
+          <input v-model="form.link" class="form-input" placeholder="/apply-service 或 https://... 或 RouteName" />
         </div>
-        <div v-if="previewAvailable" class="preview">
-          <div>預覽：</div>
-          <img :src="form.image" alt="preview" />
+        <div class="form-row">
+          <label class="form-label">顯示日期：</label>
+          <input type="date" v-model="form.displayDate" class="form-input" />
         </div>
+        <div class="form-row">
+          <label class="form-label">狀態：</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" value="顯示" v-model="form.status" />
+              <span>顯示</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" value="隱藏" v-model="form.status" />
+              <span>隱藏</span>
+            </label>
+          </div>
+        </div>
+
+        <div v-if="previewAvailable" class="form-row">
+          <label class="form-label">預覽：</label>
+          <div class="preview-container">
+            <img :src="form.image" alt="preview" class="preview-image" />
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom-row">
+        <button class="btn ghost" @click="cancel">返回</button>
+        <button class="btn primary" @click="save">儲存</button>
+        <button v-if="!isNew" class="btn danger" @click="doDelete">刪除</button>
       </div>
     </div>
   </div>
@@ -101,20 +128,33 @@ const previewAvailable = computed(() => !!form.value.image)
 </script>
 
 <style scoped>
-.banner-edit-page { display:flex; justify-content:center; padding:24px 0; }
-.edit-card { width:760px; background: #fff; border:1px solid #e6e6ea; border-radius:12px; padding:18px 22px; box-shadow:0 8px 24px rgba(16,24,40,0.04); }
-.edit-card h2 { background: linear-gradient(90deg,#f0f6ff,#f7fbff); display:inline-block; padding:8px 14px; border-radius:20px; color:#2e6fb7; margin-bottom:14px; font-weight:700 }
-.edit-form { padding:12px 4px }
-.edit-form label { display:block; margin-bottom:12px; color:#333 }
-.edit-form input { width:420px; max-width:100%; padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; box-shadow:inset 0 1px 0 rgba(255,255,255,0.7) }
-.perm-row { display:flex; align-items:center; gap:18px; margin-top:8px }
-.perm-label { font-weight:700; margin-right:6px; color:#444 }
-.actions-row { display:flex; justify-content:flex-end; gap:12px; margin-top:18px }
-.btn { padding:8px 18px; border-radius:8px; border:none; cursor:pointer; font-weight:600 }
+.banner-edit-page { display:flex; justify-content:center; padding:32px 0; }
+.banner-edit-card { width:820px; background: #fff; border:1.5px solid #e6e6ea; border-radius:16px; padding:28px 32px; box-shadow:0 8px 24px rgba(16,24,40,0.04); }
+.title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.icon { width:32px; height:32px; }
+.main-title { font-size:1.45rem; color:#2e6fb7; font-weight:700; letter-spacing:1px; }
+.tab-row { display:flex; justify-content:center; margin-bottom:18px; }
+.tab-title { background: #f9dada; color:#e35d6a; font-weight:700; font-size:1.15rem; padding:6px 38px; border-radius:18px; letter-spacing:2px; }
+.edit-form-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:18px 24px; margin-bottom:22px; box-shadow:0 2px 8px rgba(16,24,40,0.04); }
+.form-row { display:flex; align-items:flex-start; gap:18px; margin-bottom:16px; }
+.form-label { font-weight:600; color:#2e6fb7; min-width:140px; margin-top:8px; }
+.form-input { width:420px; max-width:100%; padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; }
+.radio-group { display:flex; gap:24px; align-items:center; padding-top:8px; }
+.radio-label { display:flex; align-items:center; gap:8px; cursor:pointer; color:#333; font-weight:500; }
+.radio-label input[type="radio"] { cursor:pointer; width:16px; height:16px; }
+.radio-label span { user-select:none; }
+.preview-container { flex:1; }
+.preview-image { width:100%; max-width:560px; height:180px; object-fit:cover; border-radius:8px; border:1px solid #e6e6ea; box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+.bottom-row { display:flex; justify-content:center; gap:12px; margin-top:8px; }
+.btn { padding:7px 18px; border-radius:8px; border:none; cursor:pointer; font-weight:600; font-size:1rem; }
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff }
 .btn.ghost { background:transparent; border:1px solid #3b82f6; color:#2563eb }
 .btn.danger { background:#ff7b8a; color:#fff }
-.preview { margin-top:18px }
-.preview img { width:100%; height:140px; object-fit:cover; border-radius:8px }
-@media (max-width:720px){ .edit-card{ width:100%; padding:16px } .edit-form input{ width:100% } }
+@media (max-width:900px){
+  .banner-edit-card{ width:100%; padding:16px }
+  .form-row{ flex-direction:column; align-items:flex-start; }
+  .form-label{ width:100%; }
+  .form-input{ width:100%; }
+  .preview-image{ max-width:100%; height:140px; }
+}
 </style>

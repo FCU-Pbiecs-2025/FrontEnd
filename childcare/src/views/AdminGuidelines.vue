@@ -6,21 +6,19 @@
         <span class="main-title">規範說明管理</span>
       </div>
 
-      <div class="tab-row">
-        <span class="tab-title">頁面編輯器</span>
-      </div>
+
 
       <div class="section-card">
         <div class="section-header">收托資格</div>
         <div ref="editor1" class="editor-container"></div>
-      </div>
 
-      <div class="section-card">
+
+
         <div class="section-header">服務內容與時間</div>
         <div ref="editor2" class="editor-container"></div>
-      </div>
 
-      <div class="section-card">
+
+
         <div class="section-header">收費及退費原則</div>
         <div ref="editor3" class="editor-container"></div>
       </div>
@@ -146,17 +144,17 @@ const load = () => {
 </script>
 
 <style scoped>
-.guidelines-page { display:flex; justify-content:center; padding:28px 0; }
-.guidelines-card { width:860px; background:#fff; border:1.5px solid #e6e6ea; border-radius:14px; padding:22px 26px; box-shadow:0 8px 24px rgba(16,24,40,0.04); }
-.title-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.guidelines-page { display:flex; justify-content:center; }
+.guidelines-card { width:860px; }
+.title-row { display:flex; align-items:center; gap:10px; margin-bottom:8px;margin-top: 60px; }
 .icon { width:30px; height:30px }
-.main-title { font-size:1.4rem; color:#2e6fb7; font-weight:700 }
+.main-title { font-size:1.35rem; color:#2e6fb7; font-weight:700 }
 .tab-row { display:flex; justify-content:center; margin-bottom:18px }
 .tab-title { background:#f9dada; color:#e35d6a; padding:6px 30px; border-radius:18px; font-weight:700 }
-.section-card { border:1px solid #e6e6ea; border-radius:10px; padding:12px; margin-bottom:16px }
-.section-header { font-weight:700; color:#2e6fb7; margin-bottom:8px }
-.editor-container { min-height:180px; }
-.bottom-row { display:flex; justify-content:flex-end; gap:12px; margin-top:12px }
+.section-card {border:1px solid #e6e6ea; border-radius:10px; padding:30px; margin:50px auto; }
+.section-header { font-weight:700; color:#2e6fb7; font-size:1.1rem; margin-bottom:12px; }
+.editor-container { min-height:180px; margin-bottom: 40px}
+.bottom-row { display:flex; justify-content:center; gap:12px; margin-top:12px ;margin-bottom: 20px}
 .btn { padding:8px 16px; border-radius:8px; cursor:pointer; font-weight:600 }
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff; border:none }
 .btn.ghost { background:transparent; border:1px solid #3b82f6; color:#2563eb }

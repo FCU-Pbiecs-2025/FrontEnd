@@ -219,6 +219,18 @@ const routes = [
                 meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '編輯班級' }
             },
             {
+                path: '/admin/backend/new',
+                name: 'AdminBackendNew',
+                component: () => import('../views/AdminBackendEdit.vue'),
+                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '新增後台帳號' }
+            },
+            {
+                path: '/admin/backend/:id/edit',
+                name: 'AdminBackendEdit',
+                component: () => import('../views/AdminBackendEdit.vue'),
+                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '編輯後台帳號' }
+            },
+            {
                 path: '/dashboard',
                 name: 'Dashboard',
                 component: () => import('../views/AdminHome.vue'),

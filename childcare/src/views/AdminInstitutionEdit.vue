@@ -6,7 +6,7 @@
         <span class="main-title">機構管理</span>
       </div>
       <div class="tab-row">
-        <span class="tab-title">新增各托機構</span>
+        <span class="tab-title">{{ isNew ? '新增各托機構' : '編輯各托機構' }}</span>
       </div>
       <div class="edit-form-card">
         <div class="form-row">

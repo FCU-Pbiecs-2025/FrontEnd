@@ -1,31 +1,43 @@
 <template>
-  <div class="class-page">
-    <div class="class-card">
+  <div class="announcement-page">
+    <div class="announcement-card">
       <div class="title-row">
         <img src="https://img.icons8.com/ios/48/2e6fb7/delete-sign.png" class="icon" alt="icon" />
         <span class="main-title">撤銷審核</span>
       </div>
-      <div class="tab-row">
-        <span class="tab-title">撤銷案件查詢</span>
-      </div>
+
       <div class="query-card">
-        <div class="query-row">
-          <label class="search-label">撤銷類型：</label>
-          <select v-model="filters.type" class="search-input" style="width:120px">
-            <option value="">全部</option>
-            <option value="qualification">資格不符</option>
-            <option value="document">文件不全</option>
-            <option value="other">其他原因</option>
-          </select>
-          <label class="search-label">撤銷編號：</label>
-          <input v-model="filters.revokeId" placeholder="請輸入撤銷編號" class="search-input" style="width:140px" />
-          <label class="search-label">申請戶姓名：</label>
-          <input v-model="filters.applicant" placeholder="姓名/身分證末四碼" class="search-input" style="width:140px" />
+        <div class="query-container">
+          <div class="query-row">
+            <div class="search-area">
+              <label class="type-label">撤銷類型：</label>
+              <select v-model="filters.type" class="date-input" style="width:120px">
+                <option value="">全部</option>
+                <option value="qualification">資格不符</option>
+                <option value="document">文件不全</option>
+                <option value="other">其他原因</option>
+              </select>
+            </div>
+          </div>
+          <div class="query-row">
+            <div class="search-area">
+              <label class="type-label">撤銷編號：</label>
+              <input v-model="filters.revokeId" placeholder="請輸入撤銷編號" class="date-input" style="width:200px" />
+            </div>
+          </div>
+          <div class="query-row">
+            <div class="search-area">
+              <label class="type-label">申請戶姓名：</label>
+              <input v-model="filters.applicant" placeholder="姓名/身分證末四碼" class="date-input" style="width:200px" />
+            </div>
+          </div>
+        </div>
+        <div class="btn-query">
           <button class="btn query" @click="search">查詢</button>
         </div>
       </div>
       <div class="table-section">
-        <table class="class-table">
+        <table class="announcement-table">
           <thead>
             <tr>
               <th>撤銷編號</th>
@@ -37,11 +49,11 @@
           </thead>
           <tbody>
             <tr v-for="item in items" :key="item.id">
-              <td>{{ item.id }}</td>
-              <td>{{ item.applicant }}</td>
-              <td>{{ item.institution }}</td>
-              <td>{{ item.reason }}</td>
-              <td>
+              <td class="date-cell">{{ item.id }}</td>
+              <td class="title-cell">{{ item.applicant }}</td>
+              <td class="title-cell">{{ item.institution }}</td>
+              <td class="title-cell">{{ item.reason }}</td>
+              <td class="action-cell">
                 <button class="btn small danger" @click="openDetail(item)">撤銷</button>
               </td>
             </tr>
@@ -51,9 +63,11 @@
           </tbody>
         </table>
       </div>
-      <div class="bottom-row">
-        <button class="btn ghost" @click="goBack">返回</button>
+
+      <div class="bottom-row" v-show="showBack">
+        <button class="btn primary" @click="goBack">返回</button>
       </div>
+
       <div v-if="detail" class="modal">
         <div class="modal-content">
           <h3>撤銷詳情 - {{ detail.id }}</h3>
@@ -87,7 +101,7 @@
           </div>
           <div class="modal-actions">
             <button class="btn primary" @click="confirmRevoke">送出</button>
-            <button class="btn ghost" @click="closeDetail">返回</button>
+            <button class="btn query" @click="closeDetail">返回</button>
           </div>
         </div>
       </div>
@@ -100,70 +114,115 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 const router = useRouter()
 const filters = ref({ type: '', revokeId: '', applicant: '' })
-const items = ref([
-  { id: 'R2001', applicant: '張麗麗', institution: '快樂托育', reason: '資格不符' },
-  { id: 'R2002', applicant: '王小明', institution: '幸福幼兒園', reason: '文件不全' }
+
+// 原始完整資料列表
+const fullList = ref([
+  { id: 'R2001', applicant: '張麗麗', institution: '快樂托育', reason: '資格不符', type: 'qualification' },
+  { id: 'R2002', applicant: '王小明', institution: '幸福幼兒園', reason: '文件不全', type: 'document' },
+  { id: 'R2003', applicant: '李小華', institution: '陽光托育所', reason: '其他原因', type: 'other' },
+  { id: 'R2004', applicant: '陳大同', institution: '愛心幼兒園', reason: '資格不符', type: 'qualification' }
 ])
+
+// 顯示的資料列表（初始顯示全部）
+const items = ref([...fullList.value])
+
 const detail = ref(null)
-const revokeDate = ref('2025-10-10')
+const revokeDate = ref(new Date().toISOString().slice(0, 10))
 const revokeNote = ref('')
+const showBack = ref(false)
+
 function search() {
   const qId = filters.value.revokeId.trim()
   const qApplicant = filters.value.applicant.trim()
   const qType = filters.value.type
-  // 可根據條件過濾 items
+
+  // 根據條件過濾資料
+  items.value = fullList.value.filter(item => {
+    // 撤銷類型篩選
+    if (qType && item.type !== qType) return false
+
+    // 撤銷編號篩選（完全匹配或包含）
+    if (qId && !item.id.toLowerCase().includes(qId.toLowerCase())) return false
+
+    // 申請戶姓名篩選（包含匹配）
+    if (qApplicant && !item.applicant.includes(qApplicant)) return false
+
+    return true
+  })
+
+  // 顯示返回按鈕
+  showBack.value = true
 }
+
 function openDetail(item) {
   detail.value = { ...item }
-  revokeDate.value = '2025-10-10'
+  revokeDate.value = new Date().toISOString().slice(0, 10)
   revokeNote.value = ''
 }
+
 function closeDetail() {
   detail.value = null
 }
+
 function confirmRevoke() {
   if (detail.value) {
-    // 可在此處保存撤銷日期和立案資料
-    items.value = items.value.filter(i => i.id !== detail.value.id)
+    // 從完整列表中移除已撤銷的項目
+    fullList.value = fullList.value.filter(i => i.id !== detail.value.id)
+    // 重新執行查詢以更新顯示列表
+    search()
     closeDetail()
   }
 }
+
 function goBack() {
-  router.replace({ path: '/admin' })
+  // 重置所有查詢條件
+  filters.value = { type: '', revokeId: '', applicant: '' }
+  // 恢復顯示全部資料
+  items.value = [...fullList.value]
+  // 隱藏返回按鈕
+  showBack.value = false
 }
 </script>
 
 <style scoped>
-.class-page { display:flex; justify-content:center; padding:32px 0; }
-.class-card { width:820px; background: #fff; border:1.5px solid #e6e6ea; border-radius:16px; padding:28px 32px; box-shadow:0 8px 24px rgba(16,24,40,0.04); }
-.title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.announcement-page {
+  display: flex;
+  justify-content: center;
+}
+.announcement-card {
+  width:820px;
+}
+.title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px;margin-top: 60px }
 .icon { width:32px; height:32px; }
-.main-title { font-size:1.45rem; color:#2e6fb7; font-weight:700; letter-spacing:1px; }
-.tab-row { display:flex; justify-content:center; margin-bottom:18px; }
-.tab-title { background: #f9dada; color:#e35d6a; font-weight:700; font-size:1.15rem; padding:6px 38px; border-radius:18px; letter-spacing:2px; }
-.query-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:18px 24px; margin-bottom:22px; box-shadow:0 2px 8px rgba(16,24,40,0.04); }
-.query-row { display:flex; align-items:center; gap:18px; margin-bottom:12px; }
-.search-label { font-weight:600; color:#2e6fb7; margin-right:6px; }
-.search-input { width:120px; max-width:100%; padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; }
-.btn { padding:7px 18px; border-radius:8px; border:none; cursor:pointer; font-weight:600; font-size:1rem; }
+.main-title { font-size:1.35rem; color:#2e6fb7; font-weight:700 }
+.query-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:14px 18px; margin-bottom:50px; box-shadow:0 2px 8px rgba(16,24,40,0.04); margin-top:50px; }
+.query-container { display: flex; flex-wrap: wrap; gap: 12px; }
+.query-row { display:flex; width: 50%; flex: 0 0 calc(50% - 6px); margin-bottom:12px; }
+.search-area { gap:30px; display:flex; align-items:center; width: 100%; }
+.type-label { font-weight:600; color:#2e6fb7; min-width: 100px; }
+.date-input { padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; flex: 1; max-width:200px; }
+.btn-query { display: flex;justify-content: center;margin-top: 30px; }
+.btn { padding:7px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:600; }
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff }
-.btn.ghost { background:transparent; border:1px solid #3b82f6; color:#2563eb }
-.btn.query { background:#e6f2ff; color:#2e6fb7; border:1px solid #b3d4fc; }
-.btn.small { padding:5px 12px; font-size:0.95rem; margin-right:6px; background:#f3f4f6; }
+.btn.query { background:#e6f2ff; color:#2e6fb7; border:1px solid #b3d4fc }
+.btn.small { padding:6px 12px; font-size:0.95rem; background:#f3f4f6; margin-right:6px; }
 .btn.danger { background:#ff7b8a; color:#fff }
-.table-section { margin-bottom:18px; }
-.class-table { width:100%; border-collapse:collapse; background:transparent; border-radius:10px; overflow:hidden; }
-.class-table th { background:#cfe8ff; color:#2e6fb7; font-weight:700; padding:10px; text-align:left; }
-.class-table td { padding:10px; border-bottom:1px solid #f3f4f6; }
-.empty-tip { color: #aaa; text-align: center; padding: 24px 0; }
-.bottom-row { display:flex; justify-content:flex-end; gap:12px; margin-top:8px; }
+.announcement-table { width:100%; border-collapse:collapse ;margin-bottom:40px; }
+.announcement-table thead th { background:#cfe8ff; color:#2e6fb7; padding:10px; text-align:left; font-weight:700; }
+.announcement-table td { padding:12px; border-bottom:1px solid #f3f4f6; vertical-align: middle; }
+.date-cell { font-weight:600; color:#334e5c }
+.title-cell { color:#334e5c }
+.action-cell { text-align:right }
+.empty-tip { color:#999; text-align:center; padding:18px 0 }
+.bottom-row { display:flex; justify-content:center; gap:12px; margin-top:10vh; }
 .modal { position: fixed; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 99; }
-.modal-content { background: white; padding: 18px; border-radius: 8px; width: 520px; box-shadow:0 8px 24px rgba(16,24,40,0.08); }
-.modal-actions { display: flex; gap: 8px; margin-top: 12px; }
+.modal-content { background: white; padding: 24px; border-radius: 12px; width: 520px; box-shadow:0 8px 24px rgba(16,24,40,0.08); }
+.modal-content h3 { color:#2e6fb7; font-size:1.2rem; margin-bottom:16px; }
+.modal-actions { display: flex; gap: 12px; margin-top: 16px; justify-content:center; }
 .review-form { margin-bottom: 12px; }
-.form-row { display: flex; align-items: center; margin-bottom: 10px; }
+.form-row { display: flex; align-items: center; margin-bottom: 12px; }
 .form-label { width: 100px; font-weight: 600; color: #2e6fb7; }
-.form-input { flex: 1; padding: 7px 10px; border-radius: 6px; border: 1px solid #d8dbe0; font-size: 1rem; }
+.form-input { flex: 1; padding: 8px 10px; border-radius: 6px; border: 1px solid #d8dbe0; font-size: 1rem; }
 .form-section-title { font-weight: 700; color: #2e6fb7; margin-bottom: 6px; font-size: 1.08rem; }
-@media (max-width:900px){ .class-card{ width:100%; padding:16px } .search-input{ width:100% } }
+@media (max-width:900px){ .announcement-card{ width:100%; padding:16px } .date-input{ width:100px } .query-row{ width:100%; flex: 0 0 100%; } }
 </style>
