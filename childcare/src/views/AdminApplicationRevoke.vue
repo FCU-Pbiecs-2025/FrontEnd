@@ -190,7 +190,7 @@ function goBack() {
   justify-content: center;
 }
 .announcement-card {
-  width:820px;
+  max-width:820px;min-width: 85%
 }
 .title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px;margin-top: 60px }
 .icon { width:32px; height:32px; }

@@ -137,19 +137,19 @@ const doDelete = () => {
 </script>
 
 <style scoped>
-.backend-edit-page { display:flex; justify-content:center;  }
-.backend-edit-card { max-width:820px;min-width: 90% }
+.backend-edit-page {  width: 100% ;}
+.backend-edit-card {max-width: 85%; display: flex; flex-direction: column; margin: 0 auto;}
 .title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px;margin-top: 60px}
 .icon { width:32px; height:32px; }
 .main-title { font-size:1.35rem; font-weight:700;color:#2e6fb7; }
 .tab-row { display:flex; justify-content:center; margin-bottom:18px; margin-top: 50px}
 .tab-title { background: #f9dada; color:#e35d6a; font-weight:700; font-size:1.15rem; padding:6px 38px; border-radius:18px; letter-spacing:2px; }
 .edit-form-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:18px 24px; margin-bottom:22px; box-shadow:0 2px 8px rgba(16,24,40,0.04); }
-.form-row { display:flex; align-items:flex-start; gap:18px; margin-bottom:16px; }
+.form-row { display:flex; align-items:flex-start; gap:18px; margin-bottom:16px; justify-content: center; }
 .form-label { font-weight:600; color:#2e6fb7; min-width:120px; margin-top:8px; }
 .form-input { width:420px; max-width:100%; padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; }
 .form-input:read-only { background-color:#f3f4f6; cursor:not-allowed; }
-.radio-group { display:flex; gap:20px; align-items:center; flex-wrap:wrap; padding-top:8px; }
+.radio-group { display:flex; gap:30px; align-items:center; flex-wrap:wrap; padding-top:8px; width: 420px}
 .radio-label { display:flex; align-items:center; gap:8px; cursor:pointer; color:#333; font-weight:500; }
 .radio-label input[type="radio"] { cursor:pointer; width:16px; height:16px; }
 .radio-label span { user-select:none; }

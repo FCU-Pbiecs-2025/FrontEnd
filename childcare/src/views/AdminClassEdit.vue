@@ -144,14 +144,14 @@ const cancel = () => {
 
 <style scoped>
 .class-edit-page { display:flex; justify-content:center; }
-.class-card { width:720px; }
+.class-card { width:100%; }
 .title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; margin-top: 60px; }
 .icon { width:28px; height:28px; }
-.main-title { font-size:1.25rem; color:#2e6fb7; font-weight:700; }
+.main-title { font-size:1.35rem; color:#2e6fb7; font-weight:700; }
 .form-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:18px 24px; margin-bottom:50px; box-shadow:0 2px 8px rgba(16,24,40,0.04);margin-top: 50px }
-.form-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.form-row { display:flex; align-items:center; gap:12px; margin-bottom:10px;justify-content: center; }
 .form-row label { width:120px; color:#2e6fb7; font-weight:600; }
-.form-row input, .form-row textarea { flex:1; padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; }
+.form-row input, .form-row textarea {  height:40px;width: 420px;padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0;}
 .bottom-row { display:flex; justify-content:center; gap:12px; margin-top:12px; }
 .btn { padding:7px 18px; border-radius:8px; border:none; cursor:pointer; font-weight:600; font-size:1rem; }
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff }

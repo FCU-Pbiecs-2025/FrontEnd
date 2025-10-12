@@ -9,15 +9,6 @@
         <div class="query-card">
           <div class="query-row">
             <div class="search-area">
-              <label class="type-label">權限類型：</label>
-              <div class="checkbox-group">
-                <label><input type="checkbox" v-model="type.front" /> 前台公告</label>
-                <label><input type="checkbox" v-model="type.back" /> 後台公告</label>
-              </div>
-            </div>
-          </div>
-          <div class="query-row">
-            <div class="search-area">
               <label class="date-label">發佈日期：</label>
               <div class="date-range">
                 <input type="date" v-model="dateStart" class="date-input" />
@@ -26,6 +17,16 @@
               </div>
             </div>
           </div>
+          <div class="query-row">
+            <div class="search-area">
+              <label class="type-label">權限類型：</label>
+              <div class="checkbox-group">
+                <label><input type="checkbox" v-model="type.front" /> 前台公告</label>
+                <label><input type="checkbox" v-model="type.back" /> 後台公告</label>
+              </div>
+            </div>
+          </div>
+
           <div class="btn-query">
             <button class="btn query" @click="doQuery">查詢</button>
           </div>
@@ -174,20 +175,19 @@ const isEditPage = computed(() => {
 
 <style scoped>
 .announcement-page {
-  display: flex;
-  justify-content: center;
+  width: 100%;
 }
 .announcement-card {
-  width:820px;
+  max-width:820px;min-width: 85%;margin: 0 auto;
 }
 .title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px;margin-top: 60px }
 .icon { width:32px; height:32px; }
 .main-title { font-size:1.35rem; color:#2e6fb7; font-weight:700 }
-.query-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:14px 150px; margin-bottom:50px; box-shadow:0 2px 8px rgba(16,24,40,0.04); margin-top:50px; }
-.query-row { display:flex; gap:12px; margin-bottom:12px; }
+.query-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; ; margin-bottom:50px;   box-shadow:0 2px 8px rgba(16,24,40,0.04); margin-top:50px; }
+.query-row {  gap:12px; margin-bottom:12px;width: 490px; margin: 1px auto; }
 .search-area { gap:30px; display:flex; align-items:center; margin-bottom:8px; }
-.type-label, .date-label { font-weight:600; color:#2e6fb7 }
-.checkbox-group { display:flex; gap:20px; align-items:center; }
+.type-label, .date-label { font-weight:600; color:#2e6fb7; min-width: 100px; text-align: right; }
+.checkbox-group { display:flex; gap:60px; align-items:center; }
 .checkbox-group label { display:flex; align-items:center; gap:5px; color:#334e5c; }
 .date-range { display:flex; align-items:center; gap:10px; }
 .date-input { padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; width:150px; }

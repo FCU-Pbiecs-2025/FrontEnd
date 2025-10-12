@@ -128,22 +128,22 @@ const previewAvailable = computed(() => !!form.value.image)
 </script>
 
 <style scoped>
-.banner-edit-page { display:flex; justify-content:center; }
-.banner-edit-card { max-width:820px; min-width: 90%}
+.banner-edit-page { width: 100%}
+.banner-edit-card { max-width: 85%; display: flex; flex-direction: column; margin: 0 auto;}
 .title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px;margin-top: 60px }
 .icon { width:32px; height:32px; }
 .main-title { font-size:1.35rem; color:#2e6fb7; font-weight:700; }
 .tab-row { display:flex; justify-content:center; margin-bottom:18px; }
 .tab-title { background: #f9dada; color:#e35d6a; font-weight:700; font-size:1.15rem; padding:6px 38px; border-radius:18px; letter-spacing:2px; }
 .edit-form-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:18px 24px; margin-bottom:50px; box-shadow:0 2px 8px rgba(16,24,40,0.04); }
-.form-row { display:flex; align-items:flex-start; gap:18px; margin-bottom:16px; }
+.form-row {justify-content: center; display:flex; align-items:flex-start; gap:18px; margin-bottom:16px; }
 .form-label { font-weight:600; color:#2e6fb7; min-width:140px; margin-top:8px; }
 .form-input { width:420px; max-width:100%; padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; }
-.radio-group { display:flex; gap:24px; align-items:center; padding-top:8px; }
+.radio-group { display:flex; gap:24px; align-items:center; padding-top:8px; width: 420px;}
 .radio-label { display:flex; align-items:center; gap:8px; cursor:pointer; color:#333; font-weight:500; }
 .radio-label input[type="radio"] { cursor:pointer; width:16px; height:16px; }
 .radio-label span { user-select:none; }
-.preview-container { flex:1; }
+.preview-container { width: 420px }
 .preview-image { width:100%; max-width:560px; height:180px; object-fit:cover; border-radius:8px; border:1px solid #e6e6ea; box-shadow:0 2px 8px rgba(0,0,0,0.08); }
 .bottom-row { display:flex; justify-content:center; gap:12px; margin-top:8px; }
 .btn { padding:7px 18px; border-radius:8px; border:none; cursor:pointer; font-weight:600; font-size:1rem; }

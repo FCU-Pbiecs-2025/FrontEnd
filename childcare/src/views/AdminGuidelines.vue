@@ -145,7 +145,7 @@ const load = () => {
 
 <style scoped>
 .guidelines-page { display:flex; justify-content:center; }
-.guidelines-card { width:860px; }
+.guidelines-card { max-width:820px;min-width: 85%}
 .title-row { display:flex; align-items:center; gap:10px; margin-bottom:8px;margin-top: 60px; }
 .icon { width:30px; height:30px }
 .main-title { font-size:1.35rem; color:#2e6fb7; font-weight:700 }

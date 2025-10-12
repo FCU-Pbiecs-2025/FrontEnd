@@ -149,7 +149,7 @@ onMounted(() => {
 
 }
 .class-card {
-  width: 820px;
+  min-width: 100%
 }
 .title-row {
   display: flex;

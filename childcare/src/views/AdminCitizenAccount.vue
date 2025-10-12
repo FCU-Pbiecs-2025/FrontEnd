@@ -90,7 +90,7 @@ const goBack = () => {
 
 <style scoped>
 .account-page{display: flex ; justify-content: center; }
-.account-card { width:820px;}
+.account-card { max-width:820px;min-width: 85%}
 .title-row { display:flex; align-items:center; gap:12px; margin-bottom:8px;margin-top: 60px }
 .icon { font-size:20px }
 .main-title { font-size:1.35rem; color:#2e6fb7; font-weight:700 }
