@@ -113,45 +113,39 @@ const save = () => {
   if (!validate()) return
   load()
   if (isNew.value) {
-    const newItem = {
-      id: Date.now(),
-      name: form.value.city + '托育機構', // 簡單組合名稱
-      director: form.value.contact,
-      ...form.value
-    }
-    institutions.value.push(newItem)
+    // 新增
+    form.value.id = Date.now()
+    institutions.value.push({ ...form.value })
+    persist()
+    alert('新增成功')
   } else {
-    const id = Number(route.params.id)
-    const idx = institutions.value.findIndex(item => Number(item.id) === id)
+    // 編輯
+    const idx = institutions.value.findIndex(item => Number(item.id) === Number(form.value.id))
     if (idx !== -1) {
-      institutions.value[idx] = {
-        ...institutions.value[idx],
-        name: form.value.city + '托育機構',
-        director: form.value.contact,
-        ...form.value
-      }
+      institutions.value[idx] = { ...form.value }
+      persist()
+      alert('編輯成功')
     }
   }
-  persist()
-  router.replace({ path: '/admin/institution' })
-}
-
-const uploadPhoto = () => {
-  alert('檔案上傳功能可串接後端')
+  goBack()
 }
 
 const goBack = () => {
   router.replace({ path: '/admin/institution' })
 }
+
+const uploadPhoto = () => {
+  alert('請串接檔案上傳功能')
+}
 </script>
 
 <style scoped>
-.institution-edit-page { display:flex; justify-content:center; padding:32px 0; }
-.institution-edit-card { width:820px; background: #fff; border:1.5px solid #e6e6ea; border-radius:16px; padding:28px 32px; box-shadow:0 8px 24px rgba(16,24,40,0.04); }
-.title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.institution-edit-page { display:flex; justify-content:center;  }
+.institution-edit-card { width:820px;  }
+.title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; margin-top: 60px}
 .icon { width:32px; height:32px; }
-.main-title { font-size:1.45rem; color:#2e6fb7; font-weight:700; letter-spacing:1px; }
-.tab-row { display:flex; justify-content:center; margin-bottom:18px; }
+.main-title { font-size:1.35rem; color:#2e6fb7; font-weight:700;  }
+.tab-row { display:flex; justify-content:center; margin-bottom:18px;margin-top: 50px }
 .tab-title { background: #f9dada; color:#e35d6a; font-weight:700; font-size:1.15rem; padding:6px 38px; border-radius:18px; letter-spacing:2px; }
 .edit-form-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:18px 24px; margin-bottom:22px; box-shadow:0 2px 8px rgba(16,24,40,0.04); }
 .form-row { display:flex; align-items:flex-start; gap:18px; margin-bottom:16px; }
@@ -162,6 +156,6 @@ const goBack = () => {
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff }
 .btn.ghost { background:transparent; border:1px solid #3b82f6; color:#2563eb }
 .btn.secondary { background:#f3f4f6; color:#333; border:1px solid #d8dbe0; }
-.bottom-row { display:flex; justify-content:flex-end; gap:12px; margin-top:8px; }
+.bottom-row { display:flex; justify-content:center; gap:12px; margin-top:8px; }
 @media (max-width:900px){ .institution-edit-card{ width:100%; padding:16px } .form-input, .form-textarea{ width:100% } }
 </style>

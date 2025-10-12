@@ -249,6 +249,7 @@ main {
   display: flex;
   gap: 32px;
   justify-content: center;
+  margin-top: 50px;
 }
 .list-title{
   text-align:center;

@@ -111,7 +111,7 @@ const goBack = () => {
 .account-table td { padding:12px; border-bottom:1px solid #f3f4f6; vertical-align: middle; }
 .id-cell { font-weight:600; color:#334e5c }
 .status-cell { color:#6b6f76 }
-.action-cell { text-align:right }
+.action-cell { text-align:left }
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
 .bottom-row { display: flex; justify-content:center;margin-top: 10vh; }
 @media (max-width:900px){ .account-card{ width:100%; padding:16px } .search-input{ width:100% } }

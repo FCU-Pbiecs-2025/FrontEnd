@@ -1,71 +1,74 @@
 <template>
   <div class="announcement-page">
     <div class="announcement-card">
-      <div class="title-row">
-        <img src="https://img.icons8.com/ios/48/2e6fb7/megaphone.png" class="icon" alt="icon" />
-        <span class="main-title">系統公告管理</span>
-      </div>
-
-      <div class="query-card">
-        <div class="query-row">
-          <div class="search-area">
-            <label class="type-label">權限類型：</label>
-            <div class="checkbox-group">
-              <label><input type="checkbox" v-model="type.front" /> 前台公告</label>
-              <label><input type="checkbox" v-model="type.back" /> 後台公告</label>
+      <div v-if="!isEditPage">
+        <div class="title-row">
+          <img src="https://img.icons8.com/ios/48/2e6fb7/megaphone.png" class="icon" alt="icon" />
+          <span class="main-title">系統公告管理</span>
+        </div>
+        <div class="query-card">
+          <div class="query-row">
+            <div class="search-area">
+              <label class="type-label">權限類型：</label>
+              <div class="checkbox-group">
+                <label><input type="checkbox" v-model="type.front" /> 前台公告</label>
+                <label><input type="checkbox" v-model="type.back" /> 後台公告</label>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="query-row">
-          <div class="search-area">
-            <label class="date-label">發佈日期：</label>
-            <div class="date-range">
-              <input type="date" v-model="dateStart" class="date-input" />
-              <span class="to-label">至</span>
-              <input type="date" v-model="dateEnd" class="date-input" />
+          <div class="query-row">
+            <div class="search-area">
+              <label class="date-label">發佈日期：</label>
+              <div class="date-range">
+                <input type="date" v-model="dateStart" class="date-input" />
+                <span class="to-label">至</span>
+                <input type="date" v-model="dateEnd" class="date-input" />
+              </div>
             </div>
           </div>
+          <div class="btn-query">
+            <button class="btn query" @click="doQuery">查詢</button>
+          </div>
         </div>
-        <div class="btn-query">
-          <button class="btn query" @click="doQuery">查詢</button>
+        <div class="table-section">
+          <table class="announcement-table">
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>標題</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in resultList" :key="item.id">
+                <td class="date-cell">{{ item.date }}</td>
+                <td class="title-cell">{{ item.title }}</td>
+                <td class="action-cell">
+                  <button class="btn small" @click="edit(item)">編輯</button>
+                  <button class="btn small danger" @click="remove(item)">刪除</button>
+                </td>
+              </tr>
+              <tr v-if="resultList.length === 0">
+                <td colspan="3" class="empty-tip">目前沒有公告</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="bottom-row">
+          <button class="btn primary" @click="addNew">新增</button>
+          <button class="btn primary" v-show="showBack" @click="goBack">返回</button>
         </div>
       </div>
-      <div class="table-section">
-        <table class="announcement-table">
-          <thead>
-            <tr>
-              <th>日期</th>
-              <th>標題</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in resultList" :key="item.id">
-              <td class="date-cell">{{ item.date }}</td>
-              <td class="title-cell">{{ item.title }}</td>
-              <td class="action-cell">
-                <button class="btn small" @click="edit(item)">編輯</button>
-                <button class="btn small danger" @click="remove(item)">刪除</button>
-              </td>
-            </tr>
-            <tr v-if="resultList.length === 0">
-              <td colspan="3" class="empty-tip">目前沒有公告</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="bottom-row">
-        <button class="btn primary" @click="addNew">新增</button>
-        <button class="btn primary" v-show="showBack" @click="goBack">返回</button>
-      </div>
+      <router-view v-else />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 const router = useRouter()
+const route = useRoute()
 
 // 查詢條件
 const type = ref({ front: true, back: true })
@@ -95,9 +98,7 @@ const doQuery = () => {
   showBack.value = true
 }
 const addNew = () => {
-  // 跳轉新增公告頁
-  // router.push({ name: 'AdminAnnouncementNew' })
-  alert('新增公告功能可串接')
+  router.push({ name: 'AdminAnnouncementCreate' })
 }
 const edit = (item) => {
   router.push({ name: 'AdminAnnouncementEdit', params: { id: item.id } })
@@ -116,6 +117,10 @@ const goBack = () => {
   showBack.value = false
   router.replace({ path: '/admin/announcement' })
 }
+
+const isEditPage = computed(() => {
+  return route.name === 'AdminAnnouncementCreate' || route.name === 'AdminAnnouncementEdit'
+})
 </script>
 
 <style scoped>
@@ -150,7 +155,7 @@ const goBack = () => {
 .announcement-table td { padding:12px; border-bottom:1px solid #f3f4f6; vertical-align: middle; }
 .date-cell { font-weight:600; color:#334e5c }
 .title-cell { color:#334e5c }
-.action-cell { text-align:right }
+.action-cell { text-align:left }
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
 .bottom-row { display:flex; justify-content:center; gap:12px; margin-top:10vh; }
 @media (max-width:900px){ .announcement-card{ width:100%; padding:16px } .date-input{ width:100px } }

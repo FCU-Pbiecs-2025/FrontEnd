@@ -1,6 +1,6 @@
 <template>
   <div class="banner-manager-page">
-    <div class="banner-card">
+    <div v-if="!isEditPage" class="banner-card">
       <div class="title-row">
         <img src="https://img.icons8.com/ios/48/2e6fb7/image.png" class="icon" alt="icon" />
         <span class="main-title">前台海報管理</span>
@@ -56,14 +56,16 @@
         <button class="btn primary" v-show="showBack" @click="goBack">返回</button>
       </div>
     </div>
+    <router-view v-if="isEditPage" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
 const storageKey = 'siteBanners'
 const banners = ref([])
 const resultBanners = ref([])
@@ -162,6 +164,10 @@ const goBack = () => {
   resultBanners.value = [...banners.value]
   showBack.value = false
 }
+
+const isEditPage = computed(() => {
+  return route.name === 'AdminBannerNew' || route.name === 'AdminBannerEdit'
+})
 </script>
 
 <style scoped>
@@ -193,7 +199,7 @@ const goBack = () => {
 .banner-table thead th { background:#cfe8ff; color:#2e6fb7; padding:10px; text-align:left; font-weight:700; }
 .banner-table td { padding:12px; border-bottom:1px solid #f3f4f6; vertical-align: middle; }
 .img-cell img { width:160px; height:56px; object-fit:cover; border-radius:6px }
-.action-cell { text-align:right }
+.action-cell { text-align:left }
 .empty-tip { text-align:center; padding:18px; color:#999 }
 .bottom-row { display: flex; justify-content: center; gap:12px; margin-top: 10vh; }
 @media (max-width:900px){ .banner-card{ width:100%; padding:16px } .date-input{ width:100px } }

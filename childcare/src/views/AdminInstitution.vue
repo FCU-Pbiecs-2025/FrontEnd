@@ -1,67 +1,64 @@
 <template>
   <div class="institution-page">
     <div class="institution-card">
-      <div class="title-row">
-        <img src="https://img.icons8.com/ios/48/2e6fb7/organization.png" class="icon" alt="icon" />
-        <span class="main-title">機構管理</span>
-      </div>
-
-      <div class="query-card">
-        <div class="query-row">
-          <div class="search-area">
-            <label class="search-label" for="queryInstitution">查詢條件：</label>
-            <input id="queryInstitution" type="text" v-model="searchKeyword" placeholder="機構名稱" class="search-input" />
+      <div v-if="!isEditPage">
+        <div class="title-row">
+          <img src="https://img.icons8.com/ios/48/2e6fb7/organization.png" class="icon" alt="icon" />
+          <span class="main-title">機構管理</span>
+        </div>
+        <div class="query-card">
+          <div class="query-row">
+            <div class="search-area">
+              <label class="search-label" for="queryInstitution">查詢條件：</label>
+              <input id="queryInstitution" type="text" v-model="searchKeyword" placeholder="機構名稱" class="search-input" />
+            </div>
+            <button class="btn query" @click="doQuery">查詢</button>
           </div>
-          <button class="btn query" @click="doQuery">查詢</button>
+        </div>
+        <div class="table-section">
+          <table class="institution-table">
+            <thead>
+              <tr>
+                <th>機構名稱</th>
+                <th>負責人姓名</th>
+                <th>聯絡電話</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in resultList" :key="item.id">
+                <td class="name-cell">{{ item.name }}</td>
+                <td class="director-cell">{{ item.director }}</td>
+                <td class="phone-cell">{{ item.phone }}</td>
+                <td class="action-cell">
+                  <button class="btn small" @click="edit(item)">編輯</button>
+                  <button class="btn small danger" @click="remove(item)">刪除</button>
+                </td>
+              </tr>
+              <tr v-if="resultList.length === 0">
+                <td colspan="4" class="empty-tip">目前沒有機構資料</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="bottom-row">
+          <button class="btn primary" @click="addNew">新增</button>
+          <button class="btn primary" v-show="showBack" @click="goBack">返回</button>
         </div>
       </div>
-
-      <div class="table-section">
-        <table class="institution-table">
-          <thead>
-            <tr>
-              <th>機構名稱</th>
-              <th>負責人姓名</th>
-              <th>聯絡電話</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in resultList" :key="item.id">
-              <td class="name-cell">{{ item.name }}</td>
-              <td class="director-cell">{{ item.director }}</td>
-              <td class="phone-cell">{{ item.phone }}</td>
-              <td class="action-cell">
-                <button class="btn small" @click="edit(item)">編輯</button>
-                <button class="btn small danger" @click="remove(item)">刪除</button>
-              </td>
-            </tr>
-            <tr v-if="resultList.length === 0">
-              <td colspan="4" class="empty-tip">目前沒有機構資料</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="bottom-row">
-        <button class="btn primary" @click="addNew">新增</button>
-        <button class="btn primary" v-show="showBack" @click="goBack">返回</button>
-      </div>
+      <router-view v-else />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 const router = useRouter()
+const route = useRoute()
 
 const STORAGE_KEY = 'institutionData'
-
-// 查詢條件
 const searchKeyword = ref('')
-
-// 機構列表（可串接API或localStorage）
 const list = ref([])
 const resultList = ref([])
 const showBack = ref(false)
@@ -72,7 +69,6 @@ const loadList = () => {
     if (raw) {
       list.value = JSON.parse(raw)
     } else {
-      // 初始範例資料
       list.value = [
         { id: 1, name: '愛心托育中心', director: '張美玉', phone: '03-1234567', city: '台中市', contact: '張美玉', fax: '03-1234568', address: '台中市西屯區XX路XX號', attachment: '', license: '' },
         { id: 2, name: '快樂兒童之家', director: '李志明', phone: '03-2345678', city: '台北市', contact: '李志明', fax: '03-2345679', address: '台北市大安區XX路XX號', attachment: '', license: '' },
@@ -84,20 +80,16 @@ const loadList = () => {
     console.error('loadList error', e)
   }
 }
-
 const saveList = () => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(list.value))
 }
-
 onMounted(() => {
   loadList()
   resultList.value = [...list.value]
 })
-
 const doQuery = () => {
   const keyword = (searchKeyword.value || '').toLowerCase().trim()
   resultList.value = list.value.filter(item => {
-    if (!keyword) return true
     return (
       (item.name || '').toLowerCase().includes(keyword) ||
       (item.director || '').toLowerCase().includes(keyword) ||
@@ -106,30 +98,28 @@ const doQuery = () => {
   })
   showBack.value = true
 }
-
 const addNew = () => {
   router.push({ name: 'AdminInstitutionNew' })
 }
-
 const edit = (item) => {
   router.push({ name: 'AdminInstitutionEdit', params: { id: item.id } })
 }
-
 const remove = (item) => {
   if (confirm('確定要刪除這個機構嗎？')) {
     list.value = list.value.filter(i => i.id !== item.id)
     saveList()
-    // 重新查詢以更新顯示
     doQuery()
   }
 }
-
 const goBack = () => {
   searchKeyword.value = ''
   loadList()
   resultList.value = [...list.value]
   showBack.value = false
 }
+const isEditPage = computed(() => {
+  return route.name === 'AdminInstitutionNew' || route.name === 'AdminInstitutionEdit'
+})
 </script>
 
 <style scoped>
@@ -160,7 +150,7 @@ const goBack = () => {
 .name-cell { font-weight:600; color:#334e5c }
 .director-cell { color:#334e5c }
 .phone-cell { color:#6b6f76 }
-.action-cell { text-align:right }
+.action-cell { text-align:left }
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
 .bottom-row { display:flex; justify-content:center; gap:12px; margin-top:10vh; }
 @media (max-width:900px){ .institution-card{ width:100%; padding:16px } .search-input{ width:100% } }

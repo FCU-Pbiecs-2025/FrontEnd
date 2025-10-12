@@ -128,14 +128,14 @@ const previewAvailable = computed(() => !!form.value.image)
 </script>
 
 <style scoped>
-.banner-edit-page { display:flex; justify-content:center; padding:32px 0; }
-.banner-edit-card { width:820px; background: #fff; border:1.5px solid #e6e6ea; border-radius:16px; padding:28px 32px; box-shadow:0 8px 24px rgba(16,24,40,0.04); }
-.title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.banner-edit-page { display:flex; justify-content:center; }
+.banner-edit-card { width:820px;}
+.title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px;margin-top: 60px }
 .icon { width:32px; height:32px; }
-.main-title { font-size:1.45rem; color:#2e6fb7; font-weight:700; letter-spacing:1px; }
+.main-title { font-size:1.35rem; color:#2e6fb7; font-weight:700; }
 .tab-row { display:flex; justify-content:center; margin-bottom:18px; }
 .tab-title { background: #f9dada; color:#e35d6a; font-weight:700; font-size:1.15rem; padding:6px 38px; border-radius:18px; letter-spacing:2px; }
-.edit-form-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:18px 24px; margin-bottom:22px; box-shadow:0 2px 8px rgba(16,24,40,0.04); }
+.edit-form-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:18px 24px; margin-bottom:50px; box-shadow:0 2px 8px rgba(16,24,40,0.04); }
 .form-row { display:flex; align-items:flex-start; gap:18px; margin-bottom:16px; }
 .form-label { font-weight:600; color:#2e6fb7; min-width:140px; margin-top:8px; }
 .form-input { width:420px; max-width:100%; padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; }

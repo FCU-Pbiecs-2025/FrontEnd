@@ -103,147 +103,161 @@ const routes = [
                 name: 'Login',
                 component: () => import('../views/LoginView.vue'),
                 meta: { requiresGuest: true } // 已登入用戶不能訪問登入頁
+            }
+        ]
+    },
+    {
+        path: '/admin',
+        name: 'AdminHome',
+        component: () => import('../views/AdminHome.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '後台首頁' },
+        children: [
+            {
+                path: 'citizen',
+                name: 'AdminCitizenAccount',
+                component: () => import('../views/AdminCitizenAccount.vue'),
+                meta: { breadcrumb: '民眾帳號' }
             },
             {
-                path: '/admin',
-                name: 'AdminHome',
-                component: () => import('../views/AdminHome.vue'),
-                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '後台' },
+                path: 'backend',
+                name: 'AdminBackendAccount',
+                component: () => import('../views/AdminBackendAccount.vue'),
+                meta: { breadcrumb: '後台帳號' },
                 children: [
                     {
-                        path: '',
-                        redirect: { name: 'AdminDashboard' }
+                        path: 'new',
+                        name: 'AdminBackendNew',
+                        component: () => import('../views/AdminBackendEdit.vue'),
+                        meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '新增後台帳號' }
                     },
                     {
-                        path: 'citizen',
-                        name: 'AdminCitizenAccount',
-                        component: () => import('../views/AdminCitizenAccount.vue'),
-                        meta: { breadcrumb: '民眾帳號' }
-                    },
-                    {
-                        path: 'backend',
-                        name: 'AdminBackendAccount',
-                        component: () => import('../views/AdminBackendAccount.vue'),
-                        meta: { breadcrumb: '後台帳號' }
-                    },
-                    {
-                        path: 'banner',
-                        name: 'AdminBannerManager',
-                        component: () => import('../views/AdminBannerManager.vue'),
-                        meta: { breadcrumb: '首頁海報' }
-                    },
-                    {
-                        path: 'announcement',
-                        name: 'AdminAnnouncement',
-                        component: () => import('../views/AdminAnnouncement.vue'),
-                        meta: { breadcrumb: '系統公告' }
-                    },
-                    {
-                        path: 'guidelines',
-                        name: 'AdminGuidelines',
-                        component: () => import('../views/AdminGuidelines.vue'),
-                        meta: { breadcrumb: '規範說明', requiresAuth: true, requiresAdmin: true }
-                    },
-                    {
-                        path: 'institution',
-                        name: 'AdminInstitution',
-                        component: () => import('../views/AdminInstitution.vue'),
-                        meta: { breadcrumb: '機構管理' }
-                    },
-                    {
-                        path: 'application-review',
-                        name: 'AdminApplicationReview',
-                        component: () => import('../views/AdminApplicationReview.vue'),
-                        meta: { breadcrumb: '審核申請' }
-                    },
-                    {
-                        path: 'application-revoke',
-                        name: 'AdminApplicationRevoke',
-                        component: () => import('../views/AdminApplicationRevoke.vue'),
-                        meta: { breadcrumb: '撤銷審核' }
-                    },
-                    {
-                        path: 'class',
-                        name: 'AdminClassManager',
-                        component: () => import('../views/AdminClassManager.vue'),
-                        meta: { breadcrumb: '班級管理' }
-                    },
-                    {
-                        path: '',
-                        name: 'AdminDashboard',
-                        component: () => import('../views/AdminDashboard.vue'),
-                        meta: { breadcrumb: '後台首頁' }
+                        path: ':id/edit',
+                        name: 'AdminBackendEdit',
+                        component: () => import('../views/AdminBackendEdit.vue'),
+                        meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '編輯後台帳號' }
                     }
                 ]
             },
             {
-                path: '/admin/banner/new',
-                name: 'AdminBannerNew',
-                component: () => import('../views/AdminBannerEdit.vue'),
-                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '新增海報' }
+                path: 'banner',
+                name: 'AdminBannerManager',
+                component: () => import('../views/AdminBannerManager.vue'),
+                meta: { breadcrumb: '首頁海報' },
+                children: [
+                    {
+                        path: 'new',
+                        name: 'AdminBannerNew',
+                        component: () => import('../views/AdminBannerEdit.vue'),
+                        meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '新增海報' }
+                    },
+                    {
+                        path: ':id/edit',
+                        name: 'AdminBannerEdit',
+                        component: () => import('../views/AdminBannerEdit.vue'),
+                        meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '編輯海報' }
+                    }
+                ]
             },
             {
-                path: '/admin/banner/:id/edit',
-                name: 'AdminBannerEdit',
-                component: () => import('../views/AdminBannerEdit.vue'),
-                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '編輯海報' }
+                path: 'announcement',
+                name: 'AdminAnnouncement',
+                component: () => import('../views/AdminAnnouncement.vue'),
+                meta: { breadcrumb: '系統公告' },
+                children: [
+                    {
+                        path: 'create',
+                        name: 'AdminAnnouncementCreate',
+                        component: () => import('../views/AdminAnnouncementEdit.vue'),
+                        meta: { breadcrumb: '新增公告' }
+                    },
+                    {
+                        path: 'edit/:id',
+                        name: 'AdminAnnouncementEdit',
+                        component: () => import('../views/AdminAnnouncementEdit.vue'),
+                        meta: { breadcrumb: '編輯公告' }
+                    }
+                ]
             },
             {
-                path: '/admin/announcement/:id/edit',
-                name: 'AdminAnnouncementEdit',
-                component: () => import('../views/AdminAnnouncementEdit.vue'),
-                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '系統公告編輯' }
+                path: 'guidelines',
+                name: 'AdminGuidelines',
+                component: () => import('../views/AdminGuidelines.vue'),
+                meta: { breadcrumb: '規範說明', requiresAuth: true, requiresAdmin: true }
             },
             {
-                path: '/admin/institution/new',
-                name: 'AdminInstitutionNew',
-                component: () => import('../views/AdminInstitutionEdit.vue'),
-                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '新增機構' }
+                path: 'institution',
+                name: 'AdminInstitution',
+                component: () => import('../views/AdminInstitution.vue'),
+                meta: { breadcrumb: '機構管理' },
+                children: [
+                    {
+                        path: 'new',
+                        name: 'AdminInstitutionNew',
+                        component: () => import('../views/AdminInstitutionEdit.vue'),
+                        meta: { breadcrumb: '新增機構' }
+                    },
+                    {
+                        path: ':id/edit',
+                        name: 'AdminInstitutionEdit',
+                        component: () => import('../views/AdminInstitutionEdit.vue'),
+                        meta: { breadcrumb: '編輯機構' }
+                    }
+                ]
             },
             {
-                path: '/admin/institution/:id/edit',
-                name: 'AdminInstitutionEdit',
-                component: () => import('../views/AdminInstitutionEdit.vue'),
-                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '編輯機構' }
+                path: 'application-review',
+                name: 'AdminApplicationReview',
+                component: () => import('../views/AdminApplicationReview.vue'),
+                meta: { breadcrumb: '審核申請' }
             },
             {
-                path: '/admin/class/new',
-                name: 'AdminClassNew',
-                component: () => import('../views/AdminClassEdit.vue'),
-                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '新增班級' }
+                path: 'application-revoke',
+                name: 'AdminApplicationRevoke',
+                component: () => import('../views/AdminApplicationRevoke.vue'),
+                meta: { breadcrumb: '撤銷審核' }
             },
             {
-                path: '/admin/class/:id/edit',
-                name: 'AdminClassEdit',
-                component: () => import('../views/AdminClassEdit.vue'),
-                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '編輯班級' }
-            },
-            {
-                path: '/admin/backend/new',
-                name: 'AdminBackendNew',
-                component: () => import('../views/AdminBackendEdit.vue'),
-                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '新增後台帳號' }
-            },
-            {
-                path: '/admin/backend/:id/edit',
-                name: 'AdminBackendEdit',
-                component: () => import('../views/AdminBackendEdit.vue'),
-                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '編輯後台帳號' }
-            },
-            {
-                path: '/dashboard',
-                name: 'Dashboard',
-                component: () => import('../views/AdminHome.vue'),
-                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '後台' }
-            },
-            {
-                path: '/manage',
-                name: 'Manage',
-                component: () => import('../views/AdminHome.vue'),
-                meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '後台' }
+                path: 'class',
+                name: 'AdminClassManager',
+                component: () => import('../views/AdminClassManager.vue'),
+                meta: { breadcrumb: '班級管理' },
+                children: [
+                    {
+                        path: ':institutionId',
+                        name: 'AdminClassList',
+                        component: () => import('../views/AdminClassList.vue'),
+                        meta: {
+                            breadcrumb: (route) => {
+                                // 動態獲取機構名稱
+                                const institutions = [
+                                    { id: 1, name: '快樂幼兒園' },
+                                    { id: 2, name: '幸福幼兒園' },
+                                    { id: 3, name: '希望幼兒園' }
+                                ]
+                                const institutionId = Number(route.params.institutionId)
+                                const institution = institutions.find(i => i.id === institutionId)
+                                return institution?.name || '班級列表'
+                            }
+                        },
+                        children: [
+                            {
+                                path: 'new',
+                                name: 'AdminClassNew',
+                                component: () => import('../views/AdminClassEdit.vue'),
+                                meta: { breadcrumb: '新增班級' }
+                            },
+                            {
+                                path: ':id/edit',
+                                name: 'AdminClassEdit',
+                                component: () => import('../views/AdminClassEdit.vue'),
+                                meta: { breadcrumb: '編輯班級' }
+                            }
+                        ]
+                    }
+                ]
             }
         ]
-    },
+    }
 ]
 
 const router = createRouter({

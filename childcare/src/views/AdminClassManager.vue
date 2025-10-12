@@ -1,125 +1,218 @@
 <template>
   <div class="class-page">
     <div class="class-card">
-      <div class="title-row">
-        <img src="https://img.icons8.com/ios/48/2e6fb7/classroom.png" class="icon" alt="icon" />
-        <span class="main-title">班級管理</span>
-      </div>
+      <div v-if="!isEditPage">
 
-      <div class="query-card">
-        <div class="query-row">
-          <div class="search-area">
-            <label class="search-label" for="queryClass">查詢條件：</label>
-            <input id="queryClass" type="text" v-model="searchKeyword" placeholder="班級或單位名稱" class="search-input" />
+        <div class="title-row">
+          <img src="https://img.icons8.com/ios/48/2e6fb7/classroom.png" class="icon" alt="icon" />
+          <span class="main-title">班級管理</span>
+        </div>
+        <!-- 機構列表 -->
+        <div v-if="!selectedInstitution">
+          <div class="query-card">
+            <div class="query-row">
+              <div class="search-area">
+                <label class="search-label" for="queryInstitution">查詢條件：</label>
+                <input id="queryInstitution" type="text" v-model="searchKeyword" placeholder="機構名稱" class="search-input" />
+              </div>
+              <button class="btn query" @click="doQueryInstitution">查詢</button>
+            </div>
           </div>
-          <button class="btn query" @click="doQuery">查詢</button>
+          <div class="table-section">
+            <table class="class-table">
+              <thead>
+                <tr>
+                  <th>機構名稱</th>
+                  <th>收托年紀</th>
+                  <th>剩餘名額</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="inst in filteredInstitutions" :key="inst.id">
+                  <td>{{ inst.name }}</td>
+                  <td>{{ inst.age_from }} - {{ inst.age_to }}</td>
+                  <td>{{ inst.capacity - inst.enrolled }}</td>
+                  <td class="action-cell">
+                    <button class="btn primary" @click="selectInstitution(inst)">查看班級</button>
+                  </td>
+                </tr>
+                <tr v-if="filteredInstitutions.length === 0">
+                  <td colspan="4" class="empty-tip">目前沒有機構資料</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- 班級列表 -->
+        <div v-else>
+          <div class="title-row">
+            <span class="main-title">{{ selectedInstitution.name }} - 班級列表</span>
+          </div>
+          <div class="table-section">
+            <table class="class-table">
+              <thead>
+                <tr>
+                  <th>班級名稱</th>
+                  <th>收托人數</th>
+                  <th>在園人數</th>
+                  <th>收托年齡</th>
+                  <th>備註</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="cls in filteredClasses" :key="cls.id">
+                  <td>{{ cls.unit }}</td>
+                  <td>{{ cls.capacity }}</td>
+                  <td>{{ cls.enrolled }}</td>
+                  <td>{{ cls.age_from }} - {{ cls.age_to }}</td>
+                  <td>{{ cls.notes }}</td>
+                  <td class="action-cell">
+                    <button class="btn small" @click="editClass(cls)">編輯</button>
+                    <button class="btn small danger" @click="deleteClass(cls)">刪除</button>
+                  </td>
+                </tr>
+                <tr v-if="filteredClasses.length === 0">
+                  <td colspan="6" class="empty-tip">目前沒有班級資料</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="bottom-row">
+            <button class="btn primary" @click="showAddClass">新增班級</button>
+            <button class="btn primary" @click="clearInstitution">返回機構列表</button>
+          </div>
         </div>
       </div>
-
-      <div class="table-section">
-        <table class="class-table">
-          <thead>
-            <tr>
-              <th>單位名稱</th>
-              <th>委辦單位</th>
-              <th>聯絡人</th>
-              <th>招收人數</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in filteredList" :key="item.id">
-              <td>{{ item.unit }}</td>
-              <td>{{ item.contractor }}</td>
-              <td>{{ item.contact }}</td>
-              <td>{{ item.capacity }}</td>
-              <td class="action-cell">
-                <button class="btn small" @click="edit(item)">編輯</button>
-                <button class="btn small danger" @click="remove(item)">刪除</button>
-              </td>
-            </tr>
-            <tr v-if="filteredList.length === 0">
-              <td colspan="5" class="empty-tip">目前沒有班級資料</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="bottom-row">
-        <button class="btn primary" @click="addNew">新增</button>
-        <button class="btn primary" v-show="showBack" @click="goBack">返回</button>
-      </div>
+      <router-view v-else />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 const router = useRouter()
+const route = useRoute()
 
+// 機構假資料
+const institutions = ref([
+  { id: 1, name: '快樂幼兒園', age_from: 2, age_to: 6, capacity: 60, enrolled: 48 },
+  { id: 2, name: '幸福幼兒園', age_from: 3, age_to: 5, capacity: 40, enrolled: 35 },
+  { id: 3, name: '希望幼兒園', age_from: 2, age_to: 4, capacity: 30, enrolled: 20 }
+])
+
+// 班級資料改為 localStorage 來源
 const STORAGE_KEY = 'admin_classes'
-const searchKeyword = ref('')
-const list = ref([])
-const filteredList = ref([])
-const showBack = ref(false)
+const defaultClasses = [
+  { id: 1, institutionId: 1, unit: 'A班', capacity: 20, enrolled: 18, age_from: 2, age_to: 4, notes: '' },
+  { id: 2, institutionId: 1, unit: 'B班', capacity: 20, enrolled: 15, age_from: 4, age_to: 6, notes: '' },
+  { id: 3, institutionId: 2, unit: 'C班', capacity: 20, enrolled: 17, age_from: 3, age_to: 5, notes: '' },
+  { id: 4, institutionId: 2, unit: 'D班', capacity: 20, enrolled: 18, age_from: 3, age_to: 5, notes: '' },
+  { id: 5, institutionId: 3, unit: 'E班', capacity: 15, enrolled: 10, age_from: 2, age_to: 3, notes: '' },
+  { id: 6, institutionId: 3, unit: 'F班', capacity: 15, enrolled: 10, age_from: 3, age_to: 4, notes: '' }
+]
 
-const loadList = () => {
+const loadClasses = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) list.value = JSON.parse(raw)
-    else {
-      // initial sample data (only if nothing in storage)
-      list.value = [
-        { id: 1, unit: '快樂幼兒園 A 班', contractor: '市政府', contact: '王小姐', capacity: 20, enrolled: 12, age_from: 2, age_to: 4, notes: '' },
-        { id: 2, unit: '快樂幼兒園 B 班', contractor: '市政府', contact: '林先生', capacity: 18, enrolled: 10, age_from: 3, age_to: 5, notes: '' }
-      ]
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(list.value))
+    if (!raw) {
+      // 第一次進入，寫入假資料
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultClasses))
+      return [...defaultClasses]
     }
+    const parsed = JSON.parse(raw)
+    // 如果 localStorage 有資料但是空陣列，也重新寫入假資料
+    if (!parsed || parsed.length === 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultClasses))
+      return [...defaultClasses]
+    }
+    return parsed
   } catch (e) {
-    console.error('loadList error', e)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultClasses))
+    return [...defaultClasses]
   }
 }
 
-const saveList = () => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list.value))
+const saveClasses = (list) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
 }
 
-onMounted(() => {
-  loadList()
-  filteredList.value = [...list.value]
+const classes = ref(loadClasses())
+
+const searchKeyword = ref('')
+const selectedInstitution = ref(null)
+const filteredInstitutions = ref([])
+const filteredClasses = computed(() => {
+  if (!selectedInstitution.value) return []
+  return classes.value.filter(cls => cls.institutionId === selectedInstitution.value.id)
 })
 
-const doQuery = () => {
+// 麵包屑跳轉
+const goHome = () => router.push('/')
+const goAdmin = () => router.push('/admin')
+
+// 查詢機構
+const doQueryInstitution = () => {
   const kw = (searchKeyword.value || '').toLowerCase().trim()
-  filteredList.value = list.value.filter(item => {
+  filteredInstitutions.value = institutions.value.filter(inst => {
     if (!kw) return true
-    return (
-      (item.unit || '').toLowerCase().includes(kw) ||
-      (item.contractor || '').toLowerCase().includes(kw) ||
-      (item.contact || '').toLowerCase().includes(kw)
-    )
+    return (inst.name || '').toLowerCase().includes(kw)
   })
-  showBack.value = true
 }
-const addNew = () => {
-  router.push({ name: 'AdminClassNew' })
+const selectInstitution = (inst) => {
+  router.push({
+    name: 'AdminClassList',
+    params: { institutionId: inst.id }
+  })
 }
-const edit = (item) => {
-  router.push({ name: 'AdminClassEdit', params: { id: item.id } })
+const clearInstitution = () => {
+  selectedInstitution.value = null
+  searchKeyword.value = ''
+  doQueryInstitution()
 }
-const remove = (item) => {
+
+// 新增/編輯班級
+function showAddClass() {
+  // 傳遞當前選中的機構 ID
+  router.push({
+    name: 'AdminClassNew',
+    query: { institutionId: selectedInstitution.value?.id }
+  })
+}
+function editClass(cls) {
+  router.push({ name: 'AdminClassEdit', params: { id: cls.id } })
+}
+
+// 刪除班級
+function deleteClass(cls) {
   if (confirm('確定要刪除這個班級嗎？')) {
-    list.value = list.value.filter(i => i.id !== item.id)
-    saveList()
+    const idx = classes.value.findIndex(c => c.id === cls.id)
+    if (idx !== -1) {
+      classes.value.splice(idx, 1)
+      saveClasses(classes.value)
+    }
   }
 }
-const goBack = () => {
-  searchKeyword.value = ''
-  filteredList.value = [...list.value]
-  showBack.value = false
-  router.replace({ path: '/admin/class' })
-}
+
+// 判斷是否為編輯頁面
+const isEditPage = computed(() => {
+  return route.name === 'AdminClassList' || route.name === 'AdminClassNew' || route.name === 'AdminClassEdit'
+})
+
+// 監聽路由變化，當從編輯頁面返回時重新載入班級資料
+watch(() => route.name, (newName, oldName) => {
+  // 從編輯頁面返回到班級管理頁面時，重新載入資料
+  if ((oldName === 'AdminClassNew' || oldName === 'AdminClassEdit') && newName === 'AdminClassManager') {
+    classes.value = loadClasses()
+  }
+})
+
+onMounted(() => {
+  filteredInstitutions.value = institutions.value
+  classes.value = loadClasses()
+})
 </script>
 
 <style scoped>
@@ -147,8 +240,10 @@ const goBack = () => {
 .class-table { width:100%; border-collapse:collapse }
 .class-table thead th { background:#cfe8ff; color:#2e6fb7; padding:10px; text-align:left; font-weight:700; }
 .class-table td { padding:12px; border-bottom:1px solid #f3f4f6; vertical-align: middle; }
-.action-cell { text-align:right }
+.action-cell { text-align:left }
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
 .bottom-row { display:flex; justify-content:center; gap:12px; margin-top:10vh; }
-@media (max-width:900px){ .class-card{ width:100%; padding:16px } .search-input{ width:100% } }
+.admin-breadcrumb { font-size: 0.9rem; color: #666; margin-bottom: 20px; }
+.breadcrumb-link { color: #2e6fb7; cursor: pointer; }
+.breadcrumb-link:hover { text-decoration: underline; }
 </style>

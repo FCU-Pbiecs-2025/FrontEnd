@@ -1,6 +1,6 @@
 <template>
   <div class="account-page">
-    <div class="account-card">
+    <div v-if="!isEditPage" class="account-card">
       <div class="title-row">
         <span class="icon">🛡️</span>
         <span class="main-title">後台帳號管理</span>
@@ -52,14 +52,16 @@
         <button class="btn primary" v-show="showBack" @click="goBack">返回</button>
       </div>
     </div>
+    <router-view v-if="isEditPage" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
 const STORAGE_KEY = 'backendAccounts'
 const query = ref('')
 const admins = ref({})
@@ -145,6 +147,11 @@ const addNew = () => {
   // 跳轉到新增頁面
   router.push({ name: 'AdminBackendNew' })
 }
+
+const isEditPage = computed(() => {
+  // 判斷是否在新增/編輯子路由
+  return route.name === 'AdminBackendNew' || route.name === 'AdminBackendEdit'
+})
 </script>
 
 <style scoped>
@@ -173,7 +180,7 @@ const addNew = () => {
 .name-cell { color:#334e5c }
 .role-cell { color:#6b6f76 }
 .status-cell { color:#6b6f76 }
-.action-cell { text-align:right }
+.action-cell { text-align:left }
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
 .bottom-row { display: flex; justify-content:center; margin-top: 10vh; gap: 12px; margin-bottom: 20px}
 @media (max-width:900px){ .account-card{ width:100%; padding:16px } .search-input{ width:100% } }

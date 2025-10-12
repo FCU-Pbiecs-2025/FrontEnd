@@ -212,7 +212,7 @@ function goBack() {
 .announcement-table td { padding:12px; border-bottom:1px solid #f3f4f6; vertical-align: middle; }
 .date-cell { font-weight:600; color:#334e5c }
 .title-cell { color:#334e5c }
-.action-cell { text-align:right }
+.action-cell { text-align:left }
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
 .bottom-row { display:flex; justify-content:center; gap:12px; margin-top:10vh; }
 .modal { position: fixed; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 99; }

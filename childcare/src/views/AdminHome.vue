@@ -55,8 +55,45 @@
     </aside>
     <!-- 右側內容 -->
     <main class="admin-main">
-      <!-- Use router-view to render child admin pages (dashboard, citizen, backend, etc.) -->
-      <router-view />
+      <!-- 根據 route 顯示 dashboard 或子頁面 -->
+      <template v-if="$route.name === 'AdminHome'">
+        <div class="admin-announcement">
+          <!-- 代辦事項通知區塊 -->
+          <h2 class="section-title">代辦事項通知</h2>
+          <div class="news-list-section">
+            <div class="news-list-header">
+              <span>發布日期</span>
+              <span>事項標題</span>
+              <span>內容</span>
+            </div>
+            <div v-for="item in todoList" :key="item.id" class="news-list-row">
+              <span class="news-date-cell">{{ item.date }}</span>
+              <span class="news-title-cell" :title="item.title">{{ item.title.length > 18 ? item.title.slice(0, 18) + '...' : item.title }}</span>
+              <span class="news-content-cell">{{ item.content }}</span>
+            </div>
+            <div v-if="todoList.length === 0" class="empty-tip">目前沒有代辦事項</div>
+          </div>
+
+          <!-- 後台系統公告區塊 -->
+          <h2 class="section-title">後台系統公告</h2>
+          <div class="news-list-section">
+            <div class="news-list-header">
+              <span>發布日期</span>
+              <span>公告標題</span>
+              <span>公告內容</span>
+            </div>
+            <div v-for="item in announcementList" :key="item.id" class="news-list-row">
+              <span class="news-date-cell">{{ item.date }}</span>
+              <span class="news-title-cell" :title="item.title">{{ item.title.length > 18 ? item.title.slice(0, 18) + '...' : item.title }}</span>
+              <span class="news-content-cell">{{ item.content }}</span>
+            </div>
+            <div v-if="announcementList.length === 0" class="empty-tip">目前沒有公告</div>
+          </div>
+        </div>
+      </template>
+      <template v-else>
+        <router-view />
+      </template>
     </main>
   </div>
 </template>
@@ -92,6 +129,16 @@ const breadcrumb = computed(() => {
   const matched = route.matched.slice().reverse().find(r => r.meta && r.meta.breadcrumb)
   return matched ? matched.meta.breadcrumb : (route.name || '後台')
 })
+
+// AdminDashboard 內容
+const todoList = [
+  { id: 1, title: '審核新申請', content: '有 3 筆新申請待審核', date: '2025/10/10' },
+  { id: 2, title: '補位抽籤', content: '本週需進行補位抽籤', date: '2025/10/09' }
+]
+const announcementList = [
+  { id: 1, title: '系統維護通知', content: '後台系統將於本週末進行維護，請提前完成重要作業。', date: '2025/10/08' },
+  { id: 2, title: '新功能上線', content: '公告管理功能已上線，歡迎使用。', date: '2025/10/05' }
+]
 </script>
 
 <style scoped>
@@ -215,6 +262,7 @@ const breadcrumb = computed(() => {
   display: flex;
   justify-content: center;
   max-width: 90%;
+  padding: 20px;
 }
 .section-title {
   font-size: 1.35rem;
