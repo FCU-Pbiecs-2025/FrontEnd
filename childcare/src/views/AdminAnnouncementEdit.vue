@@ -24,9 +24,7 @@
         </div>
         <div class="form-row">
           <label class="form-label">發佈日期：</label>
-          <input type="date" v-model="form.dateStart" />
-          <span class="to-label">至</span>
-          <input type="date" v-model="form.dateEnd" />
+          <input class="date-input" type="date" v-model="form.date" />
         </div>
       </div>
       <div class="bottom-row">
@@ -43,31 +41,51 @@ import { useRouter, useRoute } from 'vue-router'
 const router = useRouter()
 const route = useRoute()
 
+const STORAGE_KEY = 'announcementData'
 const isEditPage = computed(() => route.name === 'AdminAnnouncementEdit')
 
 const form = ref({
+  id: null,
+  date: '',
   title: '',
   content: '',
-  type: 'front',
-  dateStart: '',
-  dateEnd: ''
+  type: 'front'
 })
 
-// 模擬取得公告資料（實際應串API或由父頁傳遞）
-const mockList = [
-  { id: 1, title: '系統維護公告', content: '維護內容...', type: 'front', dateStart: '2025-10-01', dateEnd: '2025-10-02' },
-  { id: 2, title: '後台功能更新', content: '更新內容...', type: 'back', dateStart: '2025-10-05', dateEnd: '2025-10-06' }
-]
+const list = ref([])
+
+const loadList = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) {
+      list.value = JSON.parse(raw)
+    } else {
+      // 初始範例資料
+      list.value = [
+        { id: 1, date: '2025-10-01', title: '系統維護公告', content: '維護內容...', type: 'front' },
+        { id: 2, date: '2025-10-05', title: '後台功能更新', content: '更新內容...', type: 'back' }
+      ]
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list.value))
+    }
+  } catch (e) {
+    console.error('loadList error', e)
+  }
+}
+
+const saveList = () => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list.value))
+}
 
 onMounted(() => {
+  loadList()
   if (isEditPage.value) {
     const id = Number(route.params.id)
-    const data = mockList.find(item => item.id === id)
+    const data = list.value.find(item => item.id === id)
     if (data) {
       form.value = { ...data }
+    } else {
+      router.replace({ path: '/admin/announcement' })
     }
-  } else {
-    form.value = { title: '', content: '', type: 'front', dateStart: '', dateEnd: '' }
   }
 })
 
@@ -75,23 +93,41 @@ const goBack = () => {
   router.replace({ path: '/admin/announcement' })
 }
 
-const save = () => {
+const validate = () => {
   if (!form.value.title) {
     alert('請輸入標題')
-    return
+    return false
   }
   if (!form.value.content) {
     alert('請輸入內容')
-    return
+    return false
   }
-  if (!form.value.dateStart || !form.value.dateEnd) {
-    alert('請選擇日期')
-    return
+  if (!form.value.date) {
+    alert('請選擇發佈日期')
+    return false
   }
+  return true
+}
+
+const save = () => {
+  if (!validate()) return
+
+  loadList()
+
   if (isEditPage.value) {
-    alert('已儲存公告（編輯模式，請串接API）')
+    // 編輯
+    const idx = list.value.findIndex(item => Number(item.id) === Number(form.value.id))
+    if (idx !== -1) {
+      list.value[idx] = { ...form.value }
+      saveList()
+      alert('編輯成功')
+    }
   } else {
-    alert('已新增公告（新增模式，請串接API）')
+    // 新增
+    form.value.id = Date.now()
+    list.value.push({ ...form.value })
+    saveList()
+    alert('新增成功')
   }
   goBack()
 }
@@ -99,21 +135,22 @@ const save = () => {
 
 <style scoped>
 .announcement-edit-page { display:flex; justify-content:center; }
-.announcement-edit-card { width:820px; }
+.announcement-edit-card { max-width:820px; }
 .title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; margin-top: 60px}
 .icon { width:32px; height:32px; }
-.main-title { font-size:1.35rem; color:#2e6fb7; font-weight:700; }
-.tab-row { display:flex; justify-content:center; margin-bottom:18px; }
-.tab-title { background: #f9dada; color:#e35d6a; font-weight:700; font-size:1.15rem; padding:6px 38px; border-radius:18px; letter-spacing:2px; margin-top: 50px}
+.main-title { font-size:1.35rem; color:#2e6fb7; font-weight:700;  }
+.tab-row { display:flex; justify-content:center; margin-bottom:18px;margin-top: 50px }
+.tab-title { background: #f9dada; color:#e35d6a; font-weight:700; font-size:1.15rem; padding:6px 38px; border-radius:18px; letter-spacing:2px; }
 .edit-form-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:18px 24px; margin-bottom:22px; box-shadow:0 2px 8px rgba(16,24,40,0.04); }
-.form-row { display:flex; align-items:center; gap:18px; margin-bottom:16px; }
-.form-label { font-weight:600; color:#2e6fb7; min-width:70px; }
+.form-row { display:flex; align-items:flex-start; gap:18px; margin-bottom:16px; }
+.form-label { font-weight:600; color:#2e6fb7; min-width:100px; margin-top:8px; }
 .form-input { width:320px; max-width:100%; padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; }
 .form-textarea { width:420px; max-width:100%; padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; resize:vertical; }
-.to-label { color:#888; margin:0 8px; }
+.date-input { padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; width:150px; }
 .btn { padding:7px 18px; border-radius:8px; border:none; cursor:pointer; font-weight:600; font-size:1rem; }
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff }
 .btn.ghost { background:transparent; border:1px solid #3b82f6; color:#2563eb }
-.bottom-row { display:flex; justify-content:flex-end; gap:12px; margin-top:8px; }
+.bottom-row { display:flex; justify-content:center; gap:12px; margin-top:8px; margin-bottom: 20px}
+
 @media (max-width:900px){ .announcement-edit-card{ width:100%; padding:16px } .form-input, .form-textarea{ width:100% } }
 </style>

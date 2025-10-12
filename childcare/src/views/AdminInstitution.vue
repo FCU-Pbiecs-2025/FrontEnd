@@ -52,7 +52,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 const router = useRouter()
 const route = useRoute()
@@ -87,7 +87,18 @@ onMounted(() => {
   loadList()
   resultList.value = [...list.value]
 })
+// 監聽路由變化，從編輯頁面返回時重新載入資料
+watch(() => route.name, (newName, oldName) => {
+  if (newName === 'AdminInstitution' && (oldName === 'AdminInstitutionNew' || oldName === 'AdminInstitutionEdit')) {
+    loadList()
+    resultList.value = [...list.value]
+    // 重置查詢條件
+    searchKeyword.value = ''
+    showBack.value = false
+  }
+})
 const doQuery = () => {
+  loadList() // 確保查詢前先重新載入最新資料
   const keyword = (searchKeyword.value || '').toLowerCase().trim()
   resultList.value = list.value.filter(item => {
     return (
@@ -152,6 +163,6 @@ const isEditPage = computed(() => {
 .phone-cell { color:#6b6f76 }
 .action-cell { text-align:left }
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
-.bottom-row { display:flex; justify-content:center; gap:12px; margin-top:10vh; }
+.bottom-row { display:flex; justify-content:center; gap:12px; margin-top:10vh; margin-bottom: 20px}
 @media (max-width:900px){ .institution-card{ width:100%; padding:16px } .search-input{ width:100% } }
 </style>

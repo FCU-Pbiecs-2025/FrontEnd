@@ -338,8 +338,7 @@ const announcementList = [
   box-shadow: 0 4px 16px rgba(0,0,0,0.08);
   display: flex;
   justify-content: center;
-  max-width: 90%;
-  padding: 20px;
+
 }
 .section-title {
   font-size: 1.35rem;

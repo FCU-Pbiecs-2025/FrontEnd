@@ -32,9 +32,9 @@
 .review-card {
   width: 100%;
   max-width: 100%;
-  padding: 20px;
   box-sizing: border-box;
   overflow-x: hidden;
+  padding: 0 10px;
 }
 
 /* 表格容器響應式 */
@@ -81,7 +81,6 @@ table {
 .search-input,
 input[type="text"],
 input[type="email"],
-input[type="date"],
 select,
 textarea {
   width: 100%;
@@ -158,8 +157,6 @@ textarea {
   .guidelines-card,
   .edit-card,
   .review-card {
-    padding: 15px;
-    width: 100% !important; /* 強制全寬 */
     margin: 0 auto;
   }
 
@@ -229,7 +226,6 @@ textarea {
   /* 表單欄位縱向排列 */
   .form-row,
   .edit-row {
-    flex-direction: column;
   }
 
   .form-group,
@@ -268,7 +264,6 @@ textarea {
   .guidelines-card,
   .edit-card,
   .review-card {
-    padding: 12px;
   }
 
   .main-title {
@@ -311,7 +306,6 @@ textarea {
   .guidelines-card,
   .edit-card,
   .review-card {
-    padding: 10px;
   }
 
   .main-title {

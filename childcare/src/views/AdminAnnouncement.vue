@@ -65,27 +65,65 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 const router = useRouter()
 const route = useRoute()
+
+const STORAGE_KEY = 'announcementData'
 
 // 查詢條件
 const type = ref({ front: true, back: true })
 const dateStart = ref('')
 const dateEnd = ref('')
 
-// 公告列表（可串接API或localStorage）
-const list = ref([
-  // 範例資料
-  { id: 1, date: '2025-10-01', title: '系統維護公告', type: 'front' },
-  { id: 2, date: '2025-10-05', title: '後台功能更新', type: 'back' }
-])
-
-const resultList = ref([...list.value])
+// 公告列表
+const list = ref([])
+const resultList = ref([])
 const showBack = ref(false)
 
+const loadList = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) {
+      list.value = JSON.parse(raw)
+    } else {
+      // 初始範例資料
+      list.value = [
+        { id: 1, date: '2025-10-01', title: '系統維護公告', content: '維護內容...', type: 'front' },
+        { id: 2, date: '2025-10-05', title: '後台功能更新', content: '更新內容...', type: 'back' }
+      ]
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list.value))
+    }
+  } catch (e) {
+    console.error('loadList error', e)
+  }
+}
+
+const saveList = () => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list.value))
+}
+
+onMounted(() => {
+  loadList()
+  resultList.value = [...list.value]
+})
+
+// 監聽路由變化，從編輯頁面返回時重新載入資料
+watch(() => route.name, (newName, oldName) => {
+  if (newName === 'AdminAnnouncement' && (oldName === 'AdminAnnouncementCreate' || oldName === 'AdminAnnouncementEdit')) {
+    loadList()
+    resultList.value = [...list.value]
+    // 重置查詢條件
+    type.value = { front: true, back: true }
+    dateStart.value = ''
+    dateEnd.value = ''
+    showBack.value = false
+  }
+})
+
 const doQuery = () => {
+  loadList() // 確保查詢前先重新載入最新資料
   resultList.value = list.value.filter(item => {
     // 類型篩選
     if (item.type === 'front' && !type.value.front) return false
@@ -97,25 +135,36 @@ const doQuery = () => {
   })
   showBack.value = true
 }
+
 const addNew = () => {
   router.push({ name: 'AdminAnnouncementCreate' })
 }
+
 const edit = (item) => {
   router.push({ name: 'AdminAnnouncementEdit', params: { id: item.id } })
 }
+
 const remove = (item) => {
   if (confirm('確定要刪除這則公告嗎？')) {
+    loadList()
     list.value = list.value.filter(i => i.id !== item.id)
-    doQuery()
+    saveList()
+    // 重新執行查詢以更新顯示列表
+    if (showBack.value) {
+      doQuery()
+    } else {
+      resultList.value = [...list.value]
+    }
   }
 }
+
 const goBack = () => {
   type.value = { front: true, back: true }
   dateStart.value = ''
   dateEnd.value = ''
+  loadList()
   resultList.value = [...list.value]
   showBack.value = false
-  router.replace({ path: '/admin/announcement' })
 }
 
 const isEditPage = computed(() => {

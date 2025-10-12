@@ -10,6 +10,14 @@
       </div>
       <div class="edit-form-card">
         <div class="form-row">
+          <label class="form-label">機構名稱：</label>
+          <input v-model="form.name" class="form-input" placeholder="請輸入機構名稱" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">負責人姓名：</label>
+          <input v-model="form.director" class="form-input" placeholder="請輸入負責人姓名" />
+        </div>
+        <div class="form-row">
           <label class="form-label">參與縣市：</label>
           <input v-model="form.city" class="form-input" placeholder="請輸入縣市" />
         </div>
@@ -60,6 +68,8 @@ const storageKey = 'institutionData'
 
 const form = ref({
   id: null,
+  name: '',
+  director: '',
   city: '',
   contact: '',
   phone: '',
@@ -94,6 +104,14 @@ onMounted(() => {
 const persist = () => localStorage.setItem(storageKey, JSON.stringify(institutions.value))
 
 const validate = () => {
+  if (!form.value.name) {
+    alert('請輸入機構名稱')
+    return false
+  }
+  if (!form.value.director) {
+    alert('請輸入負責人姓名')
+    return false
+  }
   if (!form.value.city) {
     alert('請輸入參與縣市')
     return false
@@ -156,6 +174,6 @@ const uploadPhoto = () => {
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff }
 .btn.ghost { background:transparent; border:1px solid #3b82f6; color:#2563eb }
 .btn.secondary { background:#f3f4f6; color:#333; border:1px solid #d8dbe0; }
-.bottom-row { display:flex; justify-content:center; gap:12px; margin-top:8px; }
+.bottom-row { display:flex; justify-content:center; gap:12px; margin-top:8px; margin-bottom: 20px}
 @media (max-width:900px){ .institution-edit-card{ width:100%; padding:16px } .form-input, .form-textarea{ width:100% } }
 </style>

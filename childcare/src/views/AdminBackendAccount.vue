@@ -57,7 +57,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
@@ -98,6 +98,17 @@ const convertToArray = (obj) => {
 onMounted(() => {
   loadList()
   resultAdmins.value = convertToArray(admins.value)
+})
+
+// 監聽路由變化，從編輯頁面返回時重新載入資料
+watch(() => route.name, (newName, oldName) => {
+  if (newName === 'AdminBackendAccount' && (oldName === 'AdminBackendNew' || oldName === 'AdminBackendEdit')) {
+    loadList()
+    resultAdmins.value = convertToArray(admins.value)
+    // 重置查詢條件
+    query.value = ''
+    showBack.value = false
+  }
 })
 
 const handleQuery = () => {
@@ -156,7 +167,7 @@ const isEditPage = computed(() => {
 
 <style scoped>
 .account-page{display: flex ; justify-content: center; }
-.account-card { width:820px;}
+.account-card { max-width:820px; min-width: 90%}
 .title-row { display:flex; align-items:center; gap:12px; margin-bottom:8px;margin-top: 60px }
 .icon { font-size:20px }
 .main-title { font-size:1.35rem; color:#2e6fb7; font-weight:700 }

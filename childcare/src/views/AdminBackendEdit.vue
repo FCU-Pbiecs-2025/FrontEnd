@@ -138,7 +138,7 @@ const doDelete = () => {
 
 <style scoped>
 .backend-edit-page { display:flex; justify-content:center;  }
-.backend-edit-card { width:820px; }
+.backend-edit-card { max-width:820px;min-width: 90% }
 .title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px;margin-top: 60px}
 .icon { width:32px; height:32px; }
 .main-title { font-size:1.35rem; font-weight:700;color:#2e6fb7; }

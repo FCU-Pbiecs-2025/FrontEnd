@@ -61,7 +61,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
@@ -119,6 +119,18 @@ const saveList = () => {
 onMounted(() => {
   loadList()
   resultBanners.value = [...banners.value]
+})
+
+// 監聽路由變化，從編輯頁面返回時重新載入資料
+watch(() => route.name, (newName, oldName) => {
+  if (newName === 'AdminBannerManager' && (oldName === 'AdminBannerNew' || oldName === 'AdminBannerEdit')) {
+    loadList()
+    resultBanners.value = [...banners.value]
+    // 重置查詢條件
+    dateStart.value = ''
+    dateEnd.value = ''
+    showBack.value = false
+  }
 })
 
 const doQuery = () => {
