@@ -1,7 +1,24 @@
 <template>
   <div class="admin-layout">
+    <!-- 漢堡按鈕 (小於1250px時顯示) -->
+    <button
+      v-if="isMobile && !sidebarOpen"
+      class="mobile-hamburger"
+      @click="toggleSidebar"
+      aria-label="開啟選單"
+    >
+      ☰
+    </button>
+
+    <!-- 遮罩層 -->
+    <div
+      v-if="sidebarOpen && isMobile"
+      class="sidebar-overlay"
+      @click="closeSidebar"
+    ></div>
+
     <!-- 側邊選單 -->
-    <aside :class="['admin-sidebar', { 'is-open': sidebarOpen }]">
+    <aside :class="['admin-sidebar', { 'is-open': sidebarOpen }, { 'mobile-mode': isMobile }]">
       <button class="sidebar-toggle" @click="toggleSidebar" :aria-expanded="String(sidebarOpen)">
         <span class="icon">☰</span>
       </button>
@@ -99,35 +116,71 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+// 導入通用的 Admin 響應式樣式
+import '@/styles/admin-responsive.css'
 
 const router = useRouter()
 const route = useRoute()
-const sidebarOpen = ref(true)
+
+// 響應式狀態
+const isMobile = ref(window.innerWidth < 1250)
+const sidebarOpen = ref(window.innerWidth >= 1250)
 
 // 控制每個 menu-section 的展開狀態
-const openSections = ref([true, true, true]) // 預設全部展開，可依需求調整
+const openSections = ref([true, true, true])
+
 const toggleSection = idx => {
   openSections.value[idx] = !openSections.value[idx]
 }
+
 const toggleSidebar = () => {
   sidebarOpen.value = !sidebarOpen.value
 }
 
+const closeSidebar = () => {
+  if (isMobile.value) {
+    sidebarOpen.value = false
+  }
+}
+
 const navigate = (path) => {
   router.push(path)
+  // 手機版點選後自動關閉側邊欄
+  closeSidebar()
 }
 
 const isActive = (path) => {
-  // treat active when current route path equals or starts with the provided path
   return route.path === path || route.path.startsWith(path + '/')
 }
 
-// dynamic breadcrumb: find the deepest matched route that has a breadcrumb meta
+// 監聽視窗大小變化
+const handleResize = () => {
+  const wasMobile = isMobile.value
+  isMobile.value = window.innerWidth < 1250
+
+  // 從手機版切換到桌面版時，自動展開側邊欄
+  if (wasMobile && !isMobile.value) {
+    sidebarOpen.value = true
+  }
+  // 從桌面版切換到手機版時，自動收起側邊欄
+  if (!wasMobile && isMobile.value) {
+    sidebarOpen.value = false
+  }
+}
+
 const breadcrumb = computed(() => {
   const matched = route.matched.slice().reverse().find(r => r.meta && r.meta.breadcrumb)
   return matched ? matched.meta.breadcrumb : (route.name || '後台')
+})
+
+onMounted(() => {
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 
 // AdminDashboard 內容
@@ -148,7 +201,20 @@ const announcementList = [
   min-height: 80vh;
   gap: 30px;
   margin: 30px;
+  position: relative;
+
 }
+
+/* 漢堡按鈕樣式 */
+.mobile-hamburger {
+  display: none;
+}
+
+/* 遮罩層樣式 */
+.sidebar-overlay {
+  display: none;
+}
+
 /* 預設為收合狀態：aside 與按鈕一樣大 */
 .admin-sidebar {
   width: 60px;
@@ -244,15 +310,26 @@ const announcementList = [
   font-size: 1rem;
   cursor: pointer;
   transition: background 0.2s;
+  width: 80%;
+  border-radius: 20px;
+
+
 }
 .menu-section li:hover {
-  background: #f3f8ff;
+  background: #fff6f6;
   color: #e35d6a;
+  border-radius: 20px;
+  width: 80%;
+
 }
 .menu-section li.active {
-  background: #e6f2ff;
+  background: #fff6f6;
   color: #e35d6a;
   font-weight: bold;
+  border-radius: 20px;
+  width: 80%;
+
+
 }
 .admin-main {
   flex: 1;
@@ -351,5 +428,126 @@ const announcementList = [
   opacity: 1;
   max-height: 500px;
   transform: translateY(0);
+}
+
+/* ========== 響應式設計 (< 1250px) ========== */
+@media (max-width: 1250px) {
+  .admin-layout {
+    margin: 0;
+    gap: 0;
+
+
+
+
+  }
+
+  /* 漢堡按鈕 - 固定在 App.vue header 下方 */
+  .mobile-hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 140px; /* App.vue header 高度 + 間距 */
+    left: 20px;
+    width: 50px;
+    height: 50px;
+    background: #e35d6a;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1.5rem;
+    cursor: pointer;
+    z-index: 997;
+    box-shadow: 0 4px 12px rgba(227, 93, 106, 0.4);
+    transition: transform 0.2s;
+  }
+
+  .mobile-hamburger:active {
+    transform: scale(0.95);
+  }
+
+  /* 遮罩層 */
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    top: 130px; /* App.vue header 高度 */
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 998;
+  }
+
+  /* 側邊欄手機版樣式 */
+  .admin-sidebar.mobile-mode {
+    position: fixed;
+    top: 130px;
+    left: 0;
+    bottom: 0;
+    height: calc(100vh - 130px);
+    margin: 0;
+    border-radius: 0;
+    z-index: 999;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .admin-sidebar.mobile-mode.is-open {
+    transform: translateX(0);
+    width: 250px;
+  }
+
+  /* 主內容區調整 */
+  .admin-main {
+    max-width: 100%;
+    width: 100%;
+    margin: 0;
+    border-radius: 20px;
+
+
+  }
+
+  /* 表格響應式 */
+  .news-list-header {
+    display: none;
+  }
+
+  .news-list-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 15px;
+    border: 1px solid #FFE5C2;
+    border-radius: 8px;
+    margin-bottom: 10px;
+  }
+
+  .news-date-cell,
+  .news-title-cell,
+  .news-content-cell {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .news-date-cell::before {
+    content: '發布日期：';
+    font-weight: bold;
+    color: #e35d6a;
+    margin-right: 8px;
+  }
+
+  .news-title-cell::before {
+    content: '標題：';
+    font-weight: bold;
+    color: #e35d6a;
+    margin-right: 8px;
+  }
+
+  .news-content-cell::before {
+    content: '內容：';
+    font-weight: bold;
+    color: #e35d6a;
+    margin-right: 8px;
+  }
 }
 </style>

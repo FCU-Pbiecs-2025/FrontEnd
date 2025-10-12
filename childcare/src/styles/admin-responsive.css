@@ -1,0 +1,333 @@
+/* Admin 頁面通用響應式樣式 */
+
+/* 確保所有內容不超出 admin-main 區塊 */
+* {
+  box-sizing: border-box;
+
+}
+
+/* 基礎容器響應式 */
+.account-page,
+.announcement-page,
+.institution-page,
+.class-page,
+.application-page,
+.banner-page,
+.banner-manager-page,
+.guidelines-page {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* 卡片容器響應式 */
+.account-card,
+.announcement-card,
+.institution-card,
+.class-card,
+.application-card,
+.banner-card,
+.guidelines-card,
+.edit-card,
+.review-card {
+  width: 100%;
+  max-width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* 表格容器響應式 */
+.table-section {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 20px 0;
+}
+
+table {
+  width: 100%;
+  min-width: 600px;
+  border-collapse: collapse;
+}
+
+/* 查詢區域響應式 - 重點修正 */
+.query-card,
+.search-card,
+.filter-card {
+  width: 100%;
+  padding: 15px;
+  margin-bottom: 20px;
+  box-sizing: border-box;
+}
+
+/* 修正 query-row，確保不會有奇怪的 margin */
+.query-row,
+.search-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  margin: 0 !important; /* 重置所有 margin */
+  padding: 0;
+}
+
+.search-area {
+  flex: 1;
+  min-width: 200px;
+  margin: 0;
+}
+
+.search-input,
+input[type="text"],
+input[type="email"],
+input[type="date"],
+select,
+textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* 按鈕組響應式 */
+.btn-group,
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* 表單響應式 */
+.form-row,
+.edit-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.form-group,
+.edit-group {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* 標題行響應式 */
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+/* 底部按鈕響應式 */
+.bottom-row,
+.footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+/* 圖片預覽響應式 */
+.preview-image,
+.banner-preview {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ========== 手機版響應式 (< 1250px) ========== */
+@media (max-width: 1250px) {
+  /* 容器調整 */
+  .banner-manager-page,
+  .announcement-page {
+    padding: 0;
+
+  }
+
+  /* 卡片內距調整 */
+  .account-card,
+  .announcement-card,
+  .institution-card,
+  .class-card,
+  .application-card,
+  .banner-card,
+  .guidelines-card,
+  .edit-card,
+  .review-card {
+    padding: 15px;
+    width: 100% !important; /* 強制全寬 */
+    margin: 0 auto;
+  }
+
+  /* 查詢卡片調整 */
+  .query-card,
+  .search-card,
+  .filter-card {
+    padding: 12px;
+    margin-left: 0 !important; /* 重置左邊距 */
+    margin-right: 0 !important; /* 重置右邊距 */
+  }
+
+  /* 表格改為卡片式 */
+  .table-section {
+    overflow-x: visible;
+  }
+
+  table {
+    min-width: auto;
+  }
+
+  thead {
+    display: none;
+  }
+
+  tbody tr {
+    display: block;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    background: #fff;
+  }
+
+  tbody td {
+    display: block;
+    text-align: left !important;
+    padding: 8px 0 !important;
+    border: none !important;
+  }
+
+  tbody td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    display: inline-block;
+    margin-right: 10px;
+    color: #e35d6a;
+  }
+
+  /* 查詢區域縱向排列 */
+  .query-row,
+  .search-row {
+    flex-direction: column;
+    align-items: stretch;
+    margin-left: 0 !important;
+  }
+
+  .search-area {
+    width: 100%;
+  }
+
+  /* 日期範圍調整 */
+  .date-range {
+    flex-wrap: wrap;
+  }
+
+  /* 表單欄位縱向排列 */
+  .form-row,
+  .edit-row {
+    flex-direction: column;
+  }
+
+  .form-group,
+  .edit-group {
+    width: 100%;
+    min-width: auto;
+  }
+
+  /* 按鈕全寬 */
+  .btn-group button,
+  .action-buttons button,
+  .bottom-row button {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  /* 標題文字縮小 */
+  .main-title {
+    font-size: 1.3rem;
+  }
+
+  /* 調整按鈕查詢區域 */
+  .btn-query {
+    margin-top: 20px !important;
+  }
+}
+
+/* ========== 小螢幕 (< 768px) ========== */
+@media (max-width: 768px) {
+  .account-card,
+  .announcement-card,
+  .institution-card,
+  .class-card,
+  .application-card,
+  .banner-card,
+  .guidelines-card,
+  .edit-card,
+  .review-card {
+    padding: 12px;
+  }
+
+  .main-title {
+    font-size: 1.2rem;
+  }
+
+  .btn {
+    font-size: 0.9rem;
+    padding: 8px 16px;
+  }
+
+  /* 按鈕組縱向排列 */
+  .btn-group,
+  .action-buttons,
+  .bottom-row {
+    flex-direction: column;
+  }
+
+  .btn-group button,
+  .action-buttons button,
+  .bottom-row button {
+    width: 100%;
+  }
+
+  /* 日期輸入框調整 */
+  .date-input {
+    width: 100% !important;
+    max-width: 150px;
+  }
+}
+
+/* ========== 超小螢幕 (< 480px) ========== */
+@media (max-width: 480px) {
+  .account-card,
+  .announcement-card,
+  .institution-card,
+  .class-card,
+  .application-card,
+  .banner-card,
+  .guidelines-card,
+  .edit-card,
+  .review-card {
+    padding: 10px;
+  }
+
+  .main-title {
+    font-size: 1.1rem;
+  }
+
+  .icon {
+    font-size: 1.2rem;
+  }
+
+  .btn {
+    font-size: 0.85rem;
+    padding: 6px 12px;
+  }
+
+  .date-input {
+    width: 100% !important;
+  }
+}

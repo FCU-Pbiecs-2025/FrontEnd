@@ -181,10 +181,10 @@ const isEditPage = computed(() => {
 .title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; margin-top: 60px; }
 .icon { width:32px; height:32px; }
 .main-title { font-size:1.35rem; color:#2e6fb7; font-weight:700 }
-.query-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:14px 18px; margin-bottom:50px; box-shadow:0 2px 8px rgba(16,24,40,0.04); margin-top:50px; }
-.query-row { display:flex; gap:12px; flex-direction: column; margin-bottom:12px; margin-left: 15%; }
+.query-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:14px 18px; margin-bottom:50px; box-shadow:0 2px 8px rgba(16,24,40,0.04); margin-top:50px; display: flex; flex-direction: column; align-items: center; }
+.query-row { display:flex; gap:12px; margin-bottom:12px; }
 .search-area { gap:30px; display:flex; align-items:center; margin-bottom:8px; }
-.date-label { font-weight:600; color:#2e6fb7 }
+.date-label { font-weight:600; color:#2e6fb7; min-width: 100px; text-align: right; }
 .date-range { display:flex; align-items:center; gap:10px; }
 .date-input { padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; width:150px; }
 .to-label { color:#888; margin:0 8px; }
