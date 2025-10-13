@@ -4,7 +4,7 @@
     <template v-if="isHome">
       <section class="main-section">
 
-        
+
 
         <div class="card-container">
           <div class="card" @click="goToPage('ApplicationStatus')" style="cursor:pointer;">
@@ -76,7 +76,7 @@ const auth = useAuthStore()
 const goToPage = (page) => {
   if (page === 'ApplicationStatus') {
     if (!auth.isLoggedIn) {
-      router.push({ name: 'Login' }) // 請確認路由名稱是否為 'Login'，如有不同請調整
+      router.push({ name: 'Login', query: { redirect: '/application-status' } }) // 請確認路由名稱是否為 'Login'，如有不同請調整
       return
     }
   }

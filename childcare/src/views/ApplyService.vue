@@ -34,25 +34,9 @@
 
     <div class="apply-container">
       <!-- 登入判斷 -->
-      <div v-if="!isLoggedIn" class="login-section">
+      <div v-if="!authStore.isLoggedIn" class="login-section">
         <div class="login-tip">提醒：登入後即可進行申請</div>
-        <form class="login-form" @submit.prevent="login">
-          <div class="form-row">
-            <label>帳號</label>
-            <input v-model="loginForm.username" type="text" required />
-          </div>
-          <div class="form-row">
-            <label>密碼</label>
-            <input v-model="loginForm.password" type="password" required />
-          </div>
-          <div class="form-row captcha-row">
-            <label>驗證碼</label>
-            <input v-model="loginForm.captcha" type="text" required style="width:80px;" />
-            <img src="https://fakeimg.pl/80x32/?text=ABCD" alt="驗證碼" class="captcha-img" />
-            <button type="button" class="refresh-captcha">換一張</button>
-          </div>
-          <button type="submit" class="login-btn">登入</button>
-        </form>
+        <LoginView />
       </div>
 
       <!-- 步驟一：申請表單 -->
@@ -72,19 +56,19 @@
           </legend>
           <div class="form-row">
             <label>姓名</label>
-            <input v-model="form.applicant.name" type="text" required />
+            <input v-model="form.applicant.name" type="text" />
           </div>
           <div class="form-row">
             <label>生日</label>
-            <input v-model="form.applicant.birth" type="date" required />
+            <input v-model="form.applicant.birth" type="date" />
           </div>
           <div class="form-row">
             <label>身分證</label>
-            <input v-model="form.applicant.id" type="text" required />
+            <input v-model="form.applicant.id" type="text" />
           </div>
           <div class="form-row">
             <label>家長類別</label>
-            <select v-model="form.applicant.parentType" required>
+            <select v-model="form.applicant.parentType">
               <option value="">請選擇</option>
               <option value="父親">父親</option>
               <option value="母親">母親</option>
@@ -93,7 +77,7 @@
           </div>
           <div class="form-row">
             <label>教育程度</label>
-            <select v-model="form.applicant.education" required>
+            <select v-model="form.applicant.education">
               <option value="">請選擇</option>
               <option value="國小">國小</option>
               <option value="國中">國中</option>
@@ -112,19 +96,19 @@
           </legend>
           <div class="form-row">
             <label>戶籍地址</label>
-            <input v-model="form.contact.homeAddress" type="text" required />
+            <input v-model="form.contact.homeAddress" type="text" />
           </div>
           <div class="form-row">
             <label>通訊地址</label>
-            <input v-model="form.contact.mailAddress" type="text" required />
+            <input v-model="form.contact.mailAddress" type="text" />
           </div>
           <div class="form-row">
             <label>行動電話</label>
-            <input v-model="form.contact.mobile" type="tel" required />
+            <input v-model="form.contact.mobile" type="tel" />
           </div>
           <div class="form-row">
             <label>電子信箱</label>
-            <input v-model="form.contact.email" type="email" required />
+            <input v-model="form.contact.email" type="email" />
           </div>
         </fieldset>
 
@@ -142,19 +126,19 @@
           </legend>
           <div class="form-row">
             <label>姓名</label>
-            <input v-model="form.parent1.name" type="text" required />
+            <input v-model="form.parent1.name" type="text" />
           </div>
           <div class="form-row">
             <label>生日</label>
-            <input v-model="form.parent1.birth" type="date" required />
+            <input v-model="form.parent1.birth" type="date" />
           </div>
           <div class="form-row">
             <label>身分證</label>
-            <input v-model="form.parent1.id" type="text" required />
+            <input v-model="form.parent1.id" type="text" />
           </div>
           <div class="form-row">
             <label>家長類別</label>
-            <select v-model="form.parent1.parentType" required>
+            <select v-model="form.parent1.parentType">
               <option value="">請選擇</option>
               <option value="父親">父親</option>
               <option value="母親">母親</option>
@@ -163,7 +147,7 @@
           </div>
           <div class="form-row">
             <label>教育程度</label>
-            <select v-model="form.parent1.education" required>
+            <select v-model="form.parent1.education">
               <option value="">請選擇</option>
               <option value="國小">國小</option>
               <option value="國中">國中</option>
@@ -175,11 +159,11 @@
           </div>
           <div class="form-row">
             <label>戶籍地址</label>
-            <input v-model="form.parent1.homeAddress" type="text" required />
+            <input v-model="form.parent1.homeAddress" type="text" />
           </div>
           <div class="form-row">
             <label>行動電話</label>
-            <input v-model="form.parent1.mobile" type="tel" required />
+            <input v-model="form.parent1.mobile" type="tel" />
           </div>
           <div class="form-row">
             <label>任職單位</label>
@@ -245,8 +229,17 @@
         </div>
       </form>
 
+
+
       <!-- 步驟二：上傳身份附件 -->
       <div v-else-if="step === 2" class="upload-section">
+        <!-- 新增：申請之身分別下拉選單，顯示於步驟2（上傳附件）上方 -->
+        <label style="min-width: 120px;">申請之身分別</label>
+        <select v-model="identityTypeSelect">
+          <option value="">請選擇申請之身分別</option>
+          <option value="低收入戶">低收入戶</option>
+          <option value="中低收入戶">中低收入戶</option>
+        </select>
         <h2 class="upload-title">上傳身份附件</h2>
         <div class="upload-tip">請上傳您的身份證明文件（如身分證、戶口名簿等）</div>
         <input type="file" class="upload-input" multiple @change="handleFileChange" />
@@ -340,9 +333,11 @@
 <script setup>
 import { ref, onBeforeUnmount, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import LoginView from './LoginView.vue'
+import { useAuthStore } from '@/store/auth.js'
 
-// 模擬登入狀態
-const isLoggedIn = ref(false)
+const authStore = useAuthStore()
+
 const step = ref(1) // 目前步驟，預設1
 
 // 登入表單
@@ -353,7 +348,7 @@ const loginForm = ref({
 })
 const login = () => {
   // 模擬登入
-  isLoggedIn.value = true
+  authStore.isLoggedIn = true
 }
 
 // 申請表單資料
@@ -437,9 +432,7 @@ onBeforeUnmount(() => {
   })
 })
 const submitForm = () => {
-  // 表單驗證與送出邏輯
-  // ...
-
+  // 不檢查內容，直接進入下一步
   step.value = 2 // 切換到上傳附件步驟
 }
 

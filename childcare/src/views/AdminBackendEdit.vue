@@ -32,15 +32,23 @@
               <input type="radio" value="admin" v-model="account.role" />
               <span>管理員</span>
             </label>
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">帳號狀態：</label>
+          <div class="radio-group">
             <label class="radio-label">
-              <input type="radio" value="general" v-model="account.role" />
-              <span>一般</span>
+              <input type="radio" value="enable" v-model="account.right" />
+              <span>啟用</span>
             </label>
             <label class="radio-label">
-              <input type="radio" value="suspended" v-model="account.role" />
+              <input type="radio" value="suspended" v-model="account.right" />
               <span>停權</span>
             </label>
           </div>
+
+
+
         </div>
       </div>
       <div class="bottom-row">
@@ -98,7 +106,7 @@ const save = () => {
   const stored = JSON.parse(localStorage.getItem('backendAccounts') || '{}')
 
   // 準備要儲存的資料
-  const toSave = { id: account.value.id, org: account.value.org, role: account.value.role }
+  const toSave = { id: account.value.id, org: account.value.org, role: account.value.role, right: account.value.right }
 
   // 如果有輸入密碼則更新，否則保留原密碼
   if (account.value.password) {

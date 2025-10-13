@@ -33,8 +33,8 @@
             <tr v-for="item in resultAdmins" :key="item.id">
               <td class="id-cell">{{ item.id }}</td>
               <td class="name-cell">{{ item.org }}</td>
-              <td class="role-cell">{{ item.role }}</td>
-              <td class="status-cell">{{ item.role === 'suspended' ? '停權' : '啟用' }}</td>
+              <td class="role-cell">{{ item.role === 'superadmin' ? '最高權限' : item.role === 'admin' ? '管理員' : item.role }}</td>
+              <td class="status-cell">{{ item.right === 'suspended' ? '停權' : '啟用' }}</td>
               <td class="action-cell">
                 <button class="btn small" @click="manageAdmin(item.id)">編輯</button>
                 <button class="btn small danger" @click="removeAdmin(item.id)">刪除</button>
@@ -68,17 +68,34 @@ const admins = ref({})
 const resultAdmins = ref([])
 const showBack = ref(false)
 
+// 兼容舊資料，補齊 right 欄位
 const loadList = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
-      admins.value = JSON.parse(raw)
+      const parsed = JSON.parse(raw)
+      // 兼容舊資料：若無 right，預設為 enable
+      Object.values(parsed).forEach(acc => {
+        if (!acc.right) acc.right = 'enable'
+        // 若 status 欄位存在，則同步到 right
+        if (acc.status) {
+          acc.right = acc.status
+          delete acc.status
+        }
+        // 若 role 欄位是 enable/suspended，則自動修正為 admin 並將原值放到 right
+        if (acc.role === 'enable' || acc.role === 'suspended') {
+          acc.right = acc.role
+          acc.role = 'admin'
+        }
+      })
+      admins.value = parsed
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed))
     } else {
-      // 初始範例資料（使用物件格式，key 是帳號 ID）
+      // 初始範例資料
       admins.value = {
-        'admin01': { id: 'admin01', org: '市政府', role: 'superadmin', password: 'pass123' },
-        'admin02': { id: 'admin02', org: '托育中心A', role: 'admin', password: 'pass456' },
-        'admin03': { id: 'admin03', org: '托育中心B', role: 'general', password: 'pass789' }
+        'admin01': { id: 'admin01', org: '市政府', role: 'superadmin', right: 'enable', password: 'pass123' },
+        'admin02': { id: 'admin02', org: '托育中心A', role: 'admin', right: 'enable', password: 'pass456' },
+        'admin03': { id: 'admin03', org: '托育中心B', role: 'admin', right: 'suspended', password: 'pass789' }
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(admins.value))
     }

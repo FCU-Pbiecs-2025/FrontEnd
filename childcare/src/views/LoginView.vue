@@ -251,8 +251,11 @@ const handleTestLogin = async () => {
     email: 'test@example.com'
   }))
 
-  // 跳轉到會員中心
-  router.push({ name: 'MemberCenter' })
+  // 只有有 redirect 參數才跳轉，否則停留原頁
+  const redirect = router.currentRoute.value.query.redirect
+  if (redirect) {
+    router.push(redirect)
+  }
 }
 
 // 後台帳號測試登入處理函數
