@@ -139,7 +139,8 @@ const goToPage = (page) => {
   if (page === 'MemberCenter' && !authStore.isLoggedIn) {
     router.push({
       name: 'Login',
-      query: { redirect: '/member-center' }//這行是 在 Vue Router 中設定網址查詢參數。也就是說，登入頁在讀取時可以知道使用者原本想去哪。舉例：使用者點「會員中心」 → 還沒登入 → 被導向到登入頁 登入頁 URL：/login?redirect=/member-center當使用者成功登入後，程式就可以讀出這個參數：
+      // 使用當前頁面的完整路徑作為登入後返回的目標
+      query: { redirect: router.currentRoute.value.fullPath }
     })
     return
   }

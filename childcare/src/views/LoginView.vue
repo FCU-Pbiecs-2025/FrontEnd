@@ -200,13 +200,12 @@ const handleLogin = async () => {
     )
 
     if (result.success) {
-      // 登入成功，若為管理員則跳轉後台首頁
+      // 根據 redirect 參數返回原頁面，若無則依角色給預設頁
+      const redirect = router.currentRoute.value.query.redirect
       if (authStore.user?.role === 'admin') {
-        router.push('/admin')
+        router.push(redirect || '/admin')
       } else {
-        // 一般用戶導向首頁或原本要訪問的頁面
-        const redirect = router.currentRoute.value.query.redirect || '/'
-        router.push(redirect)
+        router.push(redirect || '/')
       }
     } else {
       errorMessage.value = result.message
@@ -271,8 +270,9 @@ const handleAdminTestLogin = async () => {
   authStore.isAuthenticated = true
   localStorage.setItem('token', 'admin-test-token')
   localStorage.setItem('user', JSON.stringify(authStore.user))
-  // 跳轉到後台首頁
-  router.push('/admin')
+  // 回到原始頁面（若有），否則到後台首頁
+  const redirect = router.currentRoute.value.query.redirect
+  router.push(redirect || '/admin')
 }
 
 const refreshCaptcha = () => {
