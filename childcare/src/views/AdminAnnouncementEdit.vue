@@ -28,8 +28,26 @@
         <div class="form-row">
           <label class="form-label">發佈日期：</label>
           <div class="date-area">
-            <input class="date-input" type="date" v-model="form.date" /></div>
-
+            <input class="date-input" type="date" v-model="form.date" />
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">結束日期：</label>
+          <div class="date-area">
+            <input class="date-input" type="date" v-model="form.endDate" />
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">狀態：</label>
+          <div class="radio-group">
+            <label><input type="radio" value="enabled" v-model="form.status" /> 啟用</label>
+            <label><input type="radio" value="disabled" v-model="form.status" /> 停用</label>
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">附件：</label>
+          <input type="file" @change="onFileChange" class="form-input" />
+          <span v-if="form.attachment">{{ form.attachment.name }}</span>
         </div>
       </div>
       <div class="bottom-row">
@@ -49,12 +67,21 @@ const route = useRoute()
 const STORAGE_KEY = 'announcementData'
 const isEditPage = computed(() => route.name === 'AdminAnnouncementEdit')
 
+const getToday = () => {
+  const d = new Date();
+  const pad = n => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
 const form = ref({
   id: null,
-  date: '',
+  date: getToday(),
+  endDate: getToday(),
   title: '',
   content: '',
-  type: 'front'
+  type: 'front',
+  status: 'enabled',
+  attachment: null
 })
 
 const list = ref([])
@@ -87,15 +114,26 @@ onMounted(() => {
     const id = Number(route.params.id)
     const data = list.value.find(item => item.id === id)
     if (data) {
-      form.value = { ...data }
+      form.value = { ...form.value, ...data }
+      form.value.attachment = null // 編輯時不自動載入附件
     } else {
       router.replace({ path: '/admin/announcement' })
     }
+  } else {
+    form.value.date = getToday()
+    form.value.endDate = getToday()
+    form.value.status = 'enabled'
+    form.value.attachment = null
   }
 })
 
 const goBack = () => {
   router.replace({ path: '/admin/announcement' })
+}
+
+const onFileChange = (e) => {
+  const file = e.target.files[0]
+  form.value.attachment = file || null
 }
 
 const validate = () => {
@@ -109,6 +147,10 @@ const validate = () => {
   }
   if (!form.value.date) {
     alert('請選擇發佈日期')
+    return false
+  }
+  if (!form.value.endDate) {
+    alert('請選擇結束日期')
     return false
   }
   return true

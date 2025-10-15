@@ -28,7 +28,6 @@
             <tr>
               <th>Banner</th>
               <th>連結</th>
-              <th>顯示日期</th>
               <th>狀態</th>
               <th>操作</th>
             </tr>
@@ -37,7 +36,6 @@
             <tr v-for="(b, idx) in resultBanners" :key="b.id">
               <td class="img-cell"><img :src="b.image" alt="banner" /></td>
               <td>{{ b.link }}</td>
-              <td>{{ b.displayDate }}</td>
               <td>{{ b.status }}</td>
               <td class="action-cell">
                 <button class="btn small" @click="goEdit(b.id)">編輯</button>

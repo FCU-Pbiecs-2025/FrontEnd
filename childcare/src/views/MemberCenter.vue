@@ -35,137 +35,17 @@
       </div>
 
       <div class="services-section">
-        <h2>家長資料</h2>
-        <div class="parent-info-card" v-for="(parentItem, idx) in parents" :key="parentItem.id">
-          <div v-if="editParentIdx!==idx">
-            <p>身分證字號/護照號碼：{{ parentItem.idNumber }}</p>
-            <p>姓名：{{ parentItem.name }}</p>
-            <p>性別：{{ parentItem.gender }}</p>
-            <p>與幼兒關係：{{ parentItem.relation }}</p>
-            <p>職業：{{ parentItem.job }}</p>
-            <p>電話：{{ parentItem.phone }}</p>
-            <p>戶籍地址：{{ parentItem.householdAddress }}</p>
-            <p>通訊地址：{{ parentItem.contactAddress }}</p>
-            <p>電子信箱：{{ parentItem.email }}</p>
-            <p>出生年月日：{{ parentItem.birthday }}</p>
-            <p>是否留停：{{ parentItem.isLeave ? '是' : '否' }}</p>
-            <template v-if="parentItem.isLeave">
-              <p>留停起：{{ parentItem.leaveStart }}</p>
-              <p>留停訖：{{ parentItem.leaveEnd }}</p>
-            </template>
-            <button class="service-btn" @click="editParentIdx=idx">編輯</button>
+        <h2>資料管理</h2>
+        <div class="services-grid">
+          <div class="service-card">
+            <h1>家長資料</h1>
+            <p>管理家長基本資料、職業資訊等</p>
+            <button class="service-btn" @click="manageParents">管理家長資料</button>
           </div>
-          <div v-else>
-            <div class="parent-edit-form">
-              <div class="form-grid">
-                <label>身分證字號/護照號碼：<input v-model="parentItem.idNumber" /></label>
-                <label>姓名：<input v-model="parentItem.name" /></label>
-                <label>性別：
-                  <select v-model="parentItem.gender">
-                    <option value="男">男</option>
-                    <option value="女">女</option>
-                  </select>
-                </label>
-                <label>與幼兒關係：<input v-model="parentItem.relation" /></label>
-                <label>職業：<input v-model="parentItem.job" /></label>
-                <label>電話：<input v-model="parentItem.phone" /></label>
-                <label>戶籍地址：<input v-model="parentItem.householdAddress" /></label>
-                <label>通訊地址：<input v-model="parentItem.contactAddress" /></label>
-                <label>電子信箱：<input v-model="parentItem.email" /></label>
-                <label>出生年月日：<input v-model="parentItem.birthday" type="date" /></label>
-                <label>是否留停：
-                  <select v-model="parentItem.isLeave">
-                    <option :value="true">是</option>
-                    <option :value="false">否</option>
-                  </select>
-                </label>
-                <template v-if="parentItem.isLeave">
-                  <label>留停起：<input v-model="parentItem.leaveStart" type="date" /></label>
-                  <label>留停訖：<input v-model="parentItem.leaveEnd" type="date" /></label>
-                </template>
-              </div>
-
-              <div class="edit-actions">
-                <button class="service-btn" @click="saveParent(idx)">儲存</button>
-                <button class="service-btn ghost" @click="editParentIdx=null">取消</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 使用與新增幼兒相同的按鈕類別，使長度/樣式一致 -->
-        <button class="service-btn add-child-btn" @click="addParentMode=true">新增家長</button>
-
-        <div v-if="addParentMode" class="add-parent-modal">
-          <div class="add-parent-form">
-            <label>身分證字號/護照號碼：<input v-model="newParent.idNumber" /></label>
-            <label>姓名：<input v-model="newParent.name" /></label>
-            <label>性別：
-              <select v-model="newParent.gender">
-                <option value="男">男</option>
-                <option value="女">女</option>
-              </select>
-            </label>
-            <label>與幼兒關係：<input v-model="newParent.relation" /></label>
-            <label>職業：<input v-model="newParent.job" /></label>
-            <label>電話：<input v-model="newParent.phone" /></label>
-            <label>戶籍地址：<input v-model="newParent.householdAddress" /></label>
-            <label>通訊地址：<input v-model="newParent.contactAddress" /></label>
-            <label>電子信箱：<input v-model="newParent.email" /></label>
-            <label>出生年月日：<input v-model="newParent.birthday" type="date" /></label>
-            <label>是否留停：
-              <select v-model="newParent.isLeave">
-                <option :value="true">是</option>
-                <option :value="false">否</option>
-              </select>
-            </label>
-            <template v-if="newParent.isLeave">
-              <label>留停起：<input v-model="newParent.leaveStart" type="date" /></label>
-              <label>留停訖：<input v-model="newParent.leaveEnd" type="date" /></label>
-            </template>
-            <button class="service-btn" @click="addParent">儲存</button>
-            <button class="service-btn" @click="addParentMode=false">取消</button>
-          </div>
-        </div>
-        <h2 style="margin-top:32px;">幼兒資料</h2>
-        <div class="children-list">
-          <div v-for="(child, idx) in children" :key="child.id" class="child-info-card">
-            <div v-if="editChildIdx!==idx">
-              <p>身分證字號：{{ child.idNumber || '未填' }}</p>
-              <p>姓名：{{ child.name }}</p>
-              <p>生日：{{ child.birthday }}</p>
-              <p>性別：{{ child.gender }}</p>
-              <button class="service-btn" @click="editChildIdx=idx">編輯</button>
-            </div>
-            <div v-else>
-              <label>身分證字號：<input v-model="child.idNumber" /></label>
-              <label>姓名：<input v-model="child.name" /></label>
-              <label>生日：<input v-model="child.birthday" type="date" /></label>
-              <label>性別：
-                <select v-model="child.gender">
-                  <option value="男">男</option>
-                  <option value="女">女</option>
-                </select>
-              </label>
-              <button class="service-btn" @click="saveChild(idx)">儲存</button>
-              <button class="service-btn" @click="editChildIdx=null">取消</button>
-            </div>
-          </div>
-          <button class="service-btn add-child-btn" @click="showAddChild=true">新增幼兒</button>
-        </div>
-        <div v-if="showAddChild" class="add-child-modal">
-          <div class="add-child-form">
-            <label>身分證字號：<input v-model="newChild.idNumber" /></label>
-            <label>姓名：<input v-model="newChild.name" /></label>
-            <label>生日：<input v-model="newChild.birthday" type="date" /></label>
-            <label>性別：
-              <select v-model="newChild.gender">
-                <option value="男">男</option>
-                <option value="女">女</option>
-              </select>
-            </label>
-            <button class="service-btn" @click="addChild">儲存</button>
-            <button class="service-btn" @click="showAddChild=false">取消</button>
+          <div class="service-card">
+            <h1>幼兒資料</h1>
+            <p>管理幼兒基本資料、生日等資訊</p>
+            <button class="service-btn" @click="manageChildren">管理幼兒資料</button>
           </div>
         </div>
       </div>
@@ -182,9 +62,25 @@
               <h4>{{ application.title }}</h4>
               <p class="application-date">申請日期: {{ formatDate(application.date) }}</p>
               <p class="application-details">{{ application.details }}</p>
+              <!-- 通過後補中顯示序位 -->
+              <p v-if="application.status === 'waitingForAdmission' && application.queueNumber" class="queue-info">
+                目前序位：<span class="queue-number">第 {{ application.queueNumber }} 位</span>
+              </p>
             </div>
             <div class="application-status">
               <span :class="['status-badge', application.status]">{{ getStatusText(application.status) }}</span>
+              <!-- 補件按鈕（主色系） -->
+              <button v-if="application.status === 'supplement'" class="save-btn" @click="goToSupplement(application.id)">
+                補件
+              </button>
+              <!-- 查看退件原因（次要、幽靈樣式） -->
+              <button v-if="application.status === 'rejected'" class="cancel-btn" @click="viewRejection(application.id)">
+                查看原因
+              </button>
+              <!-- 撤銷申請（次要、灰色） -->
+              <button v-if="application.status === 'waitingForAdmission'" class="back-btn" @click="goToRevoke(application.id)">
+                撤銷申請
+              </button>
             </div>
           </div>
         </div>
@@ -367,21 +263,64 @@ const loadApplications = async () => {
     // const response = await getUserApplications()
     // applications.value = response.data
 
-    // 示例資料
+    // 示例資料 - 包含所有申請狀態
     applications.value = [
       {
         id: 1,
-        title: '公共托育服務申請',
+        title: '公共托育服務申請 - 審核中',
         date: '2024-01-15',
-        details: `申請人: ${authStore.user?.name || authStore.user?.account} | 嬰兒: 王小寶 (6個月)`,
+        details: `申請人: ${authStore.user?.name || authStore.user?.account} | 幼兒: 王小寶`,
         status: 'processing'
       },
       {
         id: 2,
-        title: '托育補助申請',
+        title: '托育補助申請 - 需要補件',
+        date: '2024-01-12',
+        details: '申請人: 王小明 | 幼兒: 王小美',
+        status: 'supplement'
+      },
+      {
+        id: 3,
+        title: '公共托育服務申請 - 已退件',
         date: '2024-01-10',
-        details: '補助類型: 一般家庭托育補助',
-        status: 'approved'
+        details: '申請人: 李大華 | 幼兒: 李小華',
+        status: 'rejected'
+      },
+      {
+        id: 4,
+        title: '托育補助申請 - 通過候補中',
+        date: '2024-01-08',
+        details: '申請人: 張美麗 | 幼兒: 張小天',
+        status: 'waitingForAdmission',
+        queueNumber: 15
+      },
+      {
+        id: 5,
+        title: '公共托育服務申請 - 撤銷申請審核中',
+        date: '2024-01-05',
+        details: '申請人: 陳建國 | 幼兒: 陳小明',
+        status: 'revokeProcessing'
+      },
+      {
+        id: 6,
+        title: '托育補助申請 - 撤銷申請通過',
+        date: '2024-01-03',
+        details: '申請人: 林雅文 | 幼兒: 林小花',
+        status: 'revoked'
+      },
+      {
+        id: 7,
+        title: '公共托育服務申請 - 已錄取',
+        date: '2023-12-28',
+        details: '申請人: 黃志明 | 幼兒: 黃小龍',
+        status: 'admitted'
+      },
+      {
+        id: 8,
+        title: '托育補助申請 - 已退托',
+        date: '2023-12-20',
+        details: '申請人: 吳淑芬 | 幼兒: 吳小虎',
+        status: 'withdrawn'
       }
     ]
   } catch (error) {
@@ -439,12 +378,33 @@ const formatDate = (dateString) => {
 // 獲取狀態文字
 const getStatusText = (status) => {
   const statusMap = {
-    'processing': '審核中',
-    'approved': '已核准',
-    'rejected': '已拒絕',
-    'pending': '待審核'
+    processing: '審核中',
+    supplement: '補件',
+    rejected: '退件',
+    waitingForAdmission: '通過後補中',
+    revokeProcessing: '撤銷申請審核中',
+    revoked: '撤銷聲請通過',
+    admitted: '錄取',
+    withdrawn: '已退托',
+    approved: '已核准',
+    pending: '待審核'
   }
   return statusMap[status] || '未知狀態'
+}
+
+// 補件：導向補件頁
+const goToSupplement = (applicationId) => {
+  router.push({ path: '/supplement-document', query: { applicationId } })
+}
+
+// 退件：導向退件說明
+const viewRejection = (applicationId) => {
+  router.push({ path: '/rejection-reason', query: { applicationId } })
+}
+
+// 通過後補中：導向撤銷申請
+const goToRevoke = (applicationId) => {
+  router.push({ path: '/revoke-application', query: { applicationId } })
 }
 
 // 儲存家長資料
@@ -492,6 +452,16 @@ function addChild() {
   })
   showAddChild.value = false
   newChild.value = { idNumber: '', name: '', birthday: '', gender: '男' }
+}
+
+// 管理家長資料
+const manageParents = () => {
+  router.push('/manage-parents')
+}
+
+// 管理幼兒資料
+const manageChildren = () => {
+  router.push('/manage-children')
 }
 </script>
 
@@ -792,61 +762,98 @@ function addChild() {
   color: #155724;
 }
 
-.account-management-section {
-  background: linear-gradient(180deg, #fff8f6, #fff6f3);
-  border-radius: 12px;
-  padding: 20px 24px;
-  margin-top: 32px;
-  box-shadow: 0 6px 18px rgba(249, 175, 174, 0.08);
-  border-left: 6px solid #F9AFAE; /* 左側強調條 */
+.status-badge.rejected {
+  background: #f8d7da;
+  color: #721c24;
 }
 
-.account-status-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.status-badge.supplement {
+  background: #fff3cd;
+  color: #856404;
 }
 
-.status-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.status-badge.waitingForAdmission {
+  background: #cce5ff;
+  color: #004085;
 }
 
-.status-toggle span {
-  color: #333;
+.status-badge.revokeProcessing {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
+.status-badge.revoked {
+  background: #d6d8db;
+  color: #1b1e21;
+}
+
+.status-badge.admitted {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.status-badge.withdrawn {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.queue-info {
+  color: #004085;
+  font-weight: 600;
+  margin-top: 8px;
+  font-size: 0.95rem;
+}
+
+.queue-number {
+  color: #dc3545;
+  font-size: 1.1rem;
   font-weight: bold;
 }
 
-.account-status-card .actions-row {
+.application-status {
   display: flex;
-  gap: 12px;
+  align-items: center;
   justify-content: flex-end;
-  margin-top: 8px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-@media (max-width: 768px) {
-  .member-card {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .application-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .services-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .quick-actions {
-    grid-template-columns: 1fr;
-  }
-
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
+/* 統一按鈕樣式（沿用全站主題） */
+.save-btn, .cancel-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.2s;
 }
+.save-btn {
+  background: #F9AFAE;
+  color: #fff;
+}
+.save-btn:hover { background: #f5a1a1; }
+.cancel-btn {
+  background: transparent;
+  color: #F9AFAE;
+  border: 2px solid #F9AFAE;
+}
+.cancel-btn:hover { background: #F9AFAE; color: #fff; }
+.back-btn {
+  background: #6c757d;
+  color: #fff;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.2s;
+}
+.back-btn:hover { background: #5a6268; }
+
+/* 移除舊的 action-btn 顏色定義，避免不一致 */
+.action-btn, .supplement-btn, .rejection-btn, .revoke-btn { all: unset; }
+/* 重新設定 action-btn 為按鈕的 reset 之後的基礎樣式（不覆蓋新樣式）*/
+.action-btn { display: inline-block; }
+
+/* 保留既有的狀態徽章與其他樣式 */
 </style>

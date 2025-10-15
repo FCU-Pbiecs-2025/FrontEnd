@@ -33,7 +33,8 @@
     <h2>幼兒資料</h2>
     <div v-for="(child, cIdx) in children" :key="cIdx" class="child-form">
       <h3>幼兒 {{ cIdx + 1 }}</h3>
-      <label>身分證字號 <input v-model="child.id" /></label>
+      <label>身分證字號 <input v-model="child.id" @blur="validateChildId(cIdx)" /></label>
+      <span class="error" v-if="childIdErrors[cIdx]">{{ childIdErrors[cIdx] }}</span>
       <label>姓名 <input v-model="child.name" /></label>
       <label>性別
         <select v-model="child.gender">
@@ -59,6 +60,7 @@ export default {
     return {
       parents: [this.defaultParent()],
       children: [this.defaultChild()],
+      childIdErrors: [],
     };
   },
   methods: {
@@ -78,14 +80,30 @@ export default {
     },
     addChild() {
       this.children.push(this.defaultChild());
+      this.childIdErrors.push('');
     },
     removeChild(idx) {
       this.children.splice(idx, 1);
+      this.childIdErrors.splice(idx, 1);
     },
     onFileChange(e, idx) {
       this.parents[idx].file = e.target.files[0];
     },
+    validateChildId(idx) {
+      const id = this.children[idx].id;
+      // 簡單的身分證字號格式驗證：僅允許字母和數字，長度為10或18
+      const regex = /^[A-Za-z0-9]{10,18}$/;
+      this.childIdErrors[idx] = regex.test(id) ? '' : '身分證字號格式錯誤';
+    },
     submitForm() {
+      // 送出前檢查所有幼兒身分證字號
+      for (let i = 0; i < this.children.length; i++) {
+        this.validateChildId(i);
+        if (this.childIdErrors[i]) {
+          alert('請修正幼兒身分證字號錯誤後再提交');
+          return;
+        }
+      }
       // TODO: API串接或emit事件
       alert('表單已送出');
     }
@@ -305,5 +323,12 @@ input[type="checkbox"]:checked::after {
   color: white;
   font-size: 12px;
   font-weight: bold;
+}
+
+.error {
+  color: #e74c3c;
+  font-size: 0.875rem;
+  margin-top: -10px;
+  margin-bottom: 10px;
 }
 </style>

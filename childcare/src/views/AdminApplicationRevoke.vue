@@ -27,7 +27,7 @@
           </div>
           <div class="query-row">
             <div class="search-area">
-              <label class="type-label">申請戶姓名：</label>
+              <label class="type-label">申請人姓名：</label>
               <input v-model="filters.applicant" placeholder="姓名/身分證末四碼" class="date-input" style="width:200px" />
             </div>
           </div>
@@ -41,7 +41,8 @@
           <thead>
             <tr>
               <th>撤銷編號</th>
-              <th>申請戶</th>
+              <th>申請日期</th>
+              <th>申請人</th>
               <th>機構</th>
               <th>原因</th>
               <th>操作</th>
@@ -50,6 +51,7 @@
           <tbody>
             <tr v-for="item in items" :key="item.id">
               <td class="date-cell">{{ item.id }}</td>
+              <td class="date-cell">{{ item.Date }}</td>
               <td class="title-cell">{{ item.applicant }}</td>
               <td class="title-cell">{{ item.institution }}</td>
               <td class="title-cell">{{ item.reason }}</td>
@@ -76,7 +78,7 @@
               <span class="form-section-title">▶ 申請者資訊</span>
             </div>
             <div class="form-row">
-              <label class="form-label">申請戶：</label>
+              <label class="form-label">申請人：</label>
               <span>{{ detail.applicant }}</span>
             </div>
             <div class="form-row">
@@ -117,10 +119,10 @@ const filters = ref({ type: '', revokeId: '', applicant: '' })
 
 // 原始完整資料列表
 const fullList = ref([
-  { id: 'R2001', applicant: '張麗麗', institution: '快樂托育', reason: '資格不符', type: 'qualification' },
-  { id: 'R2002', applicant: '王小明', institution: '幸福幼兒園', reason: '文件不全', type: 'document' },
-  { id: 'R2003', applicant: '李小華', institution: '陽光托育所', reason: '其他原因', type: 'other' },
-  { id: 'R2004', applicant: '陳大同', institution: '愛心幼兒園', reason: '資格不符', type: 'qualification' }
+  { id: 'R2001',Date:'2025/01/01', applicant: '張麗麗', institution: '快樂托育', reason: '資格不符', type: 'qualification' },
+  { id: 'R2002',Date:'2025/01/01', applicant: '王小明', institution: '幸福幼兒園', reason: '文件不全', type: 'document' },
+  { id: 'R2003',Date:'2025/01/01', applicant: '李小華', institution: '陽光托育所', reason: '其他原因', type: 'other' },
+  { id: 'R2004',Date:'2025/01/01', applicant: '陳大同', institution: '愛心幼兒園', reason: '資格不符', type: 'qualification' }
 ])
 
 // 顯示的資料列表（初始顯示全部）

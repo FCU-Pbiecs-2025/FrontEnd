@@ -22,6 +22,10 @@
           <input type="date" v-model="form.displayDate" class="form-input" />
         </div>
         <div class="form-row">
+          <label class="form-label">結束日期：</label>
+          <input type="date" v-model="form.endDate" class="form-input" />
+        </div>
+        <div class="form-row">
           <label class="form-label">狀態：</label>
           <div class="radio-group">
             <label class="radio-label">
@@ -60,7 +64,20 @@ const storageKey = 'siteBanners'
 const route = useRoute()
 const router = useRouter()
 
-const form = ref({ id: null, image: '', link: '', displayDate: '', status: '顯示' })
+const getToday = () => {
+  const d = new Date();
+  const pad = n => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+};
+
+const form = ref({
+  id: null,
+  image: '',
+  link: '',
+  displayDate: getToday(),
+  endDate: getToday(),
+  status: '顯示'
+})
 const banners = ref([])
 
 const isNew = computed(() => route.name === 'AdminBannerNew' || !route.params.id)
@@ -76,10 +93,14 @@ onMounted(() => {
     const id = Number(route.params.id)
     const found = banners.value.find(b => Number(b.id) === id)
     if (found) {
-      form.value = { ...found }
+      form.value = { ...form.value, ...found }
     } else {
       router.replace({ path: '/admin' })
     }
+  } else {
+    // 新增時預設日期
+    form.value.displayDate = getToday();
+    form.value.endDate = getToday();
   }
 })
 

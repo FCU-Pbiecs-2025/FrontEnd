@@ -26,7 +26,7 @@
           </div>
           <div class="query-row">
             <div class="search-area">
-              <label class="type-label">申請戶姓名：</label>
+              <label class="type-label">申請人姓名：</label>
               <input v-model="filters.applicant" placeholder="姓名/身分證末四碼" class="date-input" style="width:200px" />
             </div>
           </div>
@@ -40,7 +40,8 @@
           <thead>
             <tr>
               <th>申請編號</th>
-              <th>申請戶</th>
+              <th>申請日期</th>
+              <th>申請人</th>
               <th>機構</th>
               <th>狀態</th>
               <th>操作</th>
@@ -49,6 +50,7 @@
           <tbody>
             <tr v-for="item in items" :key="item.id">
               <td class="date-cell">{{ item.id }}</td>
+              <td class="date-cell">{{ item.Date }}</td>
               <td class="title-cell">{{ item.applicant }}</td>
               <td class="title-cell">{{ item.institution }}</td>
               <td class="title-cell">{{ item.status }}</td>
@@ -57,7 +59,7 @@
               </td>
             </tr>
             <tr v-if="items.length === 0">
-              <td colspan="5" class="empty-tip">目前沒有符合條件的申請</td>
+              <td colspan="6" class="empty-tip">目前沒有符合條件的申請</td>
             </tr>
           </tbody>
         </table>
@@ -104,14 +106,18 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const filters = ref({ type: '', applicationId: '', applicant: '' })
 
+const today = new Date();
+const pad = n => n.toString().padStart(2, '0');
+const formatDate = d => `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())}`;
+
 // 原始完整資料列表
 const fullList = ref([
-  { id: 'A1001', applicant: '王小明', institution: '幸福幼兒園', status: '待審核', type: 'public', content: '參考資料...' },
-  { id: 'A1002', applicant: '陳小華', institution: '快樂托育中心', status: '待審核', type: 'private', content: '參考資料...' },
-  { id: 'A1003', applicant: '李大明', institution: '陽光幼兒園', status: '已通過', type: 'public', content: '參考資料...' },
-  { id: 'A1004', applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...' },
-  { id: 'A1004', applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...' },
-  { id: 'A1004', applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...' }
+  { id: 'A1001', Date: formatDate(today), applicant: '王小明', institution: '幸福幼兒園', status: '待審核', type: 'public', content: '參考資料...' },
+  { id: 'A1002', Date: formatDate(today), applicant: '陳小華', institution: '快樂托育中心', status: '待審核', type: 'private', content: '參考資料...' },
+  { id: 'A1003', Date: formatDate(today), applicant: '李大明', institution: '陽光幼兒園', status: '已通過', type: 'public', content: '參考資料...' },
+  { id: 'A1004', Date: formatDate(today), applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...' },
+  { id: 'A1005', Date: formatDate(today), applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...' },
+  { id: 'A1006', Date: formatDate(today), applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...' }
 ])
 
 // 顯示的資料列表（初始顯示全部）

@@ -55,6 +55,36 @@ const routes = [
                 meta: { requiresAuth: true, breadcrumb: '會員中心' }
             },
             {
+                path: '/manage-parents',
+                name: 'ManageParents',
+                component: () => import('../views/ManageParents.vue'),
+                meta: { requiresAuth: true, breadcrumb: '家長資料管理' }
+            },
+            {
+                path: '/manage-children',
+                name: 'ManageChildren',
+                component: () => import('../views/ManageChildren.vue'),
+                meta: { requiresAuth: true, breadcrumb: '幼兒資料管理' }
+            },
+            {
+                path: '/supplement-document',
+                name: 'SupplementDocument',
+                component: () => import('../views/SupplementDocument.vue'),
+                meta: { requiresAuth: true, breadcrumb: '補件申請' }
+            },
+            {
+                path: '/rejection-reason',
+                name: 'RejectionReason',
+                component: () => import('../views/RejectionReason.vue'),
+                meta: { requiresAuth: true, breadcrumb: '退件說明' }
+            },
+            {
+                path: '/revoke-application',
+                name: 'RevokeApplication',
+                component: () => import('../views/RevokeApplication.vue'),
+                meta: { requiresAuth: true, breadcrumb: '撤銷申請' }
+            },
+            {
                 path: '/forgot-password',
                 name: 'ForgotPassword',
                 component: () => import('../views/ForgotPassword.vue')
