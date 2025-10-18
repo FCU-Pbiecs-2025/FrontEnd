@@ -297,6 +297,18 @@ const routes = [
                         ]
                     }
                 ]
+            },
+            {
+                path: 'lottery-draw',
+                name: 'AdminLotteryDraw',
+                component: () => import('../views/AdminLotteryDraw.vue'),
+                meta: { breadcrumb: '補位抽籤' }
+            },
+            {
+                path: 'waitlist',
+                name: 'AdminWaitlist',
+                component: () => import('../views/AdminWaitlist.vue'),
+                meta: { breadcrumb: '候補清冊' }
             }
         ]
     }

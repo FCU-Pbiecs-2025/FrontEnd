@@ -23,6 +23,7 @@
               <thead>
                 <tr>
                   <th>機構名稱</th>
+                  <th>班級名稱</th>
                   <th>收托年紀起</th>
                   <th>收托年紀迄</th>
                   <th>剩餘名額</th>
@@ -32,6 +33,7 @@
               <tbody>
                 <tr v-for="inst in filteredInstitutions" :key="inst.id">
                   <td>{{ inst.name }}</td>
+                  <td>{{ inst.unit || '-' }}</td>
                   <td>{{ inst.age_from }}</td>
                   <td>{{ inst.age_to }}</td>
                   <td>{{ inst.capacity - inst.enrolled }}</td>
@@ -41,7 +43,7 @@
                   </td>
                 </tr>
                 <tr v-if="filteredInstitutions.length === 0">
-                  <td colspan="5" class="empty-tip">目前沒有機構資料</td>
+                  <td colspan="6" class="empty-tip">目前沒有機構資料</td>
                 </tr>
               </tbody>
             </table>
@@ -61,9 +63,9 @@ const route = useRoute()
 
 // 機構假資料
 const institutions = ref([
-  { id: 1, name: '快樂幼兒園', age_from: 2, age_to: 6, capacity: 60, enrolled: 48 },
-  { id: 2, name: '幸福幼兒園', age_from: 3, age_to: 5, capacity: 40, enrolled: 35 },
-  { id: 3, name: '希望幼兒園', age_from: 2, age_to: 4, capacity: 30, enrolled: 20 }
+  { id: 1, name: '快樂幼兒園', unit: 'A班', age_from: 2, age_to: 6, capacity: 60, enrolled: 48 },
+  { id: 2, name: '幸福幼兒園', unit: 'B班', age_from: 3, age_to: 5, capacity: 40, enrolled: 35 },
+  { id: 3, name: '希望幼兒園', unit: 'C班', age_from: 2, age_to: 4, capacity: 30, enrolled: 20 }
 ])
 
 // 如果專案仍保留班級 localStorage 資料，保留 classes 資料與儲存函式以便刪除機構時同步移除
@@ -121,8 +123,8 @@ const doQueryInstitution = () => {
 
 // 新增：編輯/刪除機構
 function editInstitution(inst) {
-  // 導向該機構的班級列表，以便在班級列表中編輯單一班級
-  router.push({ name: 'AdminClassList', params: { institutionId: inst.id } })
+  // 直接導向班級編輯頁面，需帶 institutionId 和 id（班級 id）
+  router.push({ name: 'AdminClassEdit', params: { institutionId: inst.id, id: inst.id } })
 }
 
 function deleteInstitution(inst) {
@@ -172,5 +174,3 @@ onMounted(() => {
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
 /* removed unused bottom-row and primary styles */
 </style>
-
-

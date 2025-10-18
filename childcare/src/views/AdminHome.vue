@@ -65,8 +65,9 @@
         </div>
         <div class="menu-section">
           <div class="menu-title">個案管理</div>
-          <div class="menu-title">候補清冊</div>
-          <div class="menu-title">補位抽籤</div>
+          <!-- 修正：候補清冊可點擊，補位抽籤指向對應路由 -->
+          <div class="menu-title clickable" :class="{active: isActive('/admin/waitlist')}" @click="navigate('/admin/waitlist')">候補清冊</div>
+          <div class="menu-title clickable" :class="{active: isActive('/admin/lottery-draw')}" @click="navigate('/admin/lottery-draw')">補位抽籤</div>
         </div>
       </nav>
     </aside>
@@ -183,7 +184,7 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
 })
 
-// AdminDashboard 內容
+// AdminDashboard 設定資料
 const todoList = [
   { id: 1, title: '審核新申請', content: '有 3 筆新申請待審核', date: '2025/10/10' },
   { id: 2, title: '補位抽籤', content: '本週需進行補位抽籤', date: '2025/10/09' }

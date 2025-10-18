@@ -12,7 +12,7 @@
         <div class="query-row">
           <div class="search-area">
             <label class="search-label" for="queryAdmin">查詢帳號：</label>
-            <input id="queryAdmin" v-model="query" type="text" placeholder="請輸入管理者帳號或名稱" class="search-input" />
+            <input id="queryAdmin" v-model="query" type="text" placeholder="請輸入帳號" class="search-input" />
           </div>
           <button class="btn query" @click="handleQuery">查詢</button>
         </div>

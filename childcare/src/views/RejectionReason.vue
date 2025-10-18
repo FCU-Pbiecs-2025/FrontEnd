@@ -35,7 +35,6 @@
 
           <div class="actions">
             <button class="service-btn" @click="goBack">返回會員中心</button>
-            <button class="service-btn ghost" @click="contactSupport">聯絡客服</button>
           </div>
         </div>
       </div>
@@ -57,7 +56,7 @@ const suggestions = ref([
   '請確認家長雙方均有工作證明文件',
   '如有特殊情況，可檢附相關證明文件重新申請',
   '建議參考「托育資格條件說明」，確認是否符合其他托育方案',
-  '如有疑問，歡迎聯絡客服諮詢'
+  '如有疑問，歡迎聯絡申請機構諮詢'
 ])
 
 onMounted(() => {
@@ -70,10 +69,6 @@ const loadRejectionInfo = () => {
 
 const goBack = () => {
   router.push('/member-center')
-}
-
-const contactSupport = () => {
-  alert('客服功能（待實現）')
 }
 </script>
 
@@ -210,16 +205,4 @@ const contactSupport = () => {
 .service-btn:hover {
   background: #f5a1a1;
 }
-
-.service-btn.ghost {
-  background: transparent;
-  color: #F9AFAE;
-  border: 2px solid #F9AFAE;
-}
-
-.service-btn.ghost:hover {
-  background: #F9AFAE;
-  color: white;
-}
 </style>
-

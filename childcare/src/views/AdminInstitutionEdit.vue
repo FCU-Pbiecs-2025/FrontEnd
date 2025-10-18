@@ -14,41 +14,40 @@
           <input v-model="form.name" class="form-input" placeholder="請輸入機構名稱" />
         </div>
         <div class="form-row">
-          <label class="form-label">負責人姓名：</label>
-          <input v-model="form.director" class="form-input" placeholder="請輸入負責人姓名" />
+          <label class="form-label">連絡人：</label>
+          <input v-model="form.contact" class="form-input" placeholder="請輸入連絡人" />
         </div>
         <div class="form-row">
-          <label class="form-label">參與縣市：</label>
-          <input v-model="form.city" class="form-input" placeholder="請輸入縣市" />
+          <label class="form-label">機構地址：</label>
+          <input v-model="form.address" class="form-input" placeholder="請輸入機構地址" />
         </div>
         <div class="form-row">
-          <label class="form-label">聯絡人：</label>
-          <input v-model="form.contact" class="form-input" placeholder="請輸入聯絡人" />
-        </div>
-        <div class="form-row">
-          <label class="form-label">電話：</label>
-          <input v-model="form.phone" class="form-input" placeholder="請輸入電話" />
+          <label class="form-label">機構電話：</label>
+          <input v-model="form.phone" class="form-input" placeholder="請輸入機構電話" />
         </div>
         <div class="form-row">
           <label class="form-label">傳真：</label>
           <input v-model="form.fax" class="form-input" placeholder="請輸入傳真" />
         </div>
         <div class="form-row">
-          <label class="form-label">地址：</label>
-          <input v-model="form.address" class="form-input" placeholder="請輸入地址" />
+          <label class="form-label">電子信箱：</label>
+          <input v-model="form.email" class="form-input" placeholder="請輸入電子信箱" />
         </div>
         <div class="form-row">
-          <label class="form-label">附檔圖：</label>
-          <input v-model="form.attachment" class="form-input" placeholder="請輸入附檔圖" />
+          <label class="form-label">相關連結：</label>
+          <input v-model="form.link" class="form-input" placeholder="請輸入相關連結" />
         </div>
         <div class="form-row">
-          <label class="form-label">立案證書：</label>
-          <textarea v-model="form.license" class="form-textarea" rows="4" placeholder="請輸入立案證書資訊"></textarea>
+          <label class="form-label">機構說明：</label>
+          <textarea v-model="form.description" class="form-textarea" rows="4" placeholder="請輸入機構說明"></textarea>
         </div>
         <div class="form-row">
-          <label class="form-label">環境照資訊：</label>
+          <label class="form-label">負責人：</label>
+          <input v-model="form.director" class="form-input" placeholder="請輸入負責人" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">圖片：</label>
           <div class="file-btn"> <button class="btn secondary" @click="uploadPhoto">瀏覽檔案</button></div>
-
         </div>
       </div>
       <div class="bottom-row">
@@ -70,14 +69,15 @@ const storageKey = 'institutionData'
 const form = ref({
   id: null,
   name: '',
-  director: '',
-  city: '',
   contact: '',
+  address: '',
   phone: '',
   fax: '',
-  address: '',
-  attachment: '',
-  license: ''
+  email: '',
+  link: '',
+  description: '',
+  director: '',
+  image: ''
 })
 
 const institutions = ref([])
@@ -109,20 +109,24 @@ const validate = () => {
     alert('請輸入機構名稱')
     return false
   }
-  if (!form.value.director) {
-    alert('請輸入負責人姓名')
-    return false
-  }
-  if (!form.value.city) {
-    alert('請輸入參與縣市')
-    return false
-  }
   if (!form.value.contact) {
-    alert('請輸入聯絡人')
+    alert('請輸入連絡人')
+    return false
+  }
+  if (!form.value.address) {
+    alert('請輸入機構地址')
     return false
   }
   if (!form.value.phone) {
-    alert('請輸入電話')
+    alert('請輸入機構電話')
+    return false
+  }
+  if (!form.value.email) {
+    alert('請輸入電子信箱')
+    return false
+  }
+  if (!form.value.director) {
+    alert('請輸入負責人')
     return false
   }
   return true

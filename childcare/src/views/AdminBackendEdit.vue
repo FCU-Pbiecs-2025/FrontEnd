@@ -11,7 +11,7 @@
       <div class="edit-form-card">
         <div class="form-row">
           <label class="form-label">帳號 ID：</label>
-          <input v-model="account.id" class="form-input" readonly />
+          <input v-model="account.id" class="form-input" :readonly="!isNew" />
         </div>
         <div class="form-row">
           <label class="form-label">密碼：</label>

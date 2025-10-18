@@ -40,7 +40,7 @@
             <input type="date" v-model="revokeDate" class="form-input" />
           </div>
           <div class="form-row">
-            <label class="form-label">立案資料：</label>
+            <label class="form-label">備註說明：</label>
             <textarea v-model="revokeNote" class="form-input" rows="5" placeholder="請輸入撤銷備註..."></textarea>
           </div>
           <div class="form-row">

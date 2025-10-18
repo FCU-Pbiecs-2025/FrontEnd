@@ -15,20 +15,28 @@
           <div class="member-details">
             <div v-if="!editProfileMode">
               <h3>{{ authStore.user?.name || authStore.user?.account || '用戶' }}</h3>
-              <p>📧 email: {{ authStore.user?.email || '未設定' }}</p>
-              <p>📱 電話: {{ authStore.user?.phone || '未設定' }}</p>
-              <p>🏠 地址: {{ authStore.user?.address || '未設定' }}</p>
+              <p>email: {{ authStore.user?.email || '未設定' }}</p>
+              <p>電話: {{ authStore.user?.phone || '未設定' }}</p>
+              <p>地址: {{ authStore.user?.address || '未設定' }}</p>
               <button class="edit-btn" @click="editProfile">編輯資料</button>
             </div>
             <div v-else class="profile-edit-form">
-              <label>姓名：<input v-model="editableUser.name" /></label>
-              <label>電子信箱：<input v-model="editableUser.email" type="email" /></label>
-              <label>電話：<input v-model="editableUser.phone" /></label>
-              <label>地址：<input v-model="editableUser.address" /></label>
-              <div style="margin-top:8px; display:flex; gap:8px; justify-content:flex-end;">
-                <button class="edit-btn" @click="saveProfile">儲存</button>
-                <button class="edit-btn" @click="cancelProfileEdit">取消</button>
-              </div>
+              <form class="profile-form" @submit.prevent="saveProfile">
+                <div class="input-row">
+                  <label class="field">姓名 <input v-model="editableUser.name" class="input-field" /></label>
+                  <label class="field">電子信箱 <input v-model="editableUser.email" type="email" class="input-field" /></label>
+                </div>
+
+                <div class="input-row">
+                  <label class="field">電話 <input v-model="editableUser.phone" class="input-field" /></label>
+                  <label class="field">地址 <input v-model="editableUser.address" class="input-field" /></label>
+                </div>
+
+                <div class="form-actions">
+                  <button type="submit" class="save-btn">儲存</button>
+                  <button type="button" class="cancel-btn" @click="cancelProfileEdit">取消</button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
@@ -74,9 +82,9 @@
               <span :class="['status-badge', application.status]">{{ getStatusText(application.status) }}</span>
             </span>
             <div class="application-actions-cell">
-              <button v-if="application.status === 'supplement'" class="save-btn" @click.stop="goToSupplement(application.id)">補件</button>
-              <button v-if="application.status === 'rejected'" class="cancel-btn" @click.stop="viewRejection(application.id)">查看原因</button>
-              <button v-if="application.status === 'waitingForAdmission'" class="back-btn" @click.stop="goToRevoke(application.id)">撤銷申請</button>
+              <button v-if="application.status === 'supplement'" class="action-btn supplement" @click.stop="goToSupplement(application.id)">補件</button>
+              <button v-if="application.status === 'rejected'" class="action-btn view-reason" @click.stop="viewRejection(application.id)">查看原因</button>
+              <button v-if="application.status === 'waitingForAdmission'" class="action-btn revoke" @click.stop="goToRevoke(application.id)">撤銷申請</button>
             </div>
           </div>
 
@@ -85,21 +93,21 @@
       </div>
 
       <!-- 帳號管理區塊 -->
-      <div v-if="accountId" class="account-management-section">
-        <h2>帳號管理</h2>
-        <div class="account-status-card">
-          <p>帳號 ID：{{ accountId }}</p>
-          <div class="status-toggle">
-            <span>狀態：</span>
-            <select v-model="accountStatus">
-              <option value="啟用">啟用</option>
-              <option value="停用">停用</option>
-            </select>
-          </div>
-          <div class="actions-row">
-            <button class="service-btn" @click="saveAccountStatus">儲存狀態</button>
-            <button class="service-btn ghost" @click="clearAccountQuery">關閉</button>
-          </div>
+      <div v-if="accountId" class="account-card">
+        <div class="title-row">
+          <span class="main-title">帳號管理</span>
+          <span class="account-id">ID：{{ accountId }}</span>
+        </div>
+        <div class="status-toggle">
+          <span class="status-label">狀態：</span>
+          <select v-model="accountStatus" class="form-input">
+            <option value="啟用">啟用</option>
+            <option value="停用">停用</option>
+          </select>
+        </div>
+        <div class="bottom-row">
+          <button class="btn primary" @click="saveAccountStatus">儲存狀態</button>
+          <button class="btn ghost" @click="clearAccountQuery">關閉</button>
         </div>
       </div>
     </div>
@@ -242,7 +250,7 @@ const cancelProfileEdit = () => {
   editProfileMode.value = false
 }
 
-// 初始化會員中心資料
+// 初始化會員中���資料
 onMounted(async () => {
   // 確保用戶已登入，如果沒有登入則導向登入頁
   if (!authStore.isLoggedIn) {
@@ -759,8 +767,8 @@ const manageChildren = () => {
 }
 
 .status-badge.processing {
-  background: #fff3cd;
-  color: #856404;
+  background: #fff3cd; /* 黃色背景 */
+  color: #856404;    /* 深黃色文字 */
 }
 
 .status-badge.approved {
@@ -769,38 +777,38 @@ const manageChildren = () => {
 }
 
 .status-badge.rejected {
-  background: #f8d7da;
-  color: #721c24;
+  background: #f8d7da; /* 紅色背景 */
+  color: #721c24;    /* 深紅色文字 */
 }
 
 .status-badge.supplement {
-  background: #fff3cd;
-  color: #856404;
+  background: #f8d7da; /* 紅色背景 */
+  color: #721c24;    /* 深紅色文字 */
 }
 
 .status-badge.waitingForAdmission {
-  background: #cce5ff;
-  color: #004085;
+  background: #d4edda; /* 綠色背景 */
+  color: #155724;    /* 深綠色文字 */
 }
 
 .status-badge.revokeProcessing {
-  background: #e2e3e5;
-  color: #383d41;
+  background: #fff3cd; /* 黃色背景 */
+  color: #856404;    /* 深黃色文字 */
 }
 
 .status-badge.revoked {
-  background: #d6d8db;
-  color: #1b1e21;
+  background: #d4edda; /* 綠色背景 */
+  color: #155724;    /* 深綠色文字 */
 }
 
 .status-badge.admitted {
-  background: #d1ecf1;
-  color: #0c5460;
+  background: #d4edda; /* 綠色背景 */
+  color: #155724;    /* 深綠色文字 */
 }
 
 .status-badge.withdrawn {
-  background: #f8d7da;
-  color: #721c24;
+  background: #f8d7da; /* 紅色背景 */
+  color: #721c24;    /* 深紅色文字 */
 }
 
 .queue-info {
@@ -823,6 +831,48 @@ const manageChildren = () => {
   gap: 8px;
   flex-wrap: wrap;
 }
+
+/* 統一按鈕樣式 */
+.action-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s;
+  white-space: nowrap;
+}
+
+/* 補件按鈕樣式 */
+.action-btn.supplement {
+  background: #F9AFAE;
+  color: #fff;
+}
+.action-btn.supplement:hover {
+  background: #f5a1a1;
+}
+
+/* 查看原因按鈕樣式 */
+.action-btn.view-reason {
+  background: #F9AFAE;
+  color: #fff;
+}
+.action-btn.view-reason:hover {
+  background: #f5a1a1;
+}
+
+/* 撤銷申請按鈕樣式 */
+.action-btn.revoke {
+  background: #F9AFAE;
+  color: #fff;
+  border: 1px solid transparent;
+}
+.action-btn.revoke:hover {
+  background: #f5a1a1;
+  color: #fff;
+}
+
 
 /* 統一按鈕樣式（沿用全站主題） */
 .save-btn, .cancel-btn {
@@ -857,9 +907,9 @@ const manageChildren = () => {
 .back-btn:hover { background: #5a6268; }
 
 /* 移除舊的 action-btn 顏色定義，避免不一致 */
-.action-btn, .supplement-btn, .rejection-btn, .revoke-btn { all: unset; }
+.supplement-btn, .rejection-btn, .revoke-btn { all: unset; }
 /* 重新設定 action-btn 為按鈕的 reset 之後的基礎樣式（不覆蓋新樣式）*/
-.action-btn { display: inline-block; }
+
 
 /* 保留既有的狀態徽章與其他樣式 */
 
@@ -961,19 +1011,142 @@ const manageChildren = () => {
   grid-column: 1 / -1;
 }
 
-@media (max-width: 768px) {
-  .news-list-header,
-  .news-list-row {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
+/* profile edit styles (simplified: form-only) */
+.profile-edit-form { width: 100%; }
+.profile-form { display: flex; flex-direction: column; gap: 12px; }
+.input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 6px; font-weight: 600; color: #555; }
+.input-field { padding: 10px 12px; border-radius: 8px; border: 1px solid #eee; background: #fff; font-size: 0.98rem; outline: none; }
+.input-field:focus { box-shadow: 0 0 0 4px rgba(249,175,174,0.12); border-color: #f5a1a1; }
+.form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; }
+@media (max-width: 700px) {
+  .input-row { grid-template-columns: 1fr; }
+}
 
-  .news-list-section {
-    padding: 16px 8px;
+/* 美化帳號管理區塊 */
+.account-management-section {
+  margin: 40px auto 0 auto;
+  max-width: 480px;
+  padding: 0 8px 32px 8px;
+}
+.account-card {
+  background: #fff8f6;
+  border-radius: 18px;
+  box-shadow: 0 4px 24px rgba(249,175,174,0.13);
+  padding: 32px 28px 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-items: stretch;
+}
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.main-title {
+  font-size: 1.35rem;
+  color: #f27575;
+  font-weight: bold;
+  margin: 0;
+}
+.account-id {
+  font-size: 1.08rem;
+  color: #5f8ba8;
+  background: #fff3f1;
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-weight: 500;
+  letter-spacing: 1px;
+}
+.status-toggle {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.status-label {
+  font-size: 1.08rem;
+  color: #555;
+  font-weight: 600;
+}
+.form-input {
+  font-size: 1.08rem;
+  padding: 8px 24px;
+  border-radius: 10px;
+  border: 1.5px solid #f9afae;
+  background: #fff;
+  color: #f27575;
+  font-weight: bold;
+  box-shadow: 0 2px 8px #f9afae22;
+  transition: border 0.2s, box-shadow 0.2s;
+}
+.form-input:focus {
+  border-color: #f27575;
+  box-shadow: 0 0 0 3px #f9afae33;
+  outline: none;
+}
+.form-input option[value="啟用"] {
+  color: #3bb97b;
+  font-weight: bold;
+}
+.form-input option[value="停用"] {
+  color: #f27575;
+  font-weight: bold;
+}
+.bottom-row {
+  display: flex;
+  gap: 18px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+.btn {
+  padding: 10px 28px;
+  border-radius: 10px;
+  font-size: 1.08rem;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.btn.primary {
+  background: linear-gradient(90deg, #f9afae 60%, #f27575 100%);
+  color: #fff;
+  font-weight: bold;
+  border: none;
+  box-shadow: 0 2px 8px #f9afae33;
+}
+.btn.primary:hover {
+  background: linear-gradient(90deg, #f27575 60%, #f9afae 100%);
+  box-shadow: 0 4px 16px #f9afae44;
+}
+.btn.ghost {
+  background: #fff;
+  color: #f27575;
+  border: 2px solid #f9afae;
+  border-radius: 10px;
+  font-weight: bold;
+  padding: 10px 28px;
+  font-size: 1.08rem;
+  transition: background 0.2s, color 0.2s, border 0.2s;
+}
+.btn.ghost:hover {
+  background: #f9afae22;
+  color: #f27575;
+  border-color: #f27575;
+}
+@media (max-width: 600px) {
+  .account-card {
+    padding: 18px 6px 16px 6px;
+    gap: 16px;
   }
-
-  .application-actions-cell {
-    justify-content: flex-start;
+  .bottom-row {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+  .btn {
+    width: 100%;
+    padding: 10px 0;
+    font-size: 1rem;
   }
 }
 </style>

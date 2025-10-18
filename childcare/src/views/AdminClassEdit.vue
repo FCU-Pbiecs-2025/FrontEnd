@@ -29,12 +29,12 @@
 
         <div class="form-row">
           <label>收托年齡起</label>
-          <input v-model.number="form.age_from" type="number" min="0" />
+          <input v-model="form.age_from" type="text" />
         </div>
 
         <div class="form-row">
           <label>收托年齡訖</label>
-          <input v-model.number="form.age_to" type="number" min="0" />
+          <input v-model="form.age_to" type="text" />
         </div>
 
         <div class="form-row">
@@ -67,8 +67,8 @@ const defaultForm = () => ({
   unit: '',
   capacity: 0,
   enrolled: 0,
-  age_from: null,
-  age_to: null,
+  age_from: '', // 文字欄位
+  age_to: '',   // 文字欄位
   notes: ''
 })
 const form = ref(defaultForm())
@@ -137,12 +137,8 @@ const save = () => {
 }
 
 const cancel = () => {
-  const institutionId = form.value.institutionId || route.params.institutionId
-  if (institutionId) {
-    router.replace({ name: 'AdminClassList', params: { institutionId } })
-  } else {
-    router.replace({ name: 'AdminClassManager' })
-  }
+  // 直接返回班級管理主頁
+  router.replace({ name: 'AdminClassManager' })
 }
 
 // 新增按鈕的處理：清空表單並導向新增路由（帶入 institutionId）
