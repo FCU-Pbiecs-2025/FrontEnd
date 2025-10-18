@@ -52,37 +52,35 @@
 
       <div class="applications-section">
         <h2>申請狀態</h2>
-        <div class="applications-list">
-          <div v-if="applications.length === 0" class="no-applications">
-            <p>目前沒有申請記錄</p>
-            <button class="service-btn" @click="applyService">開始申請</button>
+        <!-- 五欄並排版整齊 -->
+        <div class="news-list-section applications-list">
+          <div class="news-list-header">
+            <span>申請案號</span>
+            <span>申請標題</span>
+            <span>申請內容</span>
+            <span>狀態</span>
+            <span>操作</span>
           </div>
-          <div v-else class="application-item" v-for="application in applications" :key="application.id">
-            <div class="application-info">
-              <h4>{{ application.title }}</h4>
-              <p class="application-date">申請日期: {{ formatDate(application.date) }}</p>
-              <p class="application-details">{{ application.details }}</p>
-              <!-- 通過後補中顯示序位 -->
-              <p v-if="application.status === 'waitingForAdmission' && application.queueNumber" class="queue-info">
-                目前序位：<span class="queue-number">第 {{ application.queueNumber }} 位</span>
-              </p>
-            </div>
-            <div class="application-status">
+
+          <div
+            v-for="application in applications"
+            :key="application.id"
+            class="news-list-row"
+          >
+            <span class="application-id-cell">{{ application.id || application.caseNumber || 'N/A' }}</span>
+            <span class="application-title-cell" :title="application.title">{{ application.title.length > 20 ? application.title.slice(0, 20) + '...' : application.title }}</span>
+            <span class="application-content-cell" :title="application.details">{{ application.details.length > 25 ? application.details.slice(0, 25) + '...' : application.details }}</span>
+            <span class="application-status-cell">
               <span :class="['status-badge', application.status]">{{ getStatusText(application.status) }}</span>
-              <!-- 補件按鈕（主色系） -->
-              <button v-if="application.status === 'supplement'" class="save-btn" @click="goToSupplement(application.id)">
-                補件
-              </button>
-              <!-- 查看退件原因（次要、幽靈樣式） -->
-              <button v-if="application.status === 'rejected'" class="cancel-btn" @click="viewRejection(application.id)">
-                查看原因
-              </button>
-              <!-- 撤銷申請（次要、灰色） -->
-              <button v-if="application.status === 'waitingForAdmission'" class="back-btn" @click="goToRevoke(application.id)">
-                撤銷申請
-              </button>
+            </span>
+            <div class="application-actions-cell">
+              <button v-if="application.status === 'supplement'" class="save-btn" @click.stop="goToSupplement(application.id)">補件</button>
+              <button v-if="application.status === 'rejected'" class="cancel-btn" @click.stop="viewRejection(application.id)">查看原因</button>
+              <button v-if="application.status === 'waitingForAdmission'" class="back-btn" @click.stop="goToRevoke(application.id)">撤銷申請</button>
             </div>
           </div>
+
+          <div v-if="applications.length === 0" class="empty-tip">目前沒有申請記錄</div>
         </div>
       </div>
 
@@ -267,6 +265,7 @@ const loadApplications = async () => {
     applications.value = [
       {
         id: 1,
+        caseNumber: 'CC2024010001',
         title: '公共托育服務申請 - 審核中',
         date: '2024-01-15',
         details: `申請人: ${authStore.user?.name || authStore.user?.account} | 幼兒: 王小寶`,
@@ -274,6 +273,7 @@ const loadApplications = async () => {
       },
       {
         id: 2,
+        caseNumber: 'CC2024010002',
         title: '托育補助申請 - 需要補件',
         date: '2024-01-12',
         details: '申請人: 王小明 | 幼兒: 王小美',
@@ -281,6 +281,7 @@ const loadApplications = async () => {
       },
       {
         id: 3,
+        caseNumber: 'CC2024010003',
         title: '公共托育服務申請 - 已退件',
         date: '2024-01-10',
         details: '申請人: 李大華 | 幼兒: 李小華',
@@ -288,6 +289,7 @@ const loadApplications = async () => {
       },
       {
         id: 4,
+        caseNumber: 'CC2024010004',
         title: '托育補助申請 - 通過候補中',
         date: '2024-01-08',
         details: '申請人: 張美麗 | 幼兒: 張小天',
@@ -296,6 +298,7 @@ const loadApplications = async () => {
       },
       {
         id: 5,
+        caseNumber: 'CC2024010005',
         title: '公共托育服務申請 - 撤銷申請審核中',
         date: '2024-01-05',
         details: '申請人: 陳建國 | 幼兒: 陳小明',
@@ -303,6 +306,7 @@ const loadApplications = async () => {
       },
       {
         id: 6,
+        caseNumber: 'CC2024010006',
         title: '托育補助申請 - 撤銷申請通過',
         date: '2024-01-03',
         details: '申請人: 林雅文 | 幼兒: 林小花',
@@ -310,6 +314,7 @@ const loadApplications = async () => {
       },
       {
         id: 7,
+        caseNumber: 'CC2023120007',
         title: '公共托育服務申請 - 已錄取',
         date: '2023-12-28',
         details: '申請人: 黃志明 | 幼兒: 黃小龍',
@@ -317,6 +322,7 @@ const loadApplications = async () => {
       },
       {
         id: 8,
+        caseNumber: 'CC2023120008',
         title: '托育補助申請 - 已退托',
         date: '2023-12-20',
         details: '申請人: 吳淑芬 | 幼兒: 吳小虎',
@@ -856,4 +862,118 @@ const manageChildren = () => {
 .action-btn { display: inline-block; }
 
 /* 保留既有的狀態徽章與其他樣式 */
+
+/* 新增 News-like 列表樣式（來自 News.vue 的公告列表區塊） */
+.news-list-section {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(249, 175, 174, 0.12);
+  padding: 24px;
+  margin: 10px auto 0 auto;
+  max-width: 900px;
+}
+
+/* 更新為五欄並排版 */
+.news-list-header,
+.news-list-row {
+  display: grid;
+  grid-template-columns: 120px 2fr 2.5fr 140px 180px;
+  align-items: center;
+  justify-content: stretch;
+  gap: 16px;
+}
+
+.news-list-header {
+  font-weight: bold;
+  color: var(--4th-text-color);
+  font-size: 1.05rem;
+  border-bottom: 2px solid #ffe5c2;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  background: transparent;
+}
+
+.news-list-row {
+  font-size: 1.02rem;
+  border-bottom: 1px solid #ffe5c2;
+  transition: background 0.2s;
+  padding: 12px 0;
+}
+
+.news-list-row:hover {
+  background: #fff8f6;
+}
+
+/* 各欄位樣式 */
+.application-id-cell {
+  color: var(--secondary-color);
+  font-weight: 500;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.application-title-cell {
+  font-weight: 500;
+  letter-spacing: 1px;
+  color: var(--primary-text-color);
+  overflow: visible;
+  text-overflow: unset;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+.application-content-cell {
+  color: #333;
+  overflow: visible;
+  text-overflow: unset;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+.application-status-cell {
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.application-actions-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.application-actions-cell button {
+  font-size: 0.9rem;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+
+.empty-tip {
+  text-align: center;
+  color: #aaa;
+  padding: 24px 0;
+  font-size: 1.05rem;
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 768px) {
+  .news-list-header,
+  .news-list-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .news-list-section {
+    padding: 16px 8px;
+  }
+
+  .application-actions-cell {
+    justify-content: flex-start;
+  }
+}
 </style>

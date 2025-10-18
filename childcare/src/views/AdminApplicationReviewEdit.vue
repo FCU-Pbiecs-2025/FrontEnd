@@ -1,0 +1,303 @@
+<template>
+  <div class="announcement-page">
+    <div class="announcement-card">
+      <div class="title-row">
+        <img src="https://img.icons8.com/ios/48/2e6fb7/approval.png" class="icon" alt="icon" />
+        <span class="main-title">審核申請 - {{ applicationId }}</span>
+      </div>
+
+      <div class="detail-card">
+        <h3>申請詳情</h3>
+        <div class="detail-info">
+          <div class="info-row">
+            <label class="info-label">申請編號：</label>
+            <span class="info-value">{{ applicationData.id }}</span>
+          </div>
+          <div class="info-row">
+            <label class="info-label">申請日期：</label>
+            <span class="info-value">{{ applicationData.Date }}</span>
+          </div>
+          <div class="info-row">
+            <label class="info-label">申請人：</label>
+            <span class="info-value">{{ applicationData.applicant }}</span>
+          </div>
+          <div class="info-row">
+            <label class="info-label">機構：</label>
+            <span class="info-value">{{ applicationData.institution }}</span>
+          </div>
+          <div class="info-row">
+            <label class="info-label">當前狀態：</label>
+            <span class="info-value">{{ applicationData.status }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="review-card">
+        <h3>審核資訊</h3>
+        <div class="review-form">
+          <div class="form-row">
+            <label class="form-label">審核日期：</label>
+            <input type="date" v-model="reviewDate" class="form-input" />
+          </div>
+          <div class="form-row">
+            <label class="form-label">審核結果：</label>
+            <select v-model="reviewResult" class="form-input">
+              <option value="">請選擇</option>
+              <option value="通過">通過</option>
+              <option value="退件">退件</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-label">立案資料：</label>
+            <textarea v-model="reviewNote" class="form-input" rows="5" placeholder="請輸入審核備註..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom-row">
+        <button class="btn primary" @click="confirmReview">送出審核</button>
+        <button class="btn query" @click="goBack">返回列表</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+
+const router = useRouter()
+const route = useRoute()
+
+const applicationId = ref(route.params.id)
+const applicationData = ref({})
+const reviewDate = ref(new Date().toISOString().slice(0, 10))
+const reviewResult = ref('')
+const reviewNote = ref('')
+
+// 模擬資料 - 實際應用中這裡會從 API 獲取資料
+const mockData = {
+  'A1001': { id: 'A1001', Date: '2025/10/17', applicant: '王小明', institution: '幸福幼兒園', status: '待審核', type: 'public', content: '參考資料...' },
+  'A1002': { id: 'A1002', Date: '2025/10/17', applicant: '陳小華', institution: '快樂托育中心', status: '待審核', type: 'private', content: '參考資料...' },
+  'A1003': { id: 'A1003', Date: '2025/10/17', applicant: '李大明', institution: '陽光幼兒園', status: '已通過', type: 'public', content: '參考資料...' },
+  'A1004': { id: 'A1004', Date: '2025/10/17', applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...' },
+  'A1005': { id: 'A1005', Date: '2025/10/17', applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...' },
+  'A1006': { id: 'A1006', Date: '2025/10/17', applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...' }
+}
+
+onMounted(() => {
+  // 載入申請資料
+  if (mockData[applicationId.value]) {
+    applicationData.value = { ...mockData[applicationId.value] }
+    // 如果已有審核記錄，載入之前的審核資料
+    if (applicationData.value.reviewDate) {
+      reviewDate.value = applicationData.value.reviewDate
+    }
+    if (applicationData.value.reviewNote) {
+      reviewNote.value = applicationData.value.reviewNote
+    }
+  } else {
+    // 如果找不到資料，返回列表頁
+    router.push('/admin/application-review')
+  }
+})
+
+function confirmReview() {
+  if (!reviewResult.value) {
+    alert('請選擇審核結果')
+    return
+  }
+
+  // 這裡應該發送 API 請求保存審核結果
+  console.log('審核資料:', {
+    applicationId: applicationId.value,
+    reviewDate: reviewDate.value,
+    reviewResult: reviewResult.value,
+    reviewNote: reviewNote.value
+  })
+
+  alert('審核完成！')
+  goBack()
+}
+
+function goBack() {
+  router.push('/admin/application-review')
+}
+</script>
+
+<style scoped>
+.announcement-page {
+  display: flex;
+  justify-content: center;
+}
+
+.announcement-card {
+  max-width: 820px;
+  min-width: 85%;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  margin-top: 60px;
+}
+
+.icon {
+  width: 32px;
+  height: 32px;
+}
+
+.main-title {
+  font-size: 1.35rem;
+  color: #2e6fb7;
+  font-weight: 700;
+}
+
+.detail-card, .review-card {
+  background: #fff;
+  border: 1px solid #e6e6ea;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.04);
+}
+
+.detail-card h3, .review-card h3 {
+  color: #2e6fb7;
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e6f2ff;
+  padding-bottom: 10px;
+}
+
+.detail-info {
+  display: grid;
+  gap: 16px;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+}
+
+.info-label {
+  width: 120px;
+  font-weight: 600;
+  color: #2e6fb7;
+}
+
+.info-value {
+  color: #334e5c;
+  font-weight: 500;
+}
+
+.review-form {
+  display: grid;
+  gap: 20px;
+}
+
+.form-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.form-label {
+  width: 120px;
+  font-weight: 600;
+  color: #2e6fb7;
+  margin-top: 8px;
+}
+
+.form-input {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #d8dbe0;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #2e6fb7;
+  box-shadow: 0 0 0 2px rgba(46, 111, 183, 0.1);
+}
+
+.form-input[type="date"] {
+  width: 200px;
+}
+
+select.form-input {
+  width: 200px;
+}
+
+textarea.form-input {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.bottom-row {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 40px;
+}
+
+.btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.btn.primary {
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  color: #fff;
+}
+
+.btn.primary:hover {
+  background: linear-gradient(90deg, #2563eb, #1d4ed8);
+}
+
+.btn.query {
+  background: #e6f2ff;
+  color: #2e6fb7;
+  border: 1px solid #b3d4fc;
+}
+
+.btn.query:hover {
+  background: #d1e7ff;
+}
+
+@media (max-width: 900px) {
+  .announcement-card {
+    width: 100%;
+    padding: 16px;
+  }
+
+  .detail-card, .review-card {
+    padding: 16px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-label {
+    width: auto;
+    margin-top: 0;
+    margin-bottom: 8px;
+  }
+
+  .form-input[type="date"], select.form-input {
+    width: 100%;
+  }
+}
+</style>

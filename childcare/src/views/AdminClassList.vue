@@ -20,7 +20,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="cls in filteredClasses" :key="cls.id">
+              <tr v-if="filteredClasses.length > 0" v-for="cls in filteredClasses" :key="cls.id">
                 <td>{{ cls.unit }}</td>
                 <td>{{ cls.capacity }}</td>
                 <td>{{ cls.enrolled }}</td>
@@ -37,7 +37,6 @@
             </tbody>
           </table>
         </div>
-
         <div class="bottom-row">
           <button class="btn primary" @click="showAddClass">新增班級</button>
           <button class="btn ghost" @click="goBack">返回機構列表</button>

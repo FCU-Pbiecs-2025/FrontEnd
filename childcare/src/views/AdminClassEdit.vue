@@ -4,6 +4,10 @@
       <div class="title-row">
         <img src="https://img.icons8.com/ios/48/2e6fb7/edit-property.png" class="icon" alt="icon" />
         <span class="main-title">{{ isEdit ? '編輯班級' : '新增班級' }}</span>
+        <div class="title-actions">
+          <!-- 新增班級按鈕，點擊導向新增頁面並帶入 institutionId -->
+          <button class="btn small primary" @click="addNewClass">新增班級</button>
+        </div>
       </div>
 
 
@@ -140,14 +144,27 @@ const cancel = () => {
     router.replace({ name: 'AdminClassManager' })
   }
 }
+
+// 新增按鈕的處理：清空表單並導向新增路由（帶入 institutionId）
+const addNewClass = () => {
+  const institutionId = form.value.institutionId || route.params.institutionId
+  if (!institutionId) {
+    alert('缺少機構資訊，無法新增班級')
+    router.replace({ name: 'AdminClassManager' })
+    return
+  }
+  // 導向 AdminClassNew 路由，該路由綁定到同一個組件但為新增模式
+  router.push({ name: 'AdminClassNew', params: { institutionId } })
+}
 </script>
 
 <style scoped>
 .class-edit-page { display:flex; justify-content:center; }
 .class-card { width:100%; }
-.title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; margin-top: 60px; }
+.title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; margin-top: 60px; justify-content: space-between; }
 .icon { width:28px; height:28px; }
 .main-title { font-size:1.35rem; color:#2e6fb7; font-weight:700; }
+.title-actions { display:flex; align-items:center; gap:8px }
 .form-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:18px 24px; margin-bottom:50px; box-shadow:0 2px 8px rgba(16,24,40,0.04);margin-top: 50px }
 .form-row { display:flex; align-items:center; gap:12px; margin-bottom:10px;justify-content: center; }
 .form-row label { width:120px; color:#2e6fb7; font-weight:600; }

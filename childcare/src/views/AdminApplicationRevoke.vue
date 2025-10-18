@@ -44,7 +44,7 @@
               <th>申請日期</th>
               <th>申請人</th>
               <th>機構</th>
-              <th>原因</th>
+              <th>狀態</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -54,13 +54,13 @@
               <td class="date-cell">{{ item.Date }}</td>
               <td class="title-cell">{{ item.applicant }}</td>
               <td class="title-cell">{{ item.institution }}</td>
-              <td class="title-cell">{{ item.reason }}</td>
+              <td class="title-cell">{{ item.status }}</td>
               <td class="action-cell">
                 <button class="btn small danger" @click="openDetail(item)">撤銷</button>
               </td>
             </tr>
             <tr v-if="items.length === 0">
-              <td colspan="5" class="empty-tip">目前沒有需要撤銷的案件</td>
+              <td colspan="6" class="empty-tip">目前沒有需要撤銷的案件</td>
             </tr>
           </tbody>
         </table>
@@ -68,44 +68,6 @@
 
       <div class="bottom-row" v-show="showBack">
         <button class="btn primary" @click="goBack">返回</button>
-      </div>
-
-      <div v-if="detail" class="modal">
-        <div class="modal-content">
-          <h3>撤銷詳情 - {{ detail.id }}</h3>
-          <div class="review-form">
-            <div class="form-row">
-              <span class="form-section-title">▶ 申請者資訊</span>
-            </div>
-            <div class="form-row">
-              <label class="form-label">申請人：</label>
-              <span>{{ detail.applicant }}</span>
-            </div>
-            <div class="form-row">
-              <label class="form-label">機構：</label>
-              <span>{{ detail.institution }}</span>
-            </div>
-            <div class="form-row">
-              <span class="form-section-title">▶ 撤銷申請資訊</span>
-            </div>
-            <div class="form-row">
-              <label class="form-label">撤銷原因：</label>
-              <span>{{ detail.reason }}</span>
-            </div>
-            <div class="form-row">
-              <label class="form-label">確認日期：</label>
-              <input type="date" v-model="revokeDate" class="form-input" />
-            </div>
-            <div class="form-row">
-              <label class="form-label">立案資料：</label>
-              <textarea v-model="revokeNote" class="form-input" rows="3"></textarea>
-            </div>
-          </div>
-          <div class="modal-actions">
-            <button class="btn primary" @click="confirmRevoke">送出</button>
-            <button class="btn query" @click="closeDetail">返回</button>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -119,18 +81,16 @@ const filters = ref({ type: '', revokeId: '', applicant: '' })
 
 // 原始完整資料列表
 const fullList = ref([
-  { id: 'R2001',Date:'2025/01/01', applicant: '張麗麗', institution: '快樂托育', reason: '資格不符', type: 'qualification' },
-  { id: 'R2002',Date:'2025/01/01', applicant: '王小明', institution: '幸福幼兒園', reason: '文件不全', type: 'document' },
-  { id: 'R2003',Date:'2025/01/01', applicant: '李小華', institution: '陽光托育所', reason: '其他原因', type: 'other' },
-  { id: 'R2004',Date:'2025/01/01', applicant: '陳大同', institution: '愛心幼兒園', reason: '資格不符', type: 'qualification' }
+  { id: 'R2001', Date:'2025/01/01', applicant: '張麗麗', institution: '快樂托育', status: '待審核', type: 'qualification' },
+  { id: 'R2002', Date:'2025/01/01', applicant: '王小明', institution: '幸福幼兒園', status: '已通過', type: 'document' },
+  { id: 'R2003', Date:'2025/01/01', applicant: '李小華', institution: '陽光托育所', status: '審核中', type: 'other' },
+  { id: 'R2004', Date:'2025/01/01', applicant: '陳大同', institution: '愛心幼兒園', status: '待審核', type: 'qualification' },
+  { id: 'R2005', Date:'2025/01/02', applicant: '林小美', institution: '愛心托育中心', status: '已駁回', type: 'document' },
+  { id: 'R2006', Date:'2025/01/02', applicant: '黃大明', institution: '溫馨幼兒園', status: '已通過', type: 'other' }
 ])
 
 // 顯示的資料列表（初始顯示全部）
 const items = ref([...fullList.value])
-
-const detail = ref(null)
-const revokeDate = ref(new Date().toISOString().slice(0, 10))
-const revokeNote = ref('')
 const showBack = ref(false)
 
 function search() {
@@ -157,23 +117,8 @@ function search() {
 }
 
 function openDetail(item) {
-  detail.value = { ...item }
-  revokeDate.value = new Date().toISOString().slice(0, 10)
-  revokeNote.value = ''
-}
-
-function closeDetail() {
-  detail.value = null
-}
-
-function confirmRevoke() {
-  if (detail.value) {
-    // 從完整列表中移除已撤銷的項目
-    fullList.value = fullList.value.filter(i => i.id !== detail.value.id)
-    // 重新執行查詢以更新顯示列表
-    search()
-    closeDetail()
-  }
+  // 導航到編輯頁面
+  router.push(`/admin/application-revoke/${item.id}/edit`)
 }
 
 function goBack() {
@@ -217,14 +162,5 @@ function goBack() {
 .action-cell { text-align:left }
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
 .bottom-row { display:flex; justify-content:center; gap:12px; margin-top:10vh; }
-.modal { position: fixed; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 99; }
-.modal-content { background: white; padding: 24px; border-radius: 12px; width: 520px; box-shadow:0 8px 24px rgba(16,24,40,0.08); }
-.modal-content h3 { color:#2e6fb7; font-size:1.2rem; margin-bottom:16px; }
-.modal-actions { display: flex; gap: 12px; margin-top: 16px; justify-content:center; }
-.review-form { margin-bottom: 12px; }
-.form-row { display: flex; align-items: center; margin-bottom: 12px; }
-.form-label { width: 100px; font-weight: 600; color: #2e6fb7; }
-.form-input { flex: 1; padding: 8px 10px; border-radius: 6px; border: 1px solid #d8dbe0; font-size: 1rem; }
-.form-section-title { font-weight: 700; color: #2e6fb7; margin-bottom: 6px; font-size: 1.08rem; }
 @media (max-width:900px){ .announcement-card{ width:100%; padding:16px } .date-input{ width:100px } .query-row{ width:100%; flex: 0 0 100%; } }
 </style>

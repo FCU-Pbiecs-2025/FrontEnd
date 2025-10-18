@@ -241,10 +241,22 @@ const routes = [
                 meta: { breadcrumb: '審核申請' }
             },
             {
+                path: 'application-review/:id/edit',
+                name: 'AdminApplicationReviewEdit',
+                component: () => import('../views/AdminApplicationReviewEdit.vue'),
+                meta: { breadcrumb: '審核申請編輯' }
+            },
+            {
                 path: 'application-revoke',
                 name: 'AdminApplicationRevoke',
                 component: () => import('../views/AdminApplicationRevoke.vue'),
                 meta: { breadcrumb: '撤銷審核' }
+            },
+            {
+                path: 'application-revoke/:id/edit',
+                name: 'AdminApplicationRevokeEdit',
+                component: () => import('../views/AdminApplicationRevokeEdit.vue'),
+                meta: { breadcrumb: '撤銷審核編輯' }
             },
             {
                 path: 'class',

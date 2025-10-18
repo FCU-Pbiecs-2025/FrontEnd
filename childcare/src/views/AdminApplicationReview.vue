@@ -35,6 +35,7 @@
           <button class="btn query" @click="search">查詢</button>
         </div>
       </div>
+
       <div class="table-section">
         <table class="announcement-table">
           <thead>
@@ -68,34 +69,6 @@
       <div class="bottom-row" v-show="showBack">
         <button class="btn primary" @click="goBack">返回</button>
       </div>
-
-      <div v-if="detail" class="modal">
-        <div class="modal-content">
-          <h3>申請詳情 - {{ detail.id }}</h3>
-          <div class="review-form">
-            <div class="form-row">
-              <label class="form-label">審核日期：</label>
-              <input type="date" v-model="reviewDate" class="form-input" />
-            </div>
-            <div class="form-row">
-              <label class="form-label">審核結果：</label>
-              <select v-model="reviewResult" class="form-input">
-                <option value="">請選擇</option>
-                <option value="通過">通過</option>
-                <option value="退件">退件</option>
-              </select>
-            </div>
-            <div class="form-row">
-              <label class="form-label">立案資料：</label>
-              <textarea v-model="reviewNote" class="form-input" rows="3"></textarea>
-            </div>
-          </div>
-          <div class="modal-actions">
-            <button class="btn primary" @click="confirmReview">送出</button>
-            <button class="btn query" @click="closeDetail">返回</button>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -123,10 +96,6 @@ const fullList = ref([
 // 顯示的資料列表（初始顯示全部）
 const items = ref([...fullList.value])
 
-const detail = ref(null)
-const reviewDate = ref(new Date().toISOString().slice(0, 10))
-const reviewResult = ref('')
-const reviewNote = ref('')
 const showBack = ref(false)
 
 function search() {
@@ -153,28 +122,8 @@ function search() {
 }
 
 function openDetail(item) {
-  detail.value = { ...item }
-  reviewDate.value = new Date().toISOString().slice(0, 10)
-  reviewResult.value = ''
-  reviewNote.value = ''
-}
-
-function closeDetail() {
-  detail.value = null
-}
-
-function confirmReview() {
-  if (detail.value) {
-    const idx = fullList.value.findIndex(i => i.id === detail.value.id)
-    if (idx !== -1) {
-      fullList.value[idx].status = reviewResult.value === '通過' ? '已通過' : (reviewResult.value === '退件' ? '已退件' : '待審核')
-      fullList.value[idx].reviewDate = reviewDate.value
-      fullList.value[idx].reviewNote = reviewNote.value
-    }
-    // 更新顯示列表
-    search()
-    closeDetail()
-  }
+  // 導航到編輯頁面
+  router.push(`/admin/application-review/${item.id}/edit`)
 }
 
 function goBack() {
@@ -218,13 +167,5 @@ function goBack() {
 .action-cell { text-align:left }
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
 .bottom-row { display:flex; justify-content:center; gap:12px; margin-top:10vh; }
-.modal { position: fixed; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 99; }
-.modal-content { background: white; padding: 24px; border-radius: 12px; width: 520px; box-shadow:0 8px 24px rgba(16,24,40,0.08); }
-.modal-content h3 { color:#2e6fb7; font-size:1.2rem; margin-bottom:16px; }
-.modal-actions { display: flex; gap: 12px; margin-top: 16px; justify-content:center; }
-.review-form { margin-bottom: 12px; }
-.form-row { display: flex; align-items: center; margin-bottom: 12px; }
-.form-label { width: 100px; font-weight: 600; color: #2e6fb7; }
-.form-input { flex: 1; padding: 8px 10px; border-radius: 6px; border: 1px solid #d8dbe0; font-size: 1rem; }
 @media (max-width:900px){ .announcement-card{ width:100%; padding:16px } .date-input{ width:100px } .query-row{ width:100%; flex: 0 0 100%; } }
 </style>
