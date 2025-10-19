@@ -8,12 +8,12 @@
 
         <div class="card-container">
           <div class="card" @click="goToPage('ApplicationStatus')" style="cursor:pointer;">
-            <img src="../imgs/search-file.png" alt="申請進度查詢">
+            <img src="../imgs/research.png" alt="申請進度查詢">
 <!--            <img src="https://img.icons8.com/ios/100/ffe8e8/id-verified.png" alt="申請進度查詢">-->
             <p>申請進度查詢</p>
           </div>
           <div class="card" @click="goToPage('ApplyService')" style="cursor:pointer;">
-            <img src="../imgs/application.png" alt="申請托育服務">
+            <img src="../imgs/paper.png" alt="申請托育服務">
 <!--            <img src="https://img.icons8.com/ios/100/ffe8e8/document.png" alt="申請托育服務">-->
             <p>申請托育服務</p>
           </div>
@@ -225,7 +225,7 @@ main {
 
 .main-section {
   margin: 32px auto 0 auto;
-  max-width: 900px;
+  max-width: 1200px;
 }
 
 .section-title-bar {
@@ -273,7 +273,9 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 270px;
+  justify-content: center;
+  width: 350px;
+  height: 300px;
   transition: box-shadow 0.2s, transform 0.2s;
   cursor: pointer;
 }
@@ -284,7 +286,7 @@ main {
 }
 
 .card img {
-  width: 80px;
+  width: 120px;
   margin-bottom: 16px;
 }
 

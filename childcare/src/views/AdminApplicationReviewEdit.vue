@@ -44,6 +44,7 @@
             <select v-model="reviewResult" class="form-input">
               <option value="">請選擇</option>
               <option value="通過">通過</option>
+              <option value="需要補件">需要補件</option>
               <option value="退件">退件</option>
             </select>
           </div>

@@ -3,7 +3,7 @@
 
     <div class="info-card">
       <div class="info-header">
-        <img src="https://img.icons8.com/fluency/48/000000/school-building.png" class="info-icon" />
+        <img src="https://img.icons8.com/fluency/48/000000/school-building.png" class="info-icon" alt="機構圖示" />
         <span class="info-title">托育機構介紹</span>
       </div>
       <div class="agency-card">
@@ -15,6 +15,7 @@
           </div>
           <button class="carousel-btn right" @click="nextImg">&#x276F;</button>
         </div>
+
         <div class="agency-info-table">
           <div class="info-row"><span>聯絡人：</span><span>{{ agency.contact }}</span></div>
           <div class="info-row"><span>機構地址：</span><span>{{ agency.address }}</span></div>
@@ -28,16 +29,22 @@
           <div class="class-title">班級資訊</div>
           <table class="class-table">
             <thead>
-              <tr><th>班級名稱</th><th>就讀年齡</th></tr>
+            <tr><th>班級名稱</th><th>就讀年齡</th></tr>
             </thead>
             <tbody>
-              <tr v-for="cls in agency.classes" :key="cls.name">
-                <td>{{ cls.name }}</td>
-                <td>{{ cls.age }}</td>
-              </tr>
+            <tr v-for="cls in agency.classes" :key="cls.name">
+              <td>{{ cls.name }}</td>
+              <td>{{ cls.age }}</td>
+            </tr>
             </tbody>
           </table>
         </div>
+
+        <!-- 新增：底部返回列表按鈕 -->
+        <div class="actions">
+          <button class="back-to-list" @click="goBack">返回機構列表</button>
+        </div>
+
       </div>
     </div>
   </div>
@@ -45,6 +52,8 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+const router = useRouter()
 const agency = ref({
   name: '新竹縣公立托嬰中心',
   images: [
@@ -56,6 +65,7 @@ const agency = ref({
   phone: '03-1234567',
   fax: '03-1234568',
   email: 'info@childcare.com',
+
   fanpage: 'https://facebook.com/childcare',
   license: '立案字號：新竹縣府社字第123456號',
   classes: [
@@ -70,6 +80,10 @@ function prevImg() {
 }
 function nextImg() {
   currentImg.value = (currentImg.value + 1) % agency.value.images.length
+}
+function goBack() {
+  // 返回已註冊的列表頁（AgencySearch）
+  router.push({ name: 'AgencySearch' })
 }
 </script>
 
@@ -96,28 +110,6 @@ function nextImg() {
   font-size: 1.4rem;
   font-weight: bold;
   letter-spacing: 2px;
-}
-.info-switch-group {
-  margin-left: auto;
-  display: flex;
-  gap: 8px;
-}
-.info-switch-btn {
-  background: #f7f7fa;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #2a4fa7;
-  font-size: 1.1rem;
-  cursor: pointer;
-}
-.info-switch-btn.active {
-  background: #e3eaff;
-  border-color: #b3cfff;
 }
 .agency-card {
   background: #fff;
@@ -228,6 +220,27 @@ function nextImg() {
 }
 .class-table tr:last-child td {
   border-bottom: none;
+}
+
+/* 底部返回按鈕樣式（與站內主要按鈕風格一致） */
+.actions { text-align: center; margin-top: 24px; }
+.back-to-list {
+  display: inline-block;
+  background: linear-gradient(135deg, #F9AFAE, #f5a1a1);
+  color: #fff;
+  padding: 12px 32px;
+  border-radius: 25px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(249, 175, 174, 0.2);
+  transition: all 0.25s ease;
+}
+.back-to-list:hover {
+  background: linear-gradient(135deg, #f5a1a1, #f19594);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(249, 175, 174, 0.28);
 }
 @media (max-width: 600px) {
   .info-card, .agency-card {

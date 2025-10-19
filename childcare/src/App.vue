@@ -2,61 +2,63 @@
   <div class="app-container">
     <!-- Header -->
     <header>
-      <div class="header-left" @click="goToPage('Home')" style="cursor:pointer;">
-        <img class="logo" src="./imgs/mother.png" alt="logo" />
-<!--        <img class="logo" src="https://img.icons8.com/ios-filled/50/ffffff/baby.png" alt="logo" />-->
-        <div class="vertical-stack">
-          <span>新竹縣政府 社會處</span>
-          <span class="system-title">社區公共托育家園</span>
-        </div>
-
-      </div>
       <nav class="header-nav">
-        <div class="nav-item" @click="goToPage('News')" style="cursor:pointer;">
+        <div class="header-left" @click="goToPage('Home')" style="cursor:pointer;">
+          <img class="logo" src="./imgs/mother.png" alt="logo" />
+          <div class="vertical-stack">
+            <span>新竹縣政府 社會處</span>
+            <span class="system-title">社區公共托育家園</span>
+          </div>
+        </div>
+       
+          <div class="nav-item" @click="goToPage('News')" style="cursor:pointer;">
           <span>最新消息
           <div class="nav-option"></div></span>
 
-        </div>
-        <div class="nav-item" @click="goToPage('AgencySearch')" style="cursor:pointer;">
+          </div>
+          <div class="nav-item" @click="goToPage('AgencySearch')" style="cursor:pointer;">
           <span>查詢托育機構
           <div class="nav-option"></div></span>
 
-        </div>
-        <div class="nav-item" @click="goToPage('Qualification')" style="cursor:pointer;">
+          </div>
+          <div class="nav-item" @click="goToPage('Qualification')" style="cursor:pointer;">
           <span>公托資格說明
           <div class="nav-option"></div></span>
 
-        </div>
-        <div class="nav-item" @click="goToPage('MemberCenter')" style="cursor:pointer;">
+          </div>
+          <div class="nav-item" @click="goToPage('MemberCenter')" style="cursor:pointer;">
           <span>會員中心
           <div class="nav-option"></div></span>
 
-        </div>
-        <!-- 後台管理入口，僅 admin 角色顯示 -->
-        <div
-          v-if="authStore.user?.role === 'admin'"
-          class="nav-item"
-          @click="goToPage('AdminHome')"
-          style="cursor:pointer;"
-        >
+          </div>
+          <!-- 後台管理入口，僅 admin 角色顯示 -->
+          <div
+              v-if="authStore.user?.role === 'admin'"
+              class="nav-item"
+              @click="goToPage('AdminHome')"
+              style="cursor:pointer;"
+          >
           <span>後台管理
           <div class="nav-option"></div></span>
 
 
-        </div>
-        <!-- 登入/登出與用戶名稱包在同一個區塊，固定在 header 右上角 -->
-        <div v-if="authStore.isLoggedIn && authStore.user" class="user-actions">
-          <div class="user-info">
-            <div class="user-avatar">{{ authStore.user.name ? authStore.user.name.charAt(0) : '' }}</div>
           </div>
-          <!-- 替換原本的登出按鈕為下拉樣式按鈕，點擊打開帳號資訊彈窗 -->
-          <button class="account-btn" type="button" @click="openAccountModal">
+          <!-- 登入/登出與用戶名稱包在同一個區塊，固定在 header 右上角 -->
+          <div v-if="authStore.isLoggedIn && authStore.user" class="user-actions">
+            <div class="user-info">
+              <div class="user-avatar">{{ authStore.user.name ? authStore.user.name.charAt(0) : '' }}</div>
+            </div>
+            <!-- 替換原本的登出按鈕為下拉樣式按鈕，點擊打開帳號資訊彈窗 -->
+            <button class="account-btn" type="button" @click="openAccountModal">
 
-            <svg class="caret" width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M6 9l6 6 6-6" stroke="#e35d6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </div>
+              <svg class="caret" width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M6 9l6 6 6-6" stroke="#e35d6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+
+
+
       </nav>
     </header>
 
@@ -185,7 +187,7 @@ header {
   flex-direction: column;
   justify-content: flex-end;
   padding: 0 40px;
-  height: 130px;
+  height: 100px;
   box-shadow: 0 5px 6px rgba(0, 0, 0, 0.2);
   border-bottom: none;
   position: fixed;
@@ -195,13 +197,14 @@ header {
   z-index: 100;
   padding: 5px;
 }
+
 .header-left {
   display: flex;
   margin-left: 20px;
   align-items: center;
   height: 70px;
-  margin-top: auto;
-  margin-bottom: auto;
+margin-bottom: 10px;
+  margin-right: auto;
 }
 .header-nav {
   display: flex;
@@ -230,6 +233,7 @@ header {
 .vertical-stack {
   color: #3a1f1f;
   font-weight: bold;
+  font-size: 18px;
   display: flex;
   flex-direction: column;
   letter-spacing: 2px;
@@ -237,7 +241,7 @@ header {
 }
 .system-title {
 
-  font-size: 2rem;
+  font-size: 2.15rem;
   font-weight: bold;
   letter-spacing: 3px;
 }
@@ -248,6 +252,14 @@ header {
   gap: 32px;
   margin-bottom: 0;
 
+}
+.nav{
+  display: flex;
+  gap: 20px;
+  margin-right: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+  height: 100%;
 }
 .nav-option {
   background: #e35d6a;
@@ -276,10 +288,11 @@ header {
   color: #e35d6a;
   cursor: pointer;
   transition: color 0.2s, background 0.2s;
-  font-size: 13px;
+  font-size: 18px;
   border-radius: 10px;
   padding: 4px 10px;
-  width:110px;
+  width:150px;
+  height: auto;
   font-weight: bold;
   letter-spacing: 1px;
 

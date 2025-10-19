@@ -4,14 +4,19 @@
       <div class="title-row">
         <img src="https://img.icons8.com/ios/48/2e6fb7/edit-property.png" class="icon" alt="icon" />
         <span class="main-title">{{ isEdit ? '編輯班級' : '新增班級' }}</span>
-        <div class="title-actions">
-          <!-- 新增班級按鈕，點擊導向新增頁面並帶入 institutionId -->
-          <button class="btn small primary" @click="addNewClass">新增班級</button>
-        </div>
+
       </div>
 
 
       <div class="form-card">
+        <div class="form-row" v-if="!isEdit">
+          <label for="institution-select">選擇機構</label>
+          <select id="institution-select" v-model="form.institutionId">
+            <option disabled value="">請選擇機構</option>
+            <option v-for="inst in institutions" :key="inst.id" :value="inst.id">{{ inst.name }}</option>
+          </select>
+        </div>
+
         <div class="form-row">
           <label>班級名稱</label>
           <input v-model="form.unit" type="text" />
@@ -61,14 +66,20 @@ const route = useRoute()
 const STORAGE_KEY = 'admin_classes'
 const isEdit = computed(() => !!route.params.id)
 
+const institutions = ref([
+  { id: 1, name: '快樂幼兒園' },
+  { id: 2, name: '幸福幼兒園' },
+  { id: 3, name: '希望幼兒園' }
+])
+
 const defaultForm = () => ({
   id: null,
-  institutionId: null,  // 新增機構ID欄位
+  institutionId: '',
   unit: '',
   capacity: 0,
   enrolled: 0,
-  age_from: '', // 文字欄位
-  age_to: '',   // 文字欄位
+  age_from: '',
+  age_to: '',
   notes: ''
 })
 const form = ref(defaultForm())
@@ -99,14 +110,8 @@ onMounted(() => {
       }
     }
   } else {
-    // 新增模式：從 params 取得機構 ID
-    const institutionId = route.params.institutionId
-    if (institutionId) {
-      form.value.institutionId = Number(institutionId)
-    } else {
-      alert('缺少機構資訊')
-      router.replace({ name: 'AdminClassManager' })
-    }
+    // 新增模式：清空表單
+    form.value = defaultForm()
   }
 })
 
@@ -116,7 +121,7 @@ const save = () => {
     return
   }
   if (!form.value.institutionId) {
-    alert('缺少機構資訊')
+    alert('請選擇機構')
     return
   }
   const list = loadList()
@@ -140,24 +145,12 @@ const cancel = () => {
   // 直接返回班級管理主頁
   router.replace({ name: 'AdminClassManager' })
 }
-
-// 新增按鈕的處理：清空表單並導向新增路由（帶入 institutionId）
-const addNewClass = () => {
-  const institutionId = form.value.institutionId || route.params.institutionId
-  if (!institutionId) {
-    alert('缺少機構資訊，無法新增班級')
-    router.replace({ name: 'AdminClassManager' })
-    return
-  }
-  // 導向 AdminClassNew 路由，該路由綁定到同一個組件但為新增模式
-  router.push({ name: 'AdminClassNew', params: { institutionId } })
-}
 </script>
 
 <style scoped>
 .class-edit-page { display:flex; justify-content:center; }
 .class-card { width:100%; }
-.title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; margin-top: 60px; justify-content: space-between; }
+.title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; margin-top: 60px;}
 .icon { width:28px; height:28px; }
 .main-title { font-size:1.35rem; color:#2e6fb7; font-weight:700; }
 .title-actions { display:flex; align-items:center; gap:8px }
@@ -165,6 +158,7 @@ const addNewClass = () => {
 .form-row { display:flex; align-items:center; gap:12px; margin-bottom:10px;justify-content: center; }
 .form-row label { width:120px; color:#2e6fb7; font-weight:600; }
 .form-row input, .form-row textarea {  height:40px;width: 420px;padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0;}
+.form-row select { height: 40px; width: 420px; padding: 8px 10px; border-radius: 6px; border: 1px solid #d8dbe0; }
 .bottom-row { display:flex; justify-content:center; gap:12px; margin-top:12px; }
 .btn { padding:7px 18px; border-radius:8px; border:none; cursor:pointer; font-weight:600; font-size:1rem; }
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff }

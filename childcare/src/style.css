@@ -5,11 +5,12 @@
 
 body {
   /* 將全站背景改為 2.jpg */
-  background-image: url('@/imgs/7.jpg');
+  background-image: url('@/imgs/Baby2.jpg');
 
-  background-repeat: repeat;
-  background-attachment: fixed;
+  background-repeat: no-repeat;
   background-color: #FFF8F6; /* 作為備援底色 */
+  background-size: 100% 100%;
+
   font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
   color: #333;
   margin: 0;

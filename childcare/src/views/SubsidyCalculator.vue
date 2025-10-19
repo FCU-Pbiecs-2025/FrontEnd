@@ -64,6 +64,10 @@
             </select>
           </div>
         </div>
+
+        <!-- validation message -->
+        <div v-if="validationMessage" class="validation-msg">{{ validationMessage }}</div>
+
         <div class="btn-row">
           <button type="submit" class="submit-btn" @click="calcSubsidy">試算補助金額</button>
         </div>
@@ -91,7 +95,33 @@ const form = ref({
 })
 const result = ref(null)
 const tried = ref(false)
+const validationMessage = ref('') // 新增：儲存驗證提示訊息
+
 function calcSubsidy() {
+  // 先清除先前訊息
+  validationMessage.value = ''
+
+  // 必填欄位檢查
+  const requiredFields = [
+    { key: 'isCitizen', label: '是否為新竹縣縣民' },
+    { key: 'fetusCount', label: '胎數' },
+    { key: 'childAge', label: '申請幼兒年紀' },
+    { key: 'isParentalLeave', label: '是否育嬰留停' },
+    { key: 'identity', label: '申請身分別' },
+    { key: 'org', label: '托育機構選擇' }
+  ]
+  const missing = []
+  requiredFields.forEach(f => {
+    if (!form.value[f.key]) missing.push(f.label)
+  })
+  if (missing.length) {
+    validationMessage.value = `請填寫：${missing.join('、')}`
+    tried.value = false
+    result.value = null
+    return
+  }
+
+  // 通過必填檢查後才進入資格試算
   tried.value = true
   // 不符合申請條件：非新竹縣縣民、育嬰留停、3-6歲
   if (
@@ -238,17 +268,17 @@ select:focus {
   height: 44px;
   font-size: 1.1rem;
   border-radius: 8px;
-  background: #e3eaff;
-  color: #2563eb;
-  border: 2px solid #b2c6ff;
+  background: #cce5ff; /* updated per request */
+  color: #004085;      /* updated per request */
+  border: none;
   box-shadow: 0 2px 8px #0001;
   font-weight: bold;
   letter-spacing: 1px;
   transition: 0.2s;
 }
 .submit-btn:hover {
-  background: #2563eb;
-  color: #fff;
+  background: #4574a6;
+  color: #FFF;
 }
 .result-row {
   margin-top: 24px;
@@ -270,6 +300,14 @@ select:focus {
   color: #e57373;
   font-size: 1.6rem;
   margin-left: 8px;
+}
+.validation-msg {
+  color: #b00020;
+  background: #fff0f0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin: 12px 0;
+  font-weight: 600;
 }
 @media (max-width: 800px) {
   .main-title-row, .breadcrumb {

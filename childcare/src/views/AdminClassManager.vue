@@ -5,7 +5,7 @@
 
         <div class="title-row">
           <img src="https://img.icons8.com/ios/48/2e6fb7/classroom.png" class="icon" alt="icon" />
-          <span class="main-title">機構管理</span>
+          <span class="main-title">班級管理</span>
         </div>
         <!-- 機構列表 -->
         <div>
@@ -48,6 +48,9 @@
               </tbody>
             </table>
           </div>
+          <div class="bottom-row">
+            <button class="btn primary" @click="goToAdminClassEdit">新增</button>
+          </div>
         </div>
       </div>
       <router-view v-else />
@@ -63,9 +66,9 @@ const route = useRoute()
 
 // 機構假資料
 const institutions = ref([
-  { id: 1, name: '快樂幼兒園', unit: 'A班', age_from: 2, age_to: 6, capacity: 60, enrolled: 48 },
-  { id: 2, name: '幸福幼兒園', unit: 'B班', age_from: 3, age_to: 5, capacity: 40, enrolled: 35 },
-  { id: 3, name: '希望幼兒園', unit: 'C班', age_from: 2, age_to: 4, capacity: 30, enrolled: 20 }
+  { id: 1, name: '快樂幼兒園', unit: 'A班', age_from: '6個月', age_to: '2歲整', capacity: 60, enrolled: 48 },
+  { id: 2, name: '幸福幼兒園', unit: 'B班', age_from: '6個月', age_to:'2歲整', capacity: 40, enrolled: 35 },
+  { id: 3, name: '希望幼兒園', unit: 'C班', age_from: '6個月', age_to: '2歲整', capacity: 30, enrolled: 20 }
 ])
 
 // 如果專案仍保留班級 localStorage 資料，保留 classes 資料與儲存函式以便刪除機構時同步移除
@@ -140,6 +143,10 @@ function deleteInstitution(inst) {
   doQueryInstitution()
 }
 
+const goToAdminClassEdit = () => {
+  router.push({ name: 'AdminClassNew' })
+}
+
 onMounted(() => {
   filteredInstitutions.value = institutions.value
   classes.value = loadClasses()
@@ -165,6 +172,10 @@ onMounted(() => {
 .search-input { padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; width:300px }
 .btn { padding:7px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:600 }
 .btn.query { background:#e6f2ff; color:#2e6fb7; border:1px solid #b3d4fc }
+.btn.primary {
+  background: linear-gradient(90deg,#3b82f6,#2563eb);
+  color: #fff;
+}
 .btn.small { padding:6px 12px; font-size:0.95rem; background:#f3f4f6; margin-right:6px; }
 .btn.danger { background:#ff7b8a; color:#fff }
 .class-table { width:100%; border-collapse:collapse }
@@ -172,5 +183,15 @@ onMounted(() => {
 .class-table td { padding:12px; border-bottom:1px solid #f3f4f6; vertical-align: middle; }
 .action-cell { text-align:left }
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
-/* removed unused bottom-row and primary styles */
+.bottom-row {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 10vh;
+  margin-bottom: 20px;
+}
+@media (max-width:900px){
+  .class-card{ width:100%; padding:16px }
+  .search-input{ width:100% }
+}
 </style>

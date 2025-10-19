@@ -247,6 +247,20 @@ const routes = [
                 meta: { breadcrumb: '審核申請編輯' }
             },
             {
+                path: 'case-management',
+                name: 'AdminCaseManagement',
+                component: () => import('../views/AdminCaseManagement.vue'),
+                meta: { breadcrumb: '個案管理' },
+                children: [
+                    {
+                        path: ':id/edit',
+                        name: 'AdminCaseManagementEdit',
+                        component: () => import('../views/AdminCaseManagementEdit.vue'),
+                        meta: { breadcrumb: '個案管理編輯' }
+                    }
+                ]
+            },
+            {
                 path: 'application-revoke',
                 name: 'AdminApplicationRevoke',
                 component: () => import('../views/AdminApplicationRevoke.vue'),
@@ -264,6 +278,11 @@ const routes = [
                 component: () => import('../views/AdminClassManager.vue'),
                 meta: { breadcrumb: '班級管理' },
                 children: [
+                    {   path: 'new',
+                        name: 'AdminClassNew',
+                        component: () => import('../views/AdminClassEdit.vue'),
+                        meta: { breadcrumb: '新增班級' }
+                    },
                     {
                         path: ':institutionId',
                         name: 'AdminClassList',
@@ -282,12 +301,7 @@ const routes = [
                             }
                         },
                         children: [
-                            {
-                                path: 'new',
-                                name: 'AdminClassNew',
-                                component: () => import('../views/AdminClassEdit.vue'),
-                                meta: { breadcrumb: '新增班級' }
-                            },
+
                             {
                                 path: ':id/edit',
                                 name: 'AdminClassEdit',

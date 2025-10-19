@@ -11,14 +11,19 @@
           <option value="女">女</option>
         </select>
       </label>
-      <label>與幼兒關係 <input v-model="parent.relation" /></label>
-      <label>職業 <input v-model="parent.job" /></label>
-      <label>電話 <input v-model="parent.phone" /></label>
-      <label>戶籍地址 <input v-model="parent.address" /></label>
-      <label>通訊地址 <input v-model="parent.contactAddress" /></label>
-      <label>電子信箱 <input v-model="parent.email" type="email" /></label>
       <label>出生年月日 <input v-model="parent.birth" type="date" /></label>
-      <label>附件 <input type="file" @change="onFileChange($event, pIdx)" /></label>
+      <label>身分證字號 <input v-model="parent.id" /></label>
+      <label>家長類別 <select v-model="parent.parentType">
+        <option value="">請選擇</option>
+        <option value="父親">父親</option>
+        <option value="母親">母親</option>
+        <option value="監護人">監護人</option>
+      </select></label>
+      <label>戶籍地址 <input v-model="parent.homeAddress" /></label>
+      <label>通訊地址 <input v-model="parent.contactAddress" /></label>
+      <label>行動電話 <input v-model="parent.mobile" /></label>
+      <label>電子信箱 <input v-model="parent.email" type="email" /></label>
+      <label>任職單位 <input v-model="parent.company" /></label>
       <label>是否留停 <input type="checkbox" v-model="parent.isLeave" /></label>
       <div v-if="parent.isLeave">
         <label>留停起 <input v-model="parent.leaveStart" type="date" /></label>
@@ -66,7 +71,7 @@ export default {
   methods: {
     defaultParent() {
       return {
-        name: '', gender: '', relation: '', job: '', phone: '', address: '', contactAddress: '', email: '', birth: '', file: null, isLeave: false, leaveStart: '', leaveEnd: ''
+        name: '', gender: '', parentType: '', company: '', mobile: '', homeAddress: '', contactAddress: '', email: '', birth: '', isLeave: false, leaveStart: '', leaveEnd: '', id: ''
       };
     },
     defaultChild() {
@@ -85,9 +90,6 @@ export default {
     removeChild(idx) {
       this.children.splice(idx, 1);
       this.childIdErrors.splice(idx, 1);
-    },
-    onFileChange(e, idx) {
-      this.parents[idx].file = e.target.files[0];
     },
     validateChildId(idx) {
       const id = this.children[idx].id;

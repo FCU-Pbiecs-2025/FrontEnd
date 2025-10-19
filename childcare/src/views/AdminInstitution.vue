@@ -20,16 +20,18 @@
             <thead>
               <tr>
                 <th>機構名稱</th>
-                <th>負責人姓名</th>
+                <th>聯絡人</th>
                 <th>聯絡電話</th>
+                <th>地址</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="item in resultList" :key="item.id">
                 <td class="name-cell">{{ item.name }}</td>
-                <td class="director-cell">{{ item.director }}</td>
+                <td class="director-cell">{{ item.contact }}</td>
                 <td class="phone-cell">{{ item.phone }}</td>
+                <td class="address-cell">{{ item.address }}</td>
                 <td class="action-cell">
                   <button class="btn small" @click="edit(item)">編輯</button>
                   <button class="btn small danger" @click="remove(item)">刪除</button>

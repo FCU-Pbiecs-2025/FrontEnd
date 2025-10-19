@@ -64,7 +64,7 @@
           </transition>
         </div>
         <div class="menu-section">
-          <div class="menu-title">個案管理</div>
+          <div class="menu-title clickable" :class="{active: isActive('/admin/case-management')}" @click="navigate('/admin/case-management')">個案管理</div>
           <!-- 修正：候補清冊可點擊，補位抽籤指向對應路由 -->
           <div class="menu-title clickable" :class="{active: isActive('/admin/waitlist')}" @click="navigate('/admin/waitlist')">候補清冊</div>
           <div class="menu-title clickable" :class="{active: isActive('/admin/lottery-draw')}" @click="navigate('/admin/lottery-draw')">補位抽籤</div>

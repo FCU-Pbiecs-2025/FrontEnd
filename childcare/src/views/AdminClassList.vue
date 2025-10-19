@@ -38,7 +38,6 @@
           </table>
         </div>
         <div class="bottom-row">
-          <button class="btn primary" @click="showAddClass">新增班級</button>
           <button class="btn ghost" @click="goBack">返回機構列表</button>
         </div>
       </div>

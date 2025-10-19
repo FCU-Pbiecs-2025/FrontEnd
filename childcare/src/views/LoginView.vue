@@ -294,7 +294,7 @@ const goToRegister = () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
+  margin-top: 60px;
 }
 
 .login-form {
