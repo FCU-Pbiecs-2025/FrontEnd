@@ -1127,10 +1127,6 @@ const manageChildren = () => {
   }
 }
 
-<<<<<<< HEAD
-/* 讓列可點擊的視覺提示 */
-.application-row { cursor: pointer; }
-=======
 /* 新增 .user-info-title 和 .user-info-detail 樣式 */
 .user-info-title {
   font-size: 2rem;
@@ -1143,5 +1139,4 @@ const manageChildren = () => {
   color: #555;
   margin: 6px 0;
 }
->>>>>>> origin/main
 </style>
