@@ -70,7 +70,7 @@ const routes = [
                 path: '/supplement-document',
                 name: 'SupplementDocument',
                 component: () => import('../views/SupplementDocument.vue'),
-                meta: { requiresAuth: true, breadcrumb: '補件申請' }
+                meta: { requiresAuth: true, breadcrumb: '補件' }
             },
             {
                 path: '/rejection-reason',
@@ -114,7 +114,29 @@ const routes = [
                 path: '/application-status',
                 name: 'ApplicationStatus',
                 component: () => import('../views/ApplicationStatus.vue'),
-                meta: {breadcrumb: '申請進度查詢'}
+                meta: {breadcrumb: '申請進度查詢'},
+                children: [
+                    {
+                        path: 'progress/:caseNo',
+                        name: 'ApplicationProgressDetail',
+                        component: () => import('../views/ApplicationProgressDetail.vue'),
+                        meta: { requiresAuth: true, breadcrumb: '申請進度詳情' },
+                        children: [
+                            {
+                                path: 'supplement',
+                                name: 'ApplicationProgressSupplement',
+                                component: () => import('../views/SupplementDocument.vue'),
+                                meta: { requiresAuth: true, breadcrumb: '補件' }
+                            },
+                            {
+                                path: 'revoke',
+                                name: 'ApplicationProgressRevoke',
+                                component: () => import('../views/RevokeApplication.vue'),
+                                meta: { requiresAuth: true, breadcrumb: '撤銷申請' }
+                            }
+                        ]
+                    }
+                ]
             },
             {
                 path: '/apply-service',

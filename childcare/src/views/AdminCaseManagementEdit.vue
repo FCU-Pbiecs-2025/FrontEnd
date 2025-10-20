@@ -59,7 +59,19 @@
         </div>
       </div>
 
-      <!-- Waitlist extra info -->
+      <!-- ADMITTED extra info -->
+      <div v-if="caseData.status === ADMITTED" class="wait-extra">
+        <div class="admit-setup">
+          <div class="form-row">
+            <label class="info-label">退托原因說明：</label>
+            <textarea v-model="withdrawNote" class="text-input" rows="3" placeholder="請填寫退托原因說明（必填）"></textarea>
+          </div>
+        </div>
+      </div>
+      <!--      textarea去寫退托原因-->
+
+
+
       <div v-if="caseData.status === WAITING" class="wait-extra">
         <div class="admit-setup">
           <div class="form-row">
@@ -78,6 +90,7 @@
           </div>
         </div>
       </div>
+      <!-- Waitlist extra info -->
 
       <!-- Collapsible sections -->
       <div class="section-card">
@@ -162,7 +175,7 @@
               <div class="grid two-col">
                 <div class="row"><span class="label">姓名：</span><span>{{ c.name || '—' }}</span></div>
                 <div class="row"><span class="label">性別：</span><span>{{ c.gender || '—' }}</span></div>
-                <div class="row"><span class="label">年齡：</span><span>{{ c.age || '—' }}</span></div>
+                <div class="row"><span class="label">年齡：</span><span>{{ computeChildAge(c.birth) || '—' }}</span></div>
                 <div class="row"><span class="label">生日：</span><span>{{ c.birth || '—' }}</span></div>
               </div>
             </div>
@@ -275,6 +288,9 @@ const classOptions = computed(() => {
 })
 watch(admitAgency, () => { admitClass.value = '' })
 
+// 退托說明（僅供 ADMITTED 使用）
+const withdrawNote = ref('')
+
 // Helper: file preview
 const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']
 const isImageFile = (f) => {
@@ -315,6 +331,7 @@ const mockCases = {
     parent2: { name: '李媽媽', birth: '1987-01-20', id: 'C123456789', parentType: '母親', homeAddress: '臺中市...', contactAddress: '臺中市...', mobile: '0922-222-222', email: 'mom@example.com', company: 'XXX公司', gender: '女', isLeave: true, leaveStart: '2025-08-01', leaveEnd: '2026-01-31' },
     selectedAgency: '幸福幼兒園',
     selectedClass: '小班',
+    withdrawNote: null,
     children: [{ name: '小寶', gender: '男', age: '3', birth: '2022-03-15' }],
     files: [ { name: '身份證明.pdf', url: '' }, { name: '戶口名簿.jpg', url: '/vite.svg', type: 'image/svg+xml' } ]
   },
@@ -330,6 +347,8 @@ const mockCases = {
     parent2: { name: '陳媽媽', birth: '1990-07-30', id: 'F123456789', parentType: '母親', homeAddress: '臺中市...', contactAddress: '臺中市...', mobile: '0910-999-999', email: 'ma@example.com', company: 'DEF', gender: '女', isLeave: false },
     selectedAgency: '快樂托育中心',
     selectedClass: '中班',
+    // 新增：預填退托原因（供 UI 顯示與編輯）
+    withdrawNote: '',
     children: [{ name: '小美', gender: '女', age: '4', birth: '2021-07-20' }],
     files: [ { name: '證明文件.pdf', url: '' }, { name: '證件影本.png', url: '/vite.svg', type: 'image/svg+xml' } ]
   }
@@ -345,6 +364,8 @@ onMounted(() => {
       admitAgency.value = appliedAgency.value || ''
       admitClass.value = caseData.value.selectedClass || ''
     }
+    // Prefill withdrawNote ref from case data if present (allows null)
+    withdrawNote.value = caseData.value.withdrawNote ?? ''
   } else {
     router.push('/admin/case-management')
   }
@@ -368,6 +389,15 @@ function admit() {
 }
 
 function revoke() {
+  // If currently admitted, require a withdraw note
+  if (caseData.value.status === ADMITTED) {
+    if (!withdrawNote.value || !withdrawNote.value.trim()) {
+      alert('請填寫退托原因說明後再執行退托')
+      return
+    }
+    // attach note to case data for record
+    caseData.value.withdrawNote = withdrawNote.value.trim()
+  }
   if (!confirm('確定要執行退托嗎？')) return
   caseData.value.status = REVOKED
   alert('已退托')
@@ -376,6 +406,41 @@ function revoke() {
 
 function goBack() {
   router.push('/admin/case-management')
+}
+
+// Compute child's age from birth date string as "X月 Y周 Z天"
+function computeChildAge(birth) {
+  if (!birth) return ''
+  // try to parse common formats
+  const bd = new Date(birth)
+  if (isNaN(bd)) return ''
+  const now = new Date()
+
+  // If birth is in the future, return 0天
+  if (bd > now) return '0天'
+
+  // months difference
+  let months = (now.getFullYear() - bd.getFullYear()) * 12 + (now.getMonth() - bd.getMonth())
+  // adjust if day of month not yet reached
+  if (now.getDate() < bd.getDate()) months -= 1
+
+  // compute date after adding months to birth
+  const tmp = new Date(bd.getTime())
+  tmp.setMonth(tmp.getMonth() + months)
+
+  // remaining days difference
+  let daysDiff = Math.floor((now - tmp) / (1000 * 60 * 60 * 24))
+  if (isNaN(daysDiff) || daysDiff < 0) daysDiff = 0
+
+  const weeks = Math.floor(daysDiff / 7)
+  const days = daysDiff % 7
+
+  const parts = []
+  if (months > 0) parts.push(`${months}月`)
+  if (weeks > 0) parts.push(`${weeks}周`)
+  if (days > 0) parts.push(`${days}天`)
+  if (parts.length === 0) return '0天'
+  return parts.join(' ')
 }
 </script>
 
@@ -401,6 +466,9 @@ function goBack() {
 .admit-setup { width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; background: #f8fbff; border: 1px dashed #b3d4fc; border-radius: 8px; padding: 12px; }
 .form-row { display: flex; align-items: center; gap: 10px; }
 .select-input { padding: 8px 10px; border-radius: 6px; border: 1px solid #d8dbe0; min-width: 180px; }
+
+/* textarea style for withdraw note */
+.text-input { padding: 8px 10px; border-radius: 6px; border: 1px solid #d8dbe0; min-width: 100%; resize: vertical; }
 
 .section-card { background: #fff; border: 1px solid #e6e6ea; border-radius: 12px; margin-bottom: 16px; overflow: hidden; box-shadow: 0 2px 8px rgba(16,24,40,0.04); }
 .section-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: #f8fbff; border-bottom: 1px solid #e6f2ff; }

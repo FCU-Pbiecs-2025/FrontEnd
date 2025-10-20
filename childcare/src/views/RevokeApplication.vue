@@ -75,7 +75,7 @@
 
           <div class="form-actions">
             <button class="save-btn" @click="submitRevoke" :disabled="!canSubmit">確認撤銷</button>
-            <button class="cancel-btn" @click="goBack">取消</button>
+            <button class="cancel-btn" @click="goBack">返回</button>
           </div>
         </div>
       </div>
@@ -92,7 +92,8 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
-const applicationId = ref(route.query.applicationId || 'APP20240114001')
+// 支援嵌套路由下的 :caseNo，若無則退回 query.applicationId
+const applicationId = ref(route.params.caseNo || route.query.applicationId || 'APP20240114001')
 const applicantName = ref(authStore.user?.name || '王小明')
 const childName = ref('王小寶')
 const queueNumber = ref(15)
@@ -104,12 +105,8 @@ const contactPhone = ref(authStore.user?.phone || '')
 const agreeTerms = ref(false)
 
 const canSubmit = computed(() => {
-  if (!revokeReason.value || !contactPhone.value || !agreeTerms.value) {
-    return false
-  }
-  if (revokeReason.value === '其他' && !otherReason.value.trim()) {
-    return false
-  }
+  if (!revokeReason.value || !contactPhone.value || !agreeTerms.value) return false
+  if (revokeReason.value === '其他' && !otherReason.value.trim()) return false
   return true
 })
 
@@ -138,12 +135,10 @@ const submitRevoke = () => {
   // TODO: 呼叫 API 提交撤銷申請
   console.log('撤銷申請資料：', revokeData)
   alert('撤銷申請已送出，將於 3-5 個工作天完成審核')
-  router.push('/member-center')
+  router.back()
 }
 
-const goBack = () => {
-  router.push('/member-center')
-}
+const goBack = () => router.back()
 </script>
 
 <style scoped>
@@ -312,7 +307,7 @@ const goBack = () => {
 
 .form-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 12px;
 }
 
@@ -350,4 +345,3 @@ const goBack = () => {
   color: white;
 }
 </style>
-

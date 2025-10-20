@@ -34,7 +34,7 @@
           </div>
 
           <div class="actions">
-            <button class="service-btn" @click="goBack">返回會員中心</button>
+            <button class="service-btn" @click="goBack">返回</button>
           </div>
         </div>
       </div>
@@ -68,7 +68,7 @@ const loadRejectionInfo = () => {
 }
 
 const goBack = () => {
-  router.push('/member-center')
+  router.back()
 }
 </script>
 

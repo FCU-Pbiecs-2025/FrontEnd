@@ -4,7 +4,7 @@
 }
 
 body {
-  /* 將全站背景改為 2.jpg */
+
   background-image: url('@/imgs/Baby2.jpg');
 
   background-repeat: no-repeat;

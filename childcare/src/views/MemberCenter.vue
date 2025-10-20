@@ -14,10 +14,10 @@
           </div>
           <div class="member-details">
             <div v-if="!editProfileMode">
-              <h3>{{ authStore.user?.name || authStore.user?.account || '用戶' }}</h3>
-              <p>email: {{ authStore.user?.email || '未設定' }}</p>
-              <p>電話: {{ authStore.user?.phone || '未設定' }}</p>
-              <p>地址: {{ authStore.user?.address || '未設定' }}</p>
+              <h3 class="user-info-title">{{ authStore.user?.name || authStore.user?.account || '用戶' }}</h3>
+              <p class="user-info-detail">email: {{ authStore.user?.email || '未設定' }}</p>
+              <p class="user-info-detail">電話: {{ authStore.user?.phone || '未設定' }}</p>
+              <p class="user-info-detail">地址: {{ authStore.user?.address || '未設定' }}</p>
               <button class="edit-btn" @click="editProfile">編輯資料</button>
             </div>
             <div v-else class="profile-edit-form">
@@ -60,32 +60,31 @@
 
       <div class="applications-section">
         <h2>申請狀態</h2>
-        <!-- 五欄並排版整齊 -->
+        <!-- 四欄：案號/標題/內容/狀態 -->
         <div class="news-list-section applications-list">
           <div class="news-list-header">
             <span>申請案號</span>
             <span>申請標題</span>
             <span>申請內容</span>
             <span>狀態</span>
-            <span>操作</span>
           </div>
 
           <div
             v-for="application in applications"
             :key="application.id"
-            class="news-list-row"
+            class="news-list-row application-row"
+            role="button"
+            tabindex="0"
+            @click="goToProgress(application)"
+            @keydown.enter.prevent="goToProgress(application)"
+            @keydown.space.prevent="goToProgress(application)"
           >
-            <span class="application-id-cell">{{ application.id || application.caseNumber || 'N/A' }}</span>
+            <span class="application-id-cell">{{  application.caseNumber || 'N/A' }}</span>
             <span class="application-title-cell" :title="application.title">{{ application.title.length > 20 ? application.title.slice(0, 20) + '...' : application.title }}</span>
             <span class="application-content-cell" :title="application.details">{{ application.details.length > 25 ? application.details.slice(0, 25) + '...' : application.details }}</span>
             <span class="application-status-cell">
-              <span :class="['status-badge', application.status]">{{ getStatusText(application.status) }}</span>
+              <span :class="['status-badge', application.statusClass || application.status]">{{ getStatusLabel(application.statusClass || application.status, application.status) }}</span>
             </span>
-            <div class="application-actions-cell">
-              <button v-if="application.status === 'supplement'" class="action-btn supplement" @click.stop="goToSupplement(application.id)">補件</button>
-              <button v-if="application.status === 'rejected'" class="action-btn view-reason" @click.stop="viewRejection(application.id)">查看原因</button>
-              <button v-if="application.status === 'waitingForAdmission'" class="action-btn revoke" @click.stop="goToRevoke(application.id)">撤銷申請</button>
-            </div>
           </div>
 
           <div v-if="applications.length === 0" class="empty-tip">目前沒有申請記錄</div>
@@ -250,7 +249,7 @@ const cancelProfileEdit = () => {
   editProfileMode.value = false
 }
 
-// 初始化會員中���資料
+// 初始化會員中心資料
 onMounted(async () => {
   // 確保用戶已登入，如果沒有登入則導向登入頁
   if (!authStore.isLoggedIn) {
@@ -276,13 +275,13 @@ const loadApplications = async () => {
         caseNumber: 'CC2024010001',
         title: '公共托育服務申請 - 審核中',
         date: '2024-01-15',
-        details: `申請人: ${authStore.user?.name || authStore.user?.account} | 幼兒: 王小寶`,
+        details: '申請人: 王小明 | 幼兒: 王小美',
         status: 'processing'
       },
       {
         id: 2,
         caseNumber: 'CC2024010002',
-        title: '托育補助申請 - 需要補件',
+        title: '公共托育服務申請- 需要補件',
         date: '2024-01-12',
         details: '申請人: 王小明 | 幼兒: 王小美',
         status: 'supplement'
@@ -298,7 +297,7 @@ const loadApplications = async () => {
       {
         id: 4,
         caseNumber: 'CC2024010004',
-        title: '托育補助申請 - 通過候補中',
+        title: '公共托育服務申請 - 錄取候補中',
         date: '2024-01-08',
         details: '申請人: 張美麗 | 幼兒: 張小天',
         status: 'waitingForAdmission',
@@ -315,23 +314,15 @@ const loadApplications = async () => {
       {
         id: 6,
         caseNumber: 'CC2024010006',
-        title: '托育補助申請 - 撤銷申請通過',
+        title: '公共托育服務申請 - 撤銷申請通過',
         date: '2024-01-03',
         details: '申請人: 林雅文 | 幼兒: 林小花',
         status: 'revoked'
       },
       {
-        id: 7,
-        caseNumber: 'CC2023120007',
-        title: '公共托育服務申請 - 已錄取',
-        date: '2023-12-28',
-        details: '申請人: 黃志明 | 幼兒: 黃小龍',
-        status: 'admitted'
-      },
-      {
         id: 8,
         caseNumber: 'CC2023120008',
-        title: '托育補助申請 - 已退托',
+        title: '公共托育服務申請 - 已退托',
         date: '2023-12-20',
         details: '申請人: 吳淑芬 | 幼兒: 吳小虎',
         status: 'withdrawn'
@@ -390,35 +381,33 @@ const formatDate = (dateString) => {
 }
 
 // 獲取狀態文字
-const getStatusText = (status) => {
-  const statusMap = {
+const getStatusLabel = (statusClass, rawStatus) => {
+  const map = {
     processing: '審核中',
-    supplement: '補件',
-    rejected: '退件',
-    waitingForAdmission: '通過後補中',
+    pending: '審核中',
+    supplement: '需要補件',
+    rejected: '已退件',
+    waitingForAdmission: '錄取候補中',
     revokeProcessing: '撤銷申請審核中',
-    revoked: '撤銷聲請通過',
-    admitted: '錄取',
+    revoked: '撤銷申請通過',
+    admitted: '已錄取',
     withdrawn: '已退托',
-    approved: '已核准',
-    pending: '待審核'
+    approved: '已核准'
   }
-  return statusMap[status] || '未知狀態'
+  return map[statusClass] || map[rawStatus] || rawStatus || '未知狀態'
 }
 
-// 補件：導向補件頁
-const goToSupplement = (applicationId) => {
-  router.push({ path: '/supplement-document', query: { applicationId } })
-}
+// 兼容舊代碼：保留 getStatusText 作為簡單 wrapper
+const getStatusText = (status) => getStatusLabel(status, status)
 
-// 退件：導向退件說明
-const viewRejection = (applicationId) => {
-  router.push({ path: '/rejection-reason', query: { applicationId } })
-}
-
-// 通過後補中：導向撤銷申請
-const goToRevoke = (applicationId) => {
-  router.push({ path: '/revoke-application', query: { applicationId } })
+// 前往統一的申請進度詳情頁（使用 caseNumber 優先，否則使用 id）
+const goToProgress = (application) => {
+  const caseNo = application.caseNumber || application.id || ''
+  if (!caseNo) {
+    alert('找不到案號，無法檢視詳情')
+    return
+  }
+  router.push({ name: 'ApplicationProgressDetail', params: { caseNo } })
 }
 
 // 儲存家長資料
@@ -760,15 +749,17 @@ const manageChildren = () => {
 }
 
 .status-badge {
-  padding: 6px 16px;
-  border-radius: 20px;
-  font-weight: bold;
-  font-size: 0.85rem;
+  padding: 6px 6px;
+  border-radius: 1100px;
+  font-weight: 700;
+  font-size: 0.88rem;
+
 }
 
-.status-badge.processing {
-  background: #fff3cd; /* 黃色背景 */
-  color: #856404;    /* 深黃色文字 */
+.status-badge.processing,
+.status-badge.pending {
+  background: #fff3cd;
+  color: #856404;
 }
 
 .status-badge.approved {
@@ -777,38 +768,38 @@ const manageChildren = () => {
 }
 
 .status-badge.rejected {
-  background: #f8d7da; /* 紅色背景 */
-  color: #721c24;    /* 深紅色文字 */
+  background: #f8d7da;
+  color: #721c24;
 }
 
 .status-badge.supplement {
-  background: #f8d7da; /* 紅色背景 */
-  color: #721c24;    /* 深紅色文字 */
+  background: #fff3cd;
+  color: #856404;
 }
 
 .status-badge.waitingForAdmission {
-  background: #d4edda; /* 綠色背景 */
-  color: #155724;    /* 深綠色文字 */
+  background: #cce5ff;
+  color: #004085;
 }
 
 .status-badge.revokeProcessing {
-  background: #fff3cd; /* 黃色背景 */
-  color: #856404;    /* 深黃色文字 */
+  background: #e2e3e5;
+  color: #383d41;
 }
 
 .status-badge.revoked {
-  background: #d4edda; /* 綠色背景 */
-  color: #155724;    /* 深綠色文字 */
+  background: #d6d8db;
+  color: #1b1e21;
 }
 
 .status-badge.admitted {
-  background: #d4edda; /* 綠色背景 */
-  color: #155724;    /* 深綠色文字 */
+  background: #d1ecf1;
+  color: #0c5460;
 }
 
 .status-badge.withdrawn {
-  background: #f8d7da; /* 紅色背景 */
-  color: #721c24;    /* 深紅色文字 */
+  background: #f8d7da;
+  color: #721c24;
 }
 
 .queue-info {
@@ -923,14 +914,15 @@ const manageChildren = () => {
   max-width: 900px;
 }
 
-/* 更新為五欄並排版 */
+/* 更新為四欄並排版 */
 .news-list-header,
 .news-list-row {
   display: grid;
-  grid-template-columns: 120px 2fr 2.5fr 140px 180px;
+  grid-template-columns: 120px 2fr 2.5fr 140px;
   align-items: center;
   justify-content: stretch;
   gap: 16px;
+  text-align: center;
 }
 
 .news-list-header {
@@ -958,7 +950,7 @@ const manageChildren = () => {
 .application-id-cell {
   color: var(--secondary-color);
   font-weight: 500;
-  text-align: left;
+  text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -984,22 +976,7 @@ const manageChildren = () => {
 
 .application-status-cell {
   text-align: center;
-  overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.application-actions-cell {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.application-actions-cell button {
-  font-size: 0.9rem;
-  padding: 6px 12px;
   white-space: nowrap;
 }
 
@@ -1149,4 +1126,22 @@ const manageChildren = () => {
     font-size: 1rem;
   }
 }
+
+<<<<<<< HEAD
+/* 讓列可點擊的視覺提示 */
+.application-row { cursor: pointer; }
+=======
+/* 新增 .user-info-title 和 .user-info-detail 樣式 */
+.user-info-title {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 12px;
+}
+.user-info-detail {
+  font-size: 1.25rem;
+  color: #555;
+  margin: 6px 0;
+}
+>>>>>>> origin/main
 </style>

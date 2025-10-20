@@ -21,6 +21,15 @@
           <label class="form-label">機構地址：</label>
           <input v-model="form.address" class="form-input" placeholder="請輸入機構地址" />
         </div>
+        <!-- 新增：位置欄位（緯度 / 經度），置於地址與電話之間 -->
+        <div class="form-row">
+          <label class="form-label">緯度：</label>
+          <input v-model="form.latitude" class="form-input" placeholder="例如 24.123456" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">經度：</label>
+          <input v-model="form.longitude" class="form-input" placeholder="例如 120.654321" />
+        </div>
         <div class="form-row">
           <label class="form-label">機構電話：</label>
           <input v-model="form.phone" class="form-input" placeholder="請輸入機構電話" />
@@ -71,6 +80,8 @@ const form = ref({
   name: '',
   contact: '',
   address: '',
+  latitude: '',
+  longitude: '',
   phone: '',
   fax: '',
   email: '',
@@ -115,6 +126,15 @@ const validate = () => {
   }
   if (!form.value.address) {
     alert('請輸入機構地址')
+    return false
+  }
+  // 若填入緯度/經度，檢查是否為有效數值
+  if (form.value.latitude && isNaN(Number(form.value.latitude))) {
+    alert('緯度格式錯誤，請輸入數字（例如 24.123456）')
+    return false
+  }
+  if (form.value.longitude && isNaN(Number(form.value.longitude))) {
+    alert('經度格式錯誤，請輸入數字（例如 120.654321）')
     return false
   }
   if (!form.value.phone) {

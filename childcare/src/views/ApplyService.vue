@@ -74,31 +74,31 @@
           <div class="form-grid">
             <div class="form-row">
               <label>姓名</label>
-              <input v-model="form.applicant.name" type="text" />
+              <input v-model="form.applicant.name" type="text" :disabled="sameAsMember.applicant" />
             </div>
             <div class="form-row">
               <label>生日</label>
-              <input v-model="form.applicant.birth" type="date" />
+              <input v-model="form.applicant.birth" type="date" :disabled="sameAsMember.applicant" />
             </div>
             <div class="form-row">
               <label>身分證</label>
-              <input v-model="form.applicant.id" type="text" />
+              <input v-model="form.applicant.id" type="text" :disabled="sameAsMember.applicant" />
             </div>
             <div class="form-row">
               <label>戶籍地址</label>
-              <input v-model="form.applicant.homeAddress" type="text" />
+              <input v-model="form.applicant.homeAddress" type="text" :disabled="sameAsMember.applicant" />
             </div>
             <div class="form-row">
               <label>通訊地址</label>
-              <input v-model="form.applicant.mailAddress" type="text" />
+              <input v-model="form.applicant.mailAddress" type="text" :disabled="sameAsMember.applicant" />
             </div>
             <div class="form-row">
               <label>行動電話</label>
-              <input v-model="form.applicant.mobile" type="tel" />
+              <input v-model="form.applicant.mobile" type="tel" :disabled="sameAsMember.applicant" />
             </div>
             <div class="form-row">
               <label>電子信箱</label>
-              <input v-model="form.applicant.email" type="email" />
+              <input v-model="form.applicant.email" type="email" :disabled="sameAsMember.applicant" />
             </div>
           </div>
         </fieldset>
@@ -107,7 +107,7 @@
         <div class="form-row form-row-top">
           <div class="form-top-right">
             <input type="checkbox" id="sameAsMemberParent1" v-model="sameAsMember.parent1" />
-            <label for="sameAsMemberParent1" class="legend-check-text">同會員資料</label>
+            <label for="sameAsMemberParent1" class="legend-check-text">同會員資料家長1</label>
           </div>
         </div>
         <!-- 家長1資料 -->
@@ -134,7 +134,7 @@
             </div>
             <div class="form-row">
               <label>身分證</label>
-              <input v-model="form.parent1.id" type="text" />
+              <input v-model="form.parent1.id" type="text" :disabled="sameAsMember.parent1" />
             </div>
             <div class="form-row">
               <label>家長類別</label>
@@ -186,7 +186,7 @@
         <div class="form-row form-row-top">
           <div class="form-top-right">
             <input type="checkbox" id="sameAsMemberParent2" v-model="sameAsMember.parent2" />
-            <label for="sameAsMemberParent2" class="legend-check-text">同會員資料</label>
+            <label for="sameAsMemberParent2" class="legend-check-text">同會員資料家長2</label>
           </div>
         </div>
         <fieldset class="form-section">
@@ -204,7 +204,7 @@
             </div>
             <div class="form-row">
               <label>身分證</label>
-              <input v-model="form.parent2.id" type="text" />
+              <input v-model="form.parent2.id" type="text" :disabled="sameAsMember.parent2" />
             </div>
             <div class="form-row">
               <label>家長類別</label>
@@ -262,7 +262,7 @@
 
         <div class="form-actions">
           <button type="submit" class="submit-btn">送出</button>
-          <button type="reset" class="reset-btn">重設</button>
+          <button type="button" class="reset-btn" @click="startNew">重設</button>
         </div>
       </form>
 
@@ -378,7 +378,7 @@
 </template>
 
 <script setup>
-import { ref, onBeforeUnmount, computed } from 'vue'
+import { ref, onBeforeUnmount, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import LoginView from './LoginView.vue'
 import { useAuthStore } from '@/store/auth.js'
@@ -389,65 +389,134 @@ const step = ref(1) // 目前步驟，預設1
 const validationMessage = ref('') // 新增：儲存驗證提示訊息
 const identityTypeSelect = ref('') // 新增：申請之身分別選擇
 
-// 登入表單
-const loginForm = ref({
-  username: '',
-  password: '',
-  captcha: ''
-})
-const login = () => {
-  // 模擬登入
-  authStore.login()
-}
-
 // 申請表單資料
 const form = ref({
+  applicant: { name: '', birth: '', id: '', homeAddress: '', mailAddress: '', mobile: '', email: '' },
+  parent1: { name: '', birth: '', id: '', parentType: '', homeAddress: '', mobile: '', company: '', gender: '', contactAddress: '', email: '', isLeave: false, leaveStart: '', leaveEnd: '' },
+  parent2: { name: '', birth: '', id: '', parentType: '', homeAddress: '', mobile: '', company: '', gender: '', contactAddress: '', email: '', isLeave: false, leaveStart: '', leaveEnd: '' }
+})
+
+// 改為三筆模擬資料：申請人 / 家長1 / 家長2
+const mockProfiles = ref({
   applicant: {
-    name: '',
-    birth: '',
-    id: '',
-    homeAddress: '',
-    mailAddress: '',
-    mobile: '',
-    email: ''
+    name: '陳小華',
+    birth: '1992-03-15',
+    id: 'B987654321',
+    homeAddress: '台中市西屯區市政路100號',
+    mailAddress: '台中市西屯區市政路100號',
+    contactAddress: '台中市西屯區市政路100號',
+    mobile: '0966888777',
+    email: 'applicant@example.com',
+    gender: '女',
+    company: '申請人公司'
   },
   parent1: {
-    name: '',
-    birth: '',
-    id: '',
-    parentType: '',
-    homeAddress: '',
-    mobile: '',
-    company: '',
-    gender: '',
-    contactAddress: '',
-    email: '',
-    isLeave: false,
-    leaveStart: '',
-    leaveEnd: ''
+    name: '李大明',
+    birth: '1985-01-20',
+    id: 'C234567890',
+    parentType: '父親',
+    homeAddress: '台中市北區中清路200號',
+    contactAddress: '台中市北區中清路200號',
+    mobile: '0911222333',
+    email: 'parent1@example.com',
+    gender: '男',
+    company: '家長公司A',
+    // 模擬此位家長有留停
+    isLeave: true,
+    leaveStart: '2025-01-01',
+    leaveEnd: '2025-06-30'
   },
   parent2: {
-    name: '',
-    birth: '',
-    id: '',
-    parentType: '',
-    homeAddress: '',
-    mobile: '',
-    company: '',
-    gender: '',
-    contactAddress: '',
-    email: '',
+    name: '吳小英',
+    birth: '1987-07-07',
+    id: 'D345678901',
+    parentType: '母親',
+    homeAddress: '台中市南區復興路50號',
+    contactAddress: '台中市南區復興路50號',
+    mobile: '0922333444',
+    email: 'parent2@example.com',
+    gender: '女',
+    company: '家長公司B',
     isLeave: false,
     leaveStart: '',
     leaveEnd: ''
   }
 })
 
+
 // 同會員資料 checkbox 狀態
 const sameAsMember = ref({
   applicant: false,
   parent1: false,
   parent2: false
+})
+
+// 監聽同會員資料勾選，帶入或清空資料
+watch(() => sameAsMember.value.applicant, (val) => {
+  if (val) {
+    // 帶入申請人專屬模擬資料（完整鎖死）
+    const m = JSON.parse(JSON.stringify(mockProfiles.value.applicant))
+    form.value.applicant = {
+      name: m.name || '',
+      birth: m.birth || '',
+      id: m.id || '',
+      homeAddress: m.homeAddress || '',
+      mailAddress: m.mailAddress || m.contactAddress || '',
+      mobile: m.mobile || '',
+      email: m.email || ''
+    }
+  } else {
+    // 取消勾選 -> 清空申請人資料
+    form.value.applicant = { name:'', birth:'', id:'', homeAddress:'', mailAddress:'', mobile:'', email:'' }
+  }
+})
+
+watch(() => sameAsMember.value.parent1, (val) => {
+  if (val) {
+    // 帶入家長1模擬資料（身分證欄位在 template 已設定 :disabled）
+    const m = JSON.parse(JSON.stringify(mockProfiles.value.parent1))
+    form.value.parent1 = {
+      name: m.name || '',
+      birth: m.birth || '',
+      id: m.id || '',
+      parentType: m.parentType || '',
+      homeAddress: m.homeAddress || '',
+      mobile: m.mobile || '',
+      company: m.company || '',
+      gender: m.gender || '',
+      contactAddress: m.contactAddress || '',
+      email: m.email || '',
+      isLeave: !!m.isLeave,
+      leaveStart: m.leaveStart || '',
+      leaveEnd: m.leaveEnd || ''
+    }
+  } else {
+    // 取消勾選 -> 清空家長1
+    form.value.parent1 = { name:'', birth:'', id:'', parentType:'', homeAddress:'', mobile:'', company:'', gender:'', contactAddress:'', email:'', isLeave:false, leaveStart:'', leaveEnd:'' }
+  }
+})
+
+watch(() => sameAsMember.value.parent2, (val) => {
+  if (val) {
+    const m = JSON.parse(JSON.stringify(mockProfiles.value.parent2))
+    form.value.parent2 = {
+      name: m.name || '',
+      birth: m.birth || '',
+      id: m.id || '',
+      parentType: m.parentType || '',
+      homeAddress: m.homeAddress || '',
+      mobile: m.mobile || '',
+      company: m.company || '',
+      gender: m.gender || '',
+      contactAddress: m.contactAddress || '',
+      email: m.email || '',
+      isLeave: !!m.isLeave,
+      leaveStart: m.leaveStart || '',
+      leaveEnd: m.leaveEnd || ''
+    }
+  } else {
+    form.value.parent2 = { name:'', birth:'', id:'', parentType:'', homeAddress:'', mobile:'', company:'', gender:'', contactAddress:'', email:'', isLeave:false, leaveStart:'', leaveEnd:'' }
+  }
 })
 
 // 上傳檔案狀態
@@ -473,18 +542,7 @@ function removeFile(idx) {
     URL.revokeObjectURL(removed.previewUrl)
   }
 }
-function handleUpload() {
-  validationMessage.value = '' // 清空舊的提示訊息
-  if(!uploadedFiles.value.length){
-    validationMessage.value = '請先選擇至少一個檔案再繼續'
-    return
-  }
-  // TODO: 可在此呼叫實際上傳 API，成功後再前往下一步
-  validationMessage.value = '檔案上傳成功，進入下一步'
-  setTimeout(() => {
-    step.value = 3 // 上傳完成 -> 進入選擇機構步驟
-  }, 1500)
-}
+
 onBeforeUnmount(() => {
   // 釋放所有預覽網址
   uploadedFiles.value.forEach(f => {

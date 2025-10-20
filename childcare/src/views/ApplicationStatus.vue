@@ -1,11 +1,11 @@
 <template>
+    <!-- 當未進入詳情時顯示列表；進入詳情/補件/撤銷時顯示子頁 -->
+    <div v-if="!childActive" class="applications-section">
   <div class="status-page">
     <div>
       <div class="list-title">申請進度查詢</div>
       <div class="title-decoration"></div>
     </div>
-
-    <div class="applications-section">
 
       <div v-if="applications.length === 0" class="no-applications">目前沒有申請紀錄</div>
 
@@ -32,7 +32,6 @@
 
           <div class="application-status">
             <span :class="['status-badge', item.statusClass]">{{ getStatusLabel(item.statusClass, item.status) }}</span>
-            <!-- action buttons removed: entire item is clickable now -->
           </div>
         </div>
       </div>
@@ -51,25 +50,32 @@
         <span class="status-badge withdrawn"></span>
       </div>
     </div>
+
   </div>
+    <!-- 詳情 / 補件 / 撤銷 子頁 -->
+    <router-view v-else />
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
+
+const childActive = computed(() => {
+  return route.name === 'ApplicationProgressDetail' || route.name === 'ApplicationProgressSupplement' || route.name === 'ApplicationProgressRevoke'
+})
 
 function getStatusLabel(statusClass, rawStatus) {
   const map = {
     processing: '審核中',
     pending: '審核中',
-    approved: '已通過',
-    rejected: '已退件',
     supplement: '需要補件',
-    waitingForAdmission: '通過候補中',
+    rejected: '已退件',
+    waitingForAdmission: '錄取候補中',
     revokeProcessing: '撤銷申請審核中',
-    revoked: '撤銷申請已通過',
+    revoked: '撤銷申請通過',
     admitted: '已錄取',
     withdrawn: '已退托'
   }
@@ -78,35 +84,20 @@ function getStatusLabel(statusClass, rawStatus) {
 
 // sample data with multiple statuses + some non-empty details
 const applications = ref([
-  { caseNo: 'A20251018001', applyDate: '2025-10-18', status: 'processing', statusClass: 'processing', details: '' },
-  { caseNo: 'A20250915002', applyDate: '2025-09-15', status: 'approved', statusClass: 'approved', details: '' },
-  { caseNo: 'A20250820003', applyDate: '2025-08-20', status: 'rejected', statusClass: 'rejected', details: '資料不完整：請補上父母身分證明文件。' },
-  { caseNo: 'A20250711004', applyDate: '2025-07-11', status: 'supplement', statusClass: 'supplement', details: '照片解析度不足，請上傳清晰頭像照片。' },
-  { caseNo: 'A20250601005', applyDate: '2025-06-01', status: 'revoked', statusClass: 'revoked', details: '申請已由申請人撤回。' },
-  { caseNo: 'A20250425006', applyDate: '2025-04-25', status: 'waitingForAdmission', statusClass: 'waitingForAdmission', details: '', queueNumber: 12 },
-  { caseNo: 'A20250212007', applyDate: '2025-02-12', status: 'admitted', statusClass: 'admitted', details: '' },
-  { caseNo: 'A20250130008', applyDate: '2025-01-30', status: 'withdrawn', statusClass: 'withdrawn', details: '已於 2025-02-15 正式退託。' }
+  { caseNo: 'A20251018001', applyDate: '2025-10-18', status: 'processing', statusClass: 'processing', details: '', submittedAt: '2025-10-18T09:12:00' },
+  { caseNo: 'A20251018002', applyDate: '2025-10-17', status: 'pending', statusClass: 'pending', details: '等候資料審核', submittedAt: '2025-10-17T14:03:00' },
+  { caseNo: 'A20250820003', applyDate: '2025-08-20', status: 'supplement', statusClass: 'supplement', details: '照片解析度不足，請上傳清晰頭像照片。', supplementItems: [ { key: 'photo', label: '孩子頭像照片', required: true } ], supplementDeadline: '2025-09-03' , submittedAt: '2025-08-20T10:00:00'},
+  { caseNo: 'A20250711004', applyDate: '2025-07-11', status: 'rejected', statusClass: 'rejected', details: '資料不完整：請補上父母身分證明文件。', rejectionReason: '缺少父母身分證影本', rejectionContact: 'service@example.gov.tw', submittedAt: '2025-07-11T11:22:00' },
+  { caseNo: 'A20250425006', applyDate: '2025-04-25', status: 'waitingForAdmission', statusClass: 'waitingForAdmission', details: '', queueNumber: 12, queueTotal: 50, estimatedWaitWeeks: 8, submittedAt: '2025-04-25T08:30:00' },
+  { caseNo: 'A20250601005', applyDate: '2025-06-01', status: 'revokeProcessing', statusClass: 'revokeProcessing', details: '已送出撤銷申請，等待處理。', revokeRequestedAt: '2025-06-01T15:20:00', revokeReason: '家庭因素' , submittedAt: '2025-05-20T09:00:00'},
+  { caseNo: 'A20250601006', applyDate: '2025-06-02', status: 'revoked', statusClass: 'revoked', details: '撤銷申請已通過。', revokeRequestedAt: '2025-06-01T13:00:00', revokeProcessedAt: '2025-06-02T10:15:00', submittedAt: '2025-05-15T12:00:00' },
+  { caseNo: 'A20250130008', applyDate: '2025-01-30', status: 'withdrawn', statusClass: 'withdrawn', details: '已於 2025-02-15 正式退託。', withdrawnAt: '2025-02-15', withdrawnReason: '已找到其他托育安排', submittedAt: '2025-01-30T09:45:00' },
+  { caseNo: 'A20250212007', applyDate: '2025-02-12', status: 'admitted', statusClass: 'admitted', details: '恭喜，您已錄取。', admittedAt: '2025-03-01', assignedInstitution: { id: 'I-1001', name: '幸福托育中心' }, submittedAt: '2025-02-12T10:00:00' }
 ])
 
-// Routes aligned with MemberCenter.vue
-const onSupplement = (item) => {
-  router.push({ path: '/supplement-document', query: { applicationId: item.caseNo } })
-}
-
-const onViewRejection = (item) => {
-  router.push({ path: '/rejection-reason', query: { applicationId: item.caseNo } })
-}
-
-const onRevoke = (item) => {
-  router.push({ path: '/revoke-application', query: { applicationId: item.caseNo } })
-}
-
-// Entire item click behavior
+// Entire item click behavior -> unified progress detail page
 const onItemClick = (item) => {
-  if (item.status === 'supplement') return onSupplement(item)
-  if (item.status === 'rejected') return onViewRejection(item)
-  if (item.status === 'waitingForAdmission') return onRevoke(item)
-  // default: no dedicated page per MemberCenter for other statuses yet
+  router.push({ name: 'ApplicationProgressDetail', params: { caseNo: item.caseNo } })
 }
 
 // Keyboard accessibility: Enter / Space triggers click
@@ -122,21 +113,8 @@ const onKeydown = (e, item) => {
 <style scoped>
 /* follow MemberCenter visual style */
 .status-page { max-width: 60%; margin: 28px auto; padding: 0 16px 40px; }
-.list-title{
-  text-align:center;
-  font-size:1.5rem;
-  font-weight:bold;
-  margin:50px 0 16px 0;
-  letter-spacing:2px;
-}
-.title-decoration{
-  width: 65%;
-  height: 2px;
-  border-radius: 4px;
-  background: var(--4th-text-color);
-  margin: 0 auto;
-  margin-bottom: 10px;
-}
+.list-title{ text-align:center; font-size:1.5rem; font-weight:bold; margin:50px 0 16px 0; letter-spacing:2px; }
+.title-decoration{ width: 65%; height: 2px; border-radius: 4px; background: var(--4th-text-color); margin: 0 auto; margin-bottom: 10px; }
 .applications-section { background: transparent }
 .applications-list { display:flex; flex-direction:column; gap:12px }
 .application-item { display:flex; justify-content:space-between; align-items:flex-start; background:#fff; padding:14px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.04); cursor:pointer; transition: box-shadow .15s ease, transform .05s ease }

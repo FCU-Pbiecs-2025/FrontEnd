@@ -34,7 +34,7 @@
 
           <div class="form-actions">
             <button class="save-btn" @click="submitSupplement">提交補件</button>
-            <button class="cancel-btn" @click="goBack">取消</button>
+            <button class="cancel-btn" @click="goBack">返回</button>
           </div>
         </div>
       </div>
@@ -85,11 +85,11 @@ const submitSupplement = () => {
 
   // TODO: 呼叫 API 提交補件資料
   alert('補件已提交，等待審核')
-  router.push('/member-center')
+  router.back()
 }
 
 const goBack = () => {
-  router.push('/member-center')
+  router.back()
 }
 </script>
 
@@ -224,7 +224,7 @@ const goBack = () => {
 
 .form-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 12px;
 }
 
