@@ -18,8 +18,8 @@
               </select>
             </div>
             <div class="search-area">
-              <label class="search-label" for="keyword">關鍵字：</label>
-              <input id="keyword" v-model="keyword" class="search-input" placeholder="幼兒姓名／備註" />
+              <label class="search-label" for="keyword">姓名：</label>
+              <input id="keyword" v-model="keyword" class="search-input" placeholder="幼兒姓名" />
             </div>
           </div>
           <div class="actions-wrapper">

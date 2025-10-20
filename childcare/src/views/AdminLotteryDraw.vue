@@ -13,7 +13,7 @@
             <div class="search-area">
               <label class="type-label">選擇公托社區：</label>
               <select v-model="selectedInstitution" class="date-input" @change="loadLotteryData">
-                <option value="">請選擇機構</option>
+                <option value="">全部機構</option>
                 <option v-for="inst in institutions" :key="inst.id" :value="inst.id">
                   {{ inst.name }}
                 </option>
@@ -22,7 +22,7 @@
           </div>
         </div>
         <div class="btn-query">
-          <button class="btn primary" @click="showDrawModal = true" :disabled="!hasWaitingList">進行抽籤</button>
+          <button class="btn primary" @click="performDraw" :disabled="!hasWaitingList">進行抽籤</button>
           <button class="btn query" @click="exportResults" :disabled="lotteryResults.length === 0">結果公告</button>
         </div>
       </div>
@@ -30,104 +30,46 @@
       <!-- 提示訊息 -->
       <div class="info-banner" v-if="selectedInstitution && purchasedList.length === 0">
         <span class="icon-info">ℹ️</span>
-        <span>購機總結：尚無購機資料</span>
+        <span>機構總結：尚無資料</span>
       </div>
 
-      <!-- 班級名額公告 -->
-      <div class="table-section">
-        <table class="announcement-table">
-          <thead>
-            <tr>
-              <th>班級</th>
-              <th>申請人姓名<br/>申請人身分證</th>
-              <th>幼童姓名</th>
-              <th>幼童身分證</th>
-              <th>序號</th>
-              <th>排序</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in purchasedList" :key="item.id">
-              <td class="class-cell">{{ item.className }}</td>
-              <td class="applicant-cell">
-                <div>{{ item.applicantName }}</div>
-                <div class="id-number">{{ item.applicantId }}</div>
-              </td>
-              <td class="child-cell">{{ item.childName }}</td>
-              <td class="id-cell">{{ item.childId }}</td>
-              <td class="number-cell">{{ item.sequence }}</td>
-              <td class="order-cell">{{ item.order }}</td>
-            </tr>
-            <tr v-if="purchasedList.length === 0">
-              <td colspan="6" class="empty-tip">目前沒有購機資料</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- 班級名額候補名單 -->
-      <div class="table-section">
-        <table class="announcement-table">
-          <thead>
-            <tr>
-              <th>班級</th>
-              <th>申請人姓名<br/>申請人身分證</th>
-              <th>幼童姓名</th>
-              <th>幼童身分證</th>
-              <th>序號</th>
-              <th>排序</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in waitingList" :key="item.id">
-              <td class="class-cell">{{ item.className }}</td>
-              <td class="applicant-cell">
-                <div>{{ item.applicantName }}</div>
-                <div class="id-number">{{ item.applicantId }}</div>
-              </td>
-              <td class="child-cell">{{ item.childName }}</td>
-              <td class="id-cell">{{ item.childId }}</td>
-              <td class="number-cell">{{ item.sequence }}</td>
-              <td class="order-cell">{{ item.order || '-' }}</td>
-            </tr>
-            <tr v-if="waitingList.length === 0">
-              <td colspan="6" class="empty-tip">目前沒有候補名單</td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- 抽籤前不顯示表格，抽籤後只顯示結果表格 -->
+      <div v-if="showResultModal">
+        <!-- 抽籤結果表格 -->
+        <div class="table-section">
+          <table class="announcement-table">
+            <thead>
+              <tr>
+                <th>班級</th>
+                <th>申請人姓名<br/>申請人身分證</th>
+                <th>幼童姓名</th>
+                <th>幼童身分證</th>
+                <th>序號</th>
+                <th>排序</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in lotteryResults" :key="item.id">
+                <td class="class-cell">{{ item.className }}</td>
+                <td class="applicant-cell">
+                  <div>{{ item.applicantName }}</div>
+                  <div class="id-number">{{ item.applicantId }}</div>
+                </td>
+                <td class="child-cell">{{ item.childName }}</td>
+                <td class="id-cell">{{ item.childId }}</td>
+                <td class="number-cell">{{ item.sequence }}</td>
+                <td class="order-cell">{{ item.order || '-' }}</td>
+              </tr>
+              <tr v-if="lotteryResults.length === 0">
+                <td colspan="6" class="empty-tip">目前沒有抽籤結果</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- 抽籤確認對話框 -->
-      <div class="modal-overlay" v-if="showDrawModal" @click="showDrawModal = false">
-        <div class="modal-content" @click.stop>
-          <div class="modal-header">
-            <h3>確認進行抽籤</h3>
-            <button class="modal-close" @click="showDrawModal = false">✕</button>
-          </div>
-          <div class="modal-body">
-            <p class="modal-message">
-              <span class="warning-icon">⚠️</span>
-              確定要進行補位抽籤嗎？
-            </p>
-            <p class="modal-info">
-              機構：<strong>{{ getInstitutionName(selectedInstitution) }}</strong><br/>
-              候補人數：<strong>{{ waitingList.length }}</strong> 人
-            </p>
-            <div class="modal-notice">
-              <p>📌 注意事項：</p>
-              <ul>
-                <li>抽籤結果將自動產生排序</li>
-                <li>抽籤完成後將發送通知給家長</li>
-                <li>此操作無法復原，請確認後再執行</li>
-              </ul>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn secondary" @click="showDrawModal = false">取消</button>
-            <button class="btn warning" @click="performDraw">確認抽籤</button>
-          </div>
-        </div>
-      </div>
+      <!-- 已移除原本的抽籤確認對話框區塊 -->
 
       <!-- 抽籤進行中動畫 -->
       <div class="modal-overlay" v-if="isDrawing">
@@ -138,31 +80,7 @@
       </div>
 
       <!-- 抽籤結果對話框 -->
-      <div class="modal-overlay" v-if="showResultModal" @click="showResultModal = false">
-        <div class="modal-content result-modal" @click.stop>
-          <div class="modal-header">
-            <h3>🎉 抽籤完成</h3>
-            <button class="modal-close" @click="showResultModal = false">✕</button>
-          </div>
-          <div class="modal-body">
-            <p class="success-message">補位抽籤已完成！</p>
-            <div class="result-summary">
-              <div class="summary-item">
-                <span class="summary-label">抽籤人數：</span>
-                <span class="summary-value">{{ lotteryResults.length }} 人</span>
-              </div>
-              <div class="summary-item">
-                <span class="summary-label">完成時間：</span>
-                <span class="summary-value">{{ drawTime }}</span>
-              </div>
-            </div>
-            <p class="result-tip">排序結果已更新至候補日表中</p>
-          </div>
-          <div class="modal-footer">
-            <button class="btn primary" @click="showResultModal = false">確定</button>
-          </div>
-        </div>
-      </div>
+      <!-- 已移除抽籤完成彈窗區塊 -->
     </div>
   </div>
 </template>
@@ -206,13 +124,7 @@ const getInstitutionName = (id) => {
 
 // 載入抽籤資料
 const loadLotteryData = () => {
-  if (!selectedInstitution.value) {
-    purchasedList.value = []
-    waitingList.value = []
-    return
-  }
-
-  // 模擬資料 - 購機名單
+  // 無論選擇哪個機構（包含全部機構），都要有測試資料
   purchasedList.value = [
     {
       id: 1,
@@ -234,9 +146,7 @@ const loadLotteryData = () => {
       sequence: 2,
       order: 2
     }
-  ]
-
-  // 模擬資料 - 候補名單
+  ];
   waitingList.value = [
     {
       id: 101,
@@ -268,14 +178,17 @@ const loadLotteryData = () => {
       sequence: 5,
       order: null
     }
-  ]
-
-  lotteryResults.value = []
+  ];
+  lotteryResults.value = [];
 }
 
 // 執行抽籤
 const performDraw = async () => {
-  showDrawModal.value = false
+  // 新增確認提醒
+  const confirmMsg = `確定要進行補位抽籤嗎？\n機構：${getInstitutionName(selectedInstitution.value)}\n請確認後再執行。`
+  if (!window.confirm(confirmMsg)) {
+    return
+  }
   isDrawing.value = true
 
   // 模擬抽籤過程（2秒）

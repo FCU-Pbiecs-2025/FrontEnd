@@ -26,8 +26,8 @@
           </div>
           <div class="query-row">
             <div class="search-area">
-              <label class="type-label">申請人姓名：</label>
-              <input v-model="filters.applicant" placeholder="姓名/身分證末四碼" class="date-input" style="width:200px" />
+              <label class="type-label">申請人身分證：</label>
+              <input v-model="filters.applicant" placeholder="身分證" class="date-input" style="width:200px" />
             </div>
           </div>
         </div>
@@ -87,10 +87,10 @@ const formatDate = d => `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDa
 const fullList = ref([
   { id: 'A1001', Date: formatDate(today), applicant: '王小明', institution: '幸福幼兒園', status: '待審核', type: 'public', content: '參考資料...' },
   { id: 'A1002', Date: formatDate(today), applicant: '陳小華', institution: '快樂托育中心', status: '待審核', type: 'private', content: '參考資料...' },
-  { id: 'A1003', Date: formatDate(today), applicant: '李大明', institution: '陽光幼兒園', status: '已通過', type: 'public', content: '參考資料...' },
-  { id: 'A1004', Date: formatDate(today), applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...' },
-  { id: 'A1005', Date: formatDate(today), applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...' },
-  { id: 'A1006', Date: formatDate(today), applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...' }
+  { id: 'A1003', Date: formatDate(today), applicant: '李大明', institution: '陽光幼兒園', status: '待審核', type: 'public', content: '參考資料...' },
+  { id: 'A1004', Date: formatDate(today), applicant: '張小花', institution: '愛心托育所', status: '待審核', type: 'private', content: '參考資料...' },
+  { id: 'A1005', Date: formatDate(today), applicant: '張小花', institution: '愛心托育所', status: '待審核', type: 'private', content: '參考資料...' },
+  { id: 'A1006', Date: formatDate(today), applicant: '張小花', institution: '愛心托育所', status: '待審核', type: 'private', content: '參考資料...' }
 ])
 
 // 顯示的資料列表（初始顯示全部）

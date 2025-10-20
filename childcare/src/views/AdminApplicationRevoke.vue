@@ -27,8 +27,8 @@
           </div>
           <div class="query-row">
             <div class="search-area">
-              <label class="type-label">申請人姓名：</label>
-              <input v-model="filters.applicant" placeholder="姓名/身分證末四碼" class="date-input" style="width:200px" />
+              <label class="type-label">申請人身分證：</label>
+              <input v-model="filters.applicant" placeholder="身分證" class="date-input" style="width:200px" />
             </div>
           </div>
         </div>
@@ -82,11 +82,11 @@ const filters = ref({ type: '', revokeId: '', applicant: '' })
 // 原始完整資料列表
 const fullList = ref([
   { id: 'R2001', Date:'2025/01/01', applicant: '張麗麗', institution: '快樂托育', status: '待審核', type: 'qualification' },
-  { id: 'R2002', Date:'2025/01/01', applicant: '王小明', institution: '幸福幼兒園', status: '已通過', type: 'document' },
-  { id: 'R2003', Date:'2025/01/01', applicant: '李小華', institution: '陽光托育所', status: '審核中', type: 'other' },
+  { id: 'R2002', Date:'2025/01/01', applicant: '王小明', institution: '幸福幼兒園', status: '待審核', type: 'document' },
+  { id: 'R2003', Date:'2025/01/01', applicant: '李小華', institution: '陽光托育所', status: '待審核', type: 'other' },
   { id: 'R2004', Date:'2025/01/01', applicant: '陳大同', institution: '愛心幼兒園', status: '待審核', type: 'qualification' },
-  { id: 'R2005', Date:'2025/01/02', applicant: '林小美', institution: '愛心托育中心', status: '已駁回', type: 'document' },
-  { id: 'R2006', Date:'2025/01/02', applicant: '黃大明', institution: '溫馨幼兒園', status: '已通過', type: 'other' }
+  { id: 'R2005', Date:'2025/01/02', applicant: '林小美', institution: '愛心托育中心', status: '待審核', type: 'document' },
+  { id: 'R2006', Date:'2025/01/02', applicant: '黃大明', institution: '溫馨幼兒園', status: '待審核', type: 'other' }
 ])
 
 // 顯示的資料列表（初始顯示全部）

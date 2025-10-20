@@ -77,15 +77,13 @@
       <template v-if="$route.name === 'AdminHome'">
         <div class="admin-announcement">
           <!-- 代辦事項通知區塊 -->
-          <h2 class="section-title">代辦事項通知</h2>
+          <h2 class="section-title">待辦事項通知</h2>
           <div class="news-list-section">
             <div class="news-list-header">
-              <span>發布日期</span>
               <span>事項標題</span>
               <span>內容</span>
             </div>
             <div v-for="item in todoList" :key="item.id" class="news-list-row">
-              <span class="news-date-cell">{{ item.date }}</span>
               <span class="news-title-cell" :title="item.title">{{ item.title.length > 18 ? item.title.slice(0, 18) + '...' : item.title }}</span>
               <span class="news-content-cell">{{ item.content }}</span>
             </div>
