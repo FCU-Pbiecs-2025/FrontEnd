@@ -33,8 +33,10 @@
                 <td class="phone-cell">{{ item.phone }}</td>
                 <td class="address-cell">{{ item.address }}</td>
                 <td class="action-cell">
-                  <button class="btn small" @click="edit(item)">編輯</button>
-                  <button class="btn small danger" @click="remove(item)">刪除</button>
+                  <div style="display: flex; gap: 8px;">
+                    <button class="btn small" style="min-width: 60px; height: 36px;" @click="edit(item)">編輯</button>
+                    <button class="btn small danger" style="min-width: 60px; height: 36px;" @click="remove(item)">刪除</button>
+                  </div>
                 </td>
               </tr>
               <tr v-if="resultList.length === 0">
@@ -158,8 +160,8 @@ const isEditPage = computed(() => {
 .btn.small { padding:6px 12px; font-size:0.95rem; background:#f3f4f6; margin-right:6px; }
 .btn.danger { background:#ff7b8a; color:#fff }
 .institution-table { width:100%; border-collapse:collapse }
-.institution-table thead th { background:#cfe8ff; color:#2e6fb7; padding:10px; text-align:left; font-weight:700; }
-.institution-table td { padding:12px; border-bottom:1px solid #f3f4f6; vertical-align: middle; }
+.institution-table thead th { background:#cfe8ff; color:#2e6fb7; padding:10px; text-align:left; font-weight:700; font-size:1rem; }
+.institution-table td { padding:12px; border-bottom:1px solid #f3f4f6; vertical-align: middle; font-size:1rem; }
 .name-cell { font-weight:600; color:#334e5c }
 .director-cell { color:#334e5c }
 .phone-cell { color:#6b6f76 }

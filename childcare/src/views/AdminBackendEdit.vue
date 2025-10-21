@@ -43,7 +43,7 @@
             </label>
             <label class="radio-label">
               <input type="radio" value="suspended" v-model="account.right" />
-              <span>停權</span>
+              <span>停用</span>
             </label>
           </div>
 

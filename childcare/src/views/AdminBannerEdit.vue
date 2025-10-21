@@ -50,7 +50,6 @@
       <div class="bottom-row">
         <button class="btn ghost" @click="cancel">返回</button>
         <button class="btn primary" @click="save">儲存</button>
-        <button v-if="!isNew" class="btn danger" @click="doDelete">刪除</button>
       </div>
     </div>
   </div>
@@ -126,18 +125,6 @@ const save = () => {
     if (idx !== -1) banners.value[idx] = { ...banners.value[idx], ...form.value }
   }
   persist()
-  router.replace({ path: '/admin/banner' })
-}
-
-const doDelete = () => {
-  if (!confirm('確定要刪除這筆海報嗎？')) return
-  load()
-  const id = Number(route.params.id)
-  const idx = banners.value.findIndex(b => Number(b.id) === id)
-  if (idx !== -1) {
-    banners.value.splice(idx, 1)
-    persist()
-  }
   router.replace({ path: '/admin/banner' })
 }
 
