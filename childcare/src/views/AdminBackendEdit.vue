@@ -54,7 +54,6 @@
       <div class="bottom-row">
         <button class="btn ghost" @click="cancel">返回</button>
         <button class="btn primary" @click="save">儲存</button>
-        <button v-if="!isNew" class="btn danger" @click="doDelete">刪除</button>
       </div>
     </div>
   </div>
@@ -132,16 +131,6 @@ const cancel = () => {
   router.push({ name: 'AdminBackendAccount' })
 }
 
-const doDelete = () => {
-  if (!confirm('確定要刪除這個後台帳號嗎？')) return
-
-  const stored = JSON.parse(localStorage.getItem('backendAccounts') || '{}')
-  delete stored[account.value.id]
-  localStorage.setItem('backendAccounts', JSON.stringify(stored))
-
-  alert('刪除成功')
-  router.push({ name: 'AdminBackendAccount' })
-}
 </script>
 
 <style scoped>

@@ -92,7 +92,7 @@
       </div>
 
       <!-- 帳號管理區塊 -->
-      <div v-if="accountId" class="account-card">
+      <div v-if="accountId" class="member-info-section">
         <div class="title-row">
           <span class="main-title">帳號管理</span>
           <span class="account-id">ID：{{ accountId }}</span>
@@ -144,8 +144,8 @@ const saveAccountStatus = () => {
 }
 
 const clearAccountQuery = () => {
-  // 移除 query，關閉帳號管理區塊
-  router.replace({ path: '/member-center' })
+  // 跳轉回前頁，關閉帳號管理區塊
+  router.go(-1)
 }
 
 // 當 route query 變化時同步 accountId 與載入狀態
@@ -1001,21 +1001,7 @@ const manageChildren = () => {
 }
 
 /* 美化帳號管理區塊 */
-.account-management-section {
-  margin: 40px auto 0 auto;
-  max-width: 480px;
-  padding: 0 8px 32px 8px;
-}
-.account-card {
-  background: #fff8f6;
-  border-radius: 18px;
-  box-shadow: 0 4px 24px rgba(249,175,174,0.13);
-  padding: 32px 28px 24px 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  align-items: stretch;
-}
+/* 刪除 account-card 相關 CSS，讓帳號管理區塊繼承 member-info-section 樣式 */
 .title-row {
   display: flex;
   align-items: center;

@@ -10,11 +10,10 @@
         <div class="query-container">
           <div class="query-row">
             <div class="search-area">
-              <label class="type-label">公私幼類型：</label>
-              <select v-model="filters.type" class="date-input" style="width:120px">
+              <label class="type-label">機構名稱：</label>
+              <select v-model="filters.institution" class="date-input" style="width:180px">
                 <option value="">全部</option>
-                <option value="public">公立</option>
-                <option value="private">私立</option>
+                <option v-for="name in institutionOptions" :key="name" :value="name">{{ name }}</option>
               </select>
             </div>
           </div>
@@ -74,10 +73,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 const router = useRouter()
-const filters = ref({ type: '', applicationId: '', applicant: '' })
+const filters = ref({ institution: '', applicationId: '', applicant: '' })
 
 const today = new Date();
 const pad = n => n.toString().padStart(2, '0');
@@ -93,6 +92,12 @@ const fullList = ref([
   { id: 'A1006', Date: formatDate(today), applicant: '張小花', institution: '愛心托育所', status: '待審核', type: 'private', content: '參考資料...' }
 ])
 
+// 機構名稱選項（去重）
+const institutionOptions = computed(() => {
+  const set = new Set(fullList.value.map(item => item.institution))
+  return Array.from(set)
+})
+
 // 顯示的資料列表（初始顯示全部）
 const items = ref([...fullList.value])
 
@@ -101,12 +106,12 @@ const showBack = ref(false)
 function search() {
   const qId = filters.value.applicationId.trim()
   const qApplicant = filters.value.applicant.trim()
-  const qType = filters.value.type
+  const qInstitution = filters.value.institution
 
   // 根據條件過濾資料
   items.value = fullList.value.filter(item => {
-    // 公私幼類型篩選
-    if (qType && item.type !== qType) return false
+    // 機構名稱篩選
+    if (qInstitution && item.institution !== qInstitution) return false
 
     // 申請編號篩選（完全匹配或包含）
     if (qId && !item.id.toLowerCase().includes(qId.toLowerCase())) return false
@@ -128,7 +133,7 @@ function openDetail(item) {
 
 function goBack() {
   // 重置所有查詢條件
-  filters.value = { type: '', applicationId: '', applicant: '' }
+  filters.value = { institution: '', applicationId: '', applicant: '' }
   // 恢復顯示全部資料
   items.value = [...fullList.value]
   // 隱藏返回按鈕
