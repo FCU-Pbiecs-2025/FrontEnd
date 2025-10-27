@@ -71,8 +71,10 @@
                 <p class="agency-capacity">👶 收托人數：{{ agency.capacity }}人</p>
               </div>
               <div class="agency-status">
-                <span class="status-badge" :class="agency.statusClass">{{ agency.statusText }}</span>
-              </div>
+                <span class="status-badge" :class="agency.statusClass">
+                  <PlaceRating inline :placeName="agency.name + ' ' + agency.address" :fallbackText="agency.statusText" :apiKey="API_KEY" />
+                </span>
+               </div>
             </div>
           </div>
         </div>
@@ -94,17 +96,22 @@
 <script>
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import PlaceRating from '@/components/PlaceRating.vue'
 
 export default {
+  components: { PlaceRating },
   name: 'AgencySearch',
   setup() {
     const router = useRouter()
     const route = useRoute()
 
+    // Provide API key from env to PlaceRating (can be overridden per-component via prop)
+    const API_KEY = import.meta.env?.VITE_GOOGLE_MAPS_API_KEY || null
+
     const agencies = [
-      { id: 1, name: '新竹縣公立托嬰中心', address: '新竹縣竹北市中正東路123號', phone: '03-1234567', capacity: 30, statusText: '有名額', statusClass: 'available' },
-      { id: 2, name: '竹東托嬰中心', address: '新竹縣竹東鎮東林路456號', phone: '03-2345678', capacity: 25, statusText: '額滿', statusClass: 'full' },
-      { id: 3, name: '新埔幼兒園附設托嬰中心', address: '新竹縣新埔鎮中正路789號', phone: '03-3456789', capacity: 20, statusText: '有名額', statusClass: 'available' }
+      { id: 1, name: '新竹市東區公共托嬰中心', address: '新竹市東區金城一路50-8號1樓', phone: '', capacity: 30, statusText: '有名額', statusClass: 'available' },
+      { id: 2, name: '禾田托嬰中心 Hetian Baby Care Center', address: '新竹市北區金竹路146號148號', phone: '', capacity: 25, statusText: '有名額', statusClass: 'available' },
+      { id: 3, name: '新竹市私立樂橙托嬰中心', address: '新竹市北區水田街1號2樓', phone: '', capacity: 20, statusText: '有名額', statusClass: 'available' }
     ]
 
     const isMapView = computed(() => route.name === 'AgencyMap')
@@ -119,10 +126,10 @@ export default {
     }
 
     function goToInfo(agency) {
-      router.push({ name: 'AgencyInfo' })
+      router.push({ name: 'AgencyInfo', query: { id: agency.id } })
     }
 
-    return { agencies, isMapView, isInfoView, switchView, goToInfo }
+    return { agencies, isMapView, isInfoView, switchView, goToInfo, API_KEY }
   }
 }
 </script>

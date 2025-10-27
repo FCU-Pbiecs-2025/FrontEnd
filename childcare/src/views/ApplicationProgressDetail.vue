@@ -1,63 +1,62 @@
 <template>
   <div class="progress-detail-page">
-    <div class="page-header">
+    <div v-if="!childActive" class="page-header">
       <h1>申請進度詳情</h1>
       <p class="page-description">查看申請案件摘要與目前狀態</p>
     </div>
-
     <div class="content-area">
       <div v-if="!application" class="empty-card">
         <p>找不到此案號：{{ caseNo }}</p>
         <button class="back-btn" @click="goBack">返回</button>
       </div>
 
-      <div v-else class="detail-card">
-        <h2>案件摘要</h2>
-        <div class="summary-grid">
-          <div class="field"><span class="label">案號</span><span class="value">{{ application.caseNo }}</span></div>
-          <div class="field"><span class="label">申請日期</span><span class="value">{{ application.applyDate }}</span></div>
-          <div class="field"><span class="label">申請人姓名</span><span class="value">{{ application.applicantName || '—' }}</span></div>
-          <div class="field"><span class="label">申請幼兒姓名</span><span class="value">{{ application.childName || '—' }}</span></div>
-          <div class="field"><span class="label">幼兒月齡</span><span class="value">{{ childMonthsLabel }}</span></div>
-          <div class="field"><span class="label">申請機構</span><span class="value">{{ application.assignedInstitution?.name || application.targetInstitution || '—' }}</span></div>
-        </div>
-
-        <div class="status-row">
-          <span class="status-label">申請狀態：</span>
-          <span :class="['status-badge', application.statusClass || application.status]">
-            {{ getStatusLabel(application.statusClass || application.status, application.status) }}
-          </span>
-        </div>
-
-        <div class="explain-card">
-          <h3>說明</h3>
-          <p v-if="isProcessing" class="explain-text">請靜候幾日等候審核，我們會盡快完成審核並以簡訊/Email 通知您。</p>
-          <div v-else-if="isSupplement" class="explain-text">
-            <p>需補上戶口名簿圖片檔，或其他審核要求的文件。</p>
-            <ul v-if="application.supplementItems?.length" class="supplement-list">
-              <li v-for="it in application.supplementItems" :key="it.key">
-                <strong>{{ it.label }}</strong><span v-if="it.required" class="required">（必填）</span>
-              </li>
-            </ul>
-            <p v-if="application.supplementDeadline" class="deadline">補件期限：{{ application.supplementDeadline }}</p>
+      <div v-else>
+        <div v-if="!childActive" class="detail-card">
+          <h2>案件摘要</h2>
+          <div class="summary-grid">
+            <div class="field"><span class="label">案號</span><span class="value">{{ application.caseNo }}</span></div>
+            <div class="field"><span class="label">申請日期</span><span class="value">{{ application.applyDate }}</span></div>
+            <div class="field"><span class="label">申請人姓名</span><span class="value">{{ application.applicantName || '—' }}</span></div>
+            <div class="field"><span class="label">申請幼兒姓名</span><span class="value">{{ application.childName || '—' }}</span></div>
+            <div class="field"><span class="label">幼兒月齡</span><span class="value">{{ childMonthsLabel }}</span></div>
+            <div class="field"><span class="label">申請機構</span><span class="value">{{ application.assignedInstitution?.name || application.targetInstitution || '—' }}</span></div>
           </div>
-          <p v-else-if="application.status === 'rejected'" class="explain-text">您的申請已退件，建議查看退件原因並完成修正後再行申請。</p>
-          <p v-else-if="application.status === 'waitingForAdmission'" class="explain-text">
-            您目前為候補序位第 <strong>{{ application.queueNumber }}</strong> 位，名額釋出後將依序通知。
-          </p>
-          <p v-else-if="application.status === 'admitted'" class="explain-text">恭喜錄取！請依通知完成後續報到手續。</p>
-          <p v-else-if="application.status === 'withdrawn'" class="explain-text">案件已退托，如需再次申請可回到申請頁面重新提出申請。</p>
-          <p v-else class="explain-text">{{ application.details || '—' }}</p>
-        </div>
 
-        <div class="actions">
-          <button v-if="isSupplement" class="primary-btn" @click="goSupplement">補件</button>
-          <button v-if="isProcessing" class="danger-btn" @click="goRevoke">撤銷申請</button>
-          <button class="back-btn" @click="goBack">返回</button>
-        </div>
+          <div class="status-row">
+            <span class="status-label">申請狀態：</span>
+            <span :class="['status-badge', application.statusClass || application.status]">
+              {{ getStatusLabel(application.statusClass || application.status, application.status) }}
+            </span>
+          </div>
 
-        <!-- Nested routes outlet: e.g., 補件 / 撤銷申請 -->
-        <router-view />
+          <div class="explain-card">
+            <h3>說明</h3>
+            <p v-if="isProcessing" class="explain-text">請靜候幾日等候審核，我們會盡快完成審核並以簡訊/Email 通知您。</p>
+            <div v-else-if="isSupplement" class="explain-text">
+              <p>需補上戶口名簿圖片檔，或其他審核要求的文件。</p>
+              <ul v-if="application.supplementItems?.length" class="supplement-list">
+                <li v-for="it in application.supplementItems" :key="it.key">
+                  <strong>{{ it.label }}</strong><span v-if="it.required" class="required">（必填）</span>
+                </li>
+              </ul>
+              <p v-if="application.supplementDeadline" class="deadline">補件期限：{{ application.supplementDeadline }}</p>
+            </div>
+            <p v-else-if="application.status === 'rejected'" class="explain-text">您的申請已退件，建議查看退件原因並完成修正後再行申請。</p>
+            <p v-else-if="application.status === 'waitingForAdmission'" class="explain-text">
+              您目前為候補序位第 <strong>{{ application.queueNumber }}</strong> 位，名額釋出後將依序通知。
+            </p>
+            <p v-else-if="application.status === 'admitted'" class="explain-text">恭喜錄取！請依通知完成後續報到手續。</p>
+            <p v-else-if="application.status === 'withdrawn'" class="explain-text">案件已退托，如需再次申請可回到申請頁面重新提出申請。</p>
+            <p v-else class="explain-text">{{ application.details || '—' }}</p>
+          </div>
+
+          <div class="actions">
+            <button v-if="!['rejected','revoked','revokeProcessing','withdrawn'].includes(application.status)" class="danger-btn" @click="goRevoke">撤銷申請</button>
+            <button v-if="application.status === 'supplement'" class="primary-btn" @click="goSupplement">補件</button>
+            <button class="back-btn" @click="goBack">返回</button>
+          </div>
+        </div>
+        <router-view v-if="childActive" />
       </div>
     </div>
   </div>
@@ -90,7 +89,6 @@ const application = computed(() => dataset.find(a => String(a.caseNo) === String
 function getStatusLabel(statusClass, rawStatus) {
   const map = {
     processing: '審核中',
-    pending: '審核中',
     supplement: '需要補件',
     rejected: '已退件',
     waitingForAdmission: '錄取候補中',
@@ -98,7 +96,7 @@ function getStatusLabel(statusClass, rawStatus) {
     revoked: '撤銷申請通過',
     admitted: '已錄取',
     withdrawn: '已退托',
-    approved: '已核准'
+
   }
   return map[statusClass] || map[rawStatus] || rawStatus || '未知狀態'
 }
@@ -108,6 +106,13 @@ const isProcessing = computed(() => {
   return s === 'processing' || s === 'pending'
 })
 const isSupplement = computed(() => application.value?.status === 'supplement')
+
+// 檢查是否為補件 / 撤銷 子路由（若是，則 childActive 為 true）
+const childActive = computed(() => {
+  const names = ['ApplicationProgressSupplement', 'ApplicationProgressRevoke']
+  if (names.includes(route.name)) return true
+  return Array.isArray(route.matched) && route.matched.some(r => names.includes(r.name))
+})
 
 const childMonthsLabel = computed(() => {
   const birth = application.value?.childBirth

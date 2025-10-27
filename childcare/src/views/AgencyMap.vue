@@ -29,7 +29,11 @@
       <!-- 在地圖上顯示的浮動資訊卡，點擊標記後會顯示 -->
       <div v-if="selectedAgency" class="agency-popup">
         <div class="popup-row">
-          <div class="popup-title">{{ selectedAgency.name }}</div>
+          <div class="popup-title">
+            {{ selectedAgency.name }}
+            <!-- Inline rating next to title -->
+            <PlaceRating v-if="selectedAgency" :placeName="selectedAgency.name" :inline="true" class="popup-rating" />
+          </div>
           <button class="popup-close" @click="closePopup">✕</button>
         </div>
         <div class="popup-body">
@@ -47,8 +51,10 @@
 </template>
 
 <script>
+import PlaceRating from '@/components/PlaceRating.vue';
 export default {
   name: 'AgencyMap',
+  components: { PlaceRating },
   data() {
     return {
       map: null,
@@ -287,6 +293,9 @@ export default {
   font-weight: 700;
   color: #2a4fa7;
   font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 .popup-close {
   background: transparent;

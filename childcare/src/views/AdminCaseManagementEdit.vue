@@ -7,12 +7,13 @@
           <img src="https://img.icons8.com/ios/48/2e6fb7/treatment-plan.png" class="icon" alt="icon" />
           <span class="main-title">個案管理編輯 - {{ caseId }}</span>
         </div>
-        <div v-if="caseData.status === WAITING" class="title-right">
+        <!-- Always show title-right so we can display identity for all statuses; queue number remains WAITING-only -->
+        <div class="title-right">
           <div class="wait-chip">
             <span class="label">身份別：</span>
             <strong>{{ caseData.identityType || '—' }}</strong>
           </div>
-          <div class="wait-chip">
+          <div v-if="caseData.status === WAITING" class="wait-chip">
             <span class="label">候補序號：</span>
             <strong>{{ caseData.queueNo ?? '—' }}</strong>
           </div>
@@ -257,10 +258,15 @@ import { useRouter, useRoute } from 'vue-router'
 const router = useRouter()
 const route = useRoute()
 
-// Status constants based on user's choices
-const WAITING = '通過候補中'
-const ADMITTED = '錄取'
-const REVOKED = '已退托'
+// Status constants (centralized mapping requested)
+const PROCESSING = '審核中'
+const SUPPLEMENT = '需要補件'
+const REJECTED = '已退件'
+const WAITING = '錄取候補中' // waitingForAdmission
+const REVOKE_PROCESSING = '撤銷申請審核中'
+const REVOKED = '撤銷申請通過'
+const ADMITTED = '已錄取'
+const WITHDRAWN = '已退托'
 
 const caseId = ref(route.params.id)
 const caseData = ref({})
@@ -351,6 +357,88 @@ const mockCases = {
     withdrawNote: '',
     children: [{ name: '小美', gender: '女', age: '4', birth: '2021-07-20' }],
     files: [ { name: '證明文件.pdf', url: '' }, { name: '證件影本.png', url: '/vite.svg', type: 'image/svg+xml' } ]
+  },
+
+  // 以下為新增的 mock cases，覆蓋各種非錄取/非候補狀態，僅供檢視（不會顯示錄取/退托按鈕）
+  'C1003': {
+    id: 'C1003',
+    applyDate: '2025/09/20',
+    status: PROCESSING,
+    institution: '彩虹托育所',
+    identityType: '一般',
+    queueNo: null,
+    applicant: { name: '吳媽媽', birth: '1988-04-10', id: 'G123456789', homeAddress: '臺中市南屯區...', mailAddress: '', mobile: '0928-111-222', email: 'wu@example.com' },
+    parent1: { name: '吳先生', birth: '1985-04-01', id: 'H123456789', parentType: '父親', homeAddress: '臺中市...', contactAddress: '臺中市...', mobile: '0913-222-333', email: 'husband@example.com', company: '服務業', gender: '男', isLeave: false },
+    parent2: null,
+    selectedAgency: '彩虹托育所',
+    selectedClass: '',
+    withdrawNote: null,
+    children: [{ name: '小亮', gender: '男', age: '2', birth: '2023-06-10' }],
+    files: []
+  },
+  'C1004': {
+    id: 'C1004',
+    applyDate: '2025/08/12',
+    status: SUPPLEMENT,
+    institution: '小太陽幼兒園',
+    identityType: '低收入戶',
+    queueNo: null,
+    applicant: { name: '林小英', birth: '1991-11-22', id: 'I223456789', homeAddress: '臺中市西區...', mailAddress: 'lin@example.com', mobile: '0955-444-555', email: 'lin@example.com' },
+    parent1: { name: '林爸爸', birth: '1965-02-14', id: 'J123456789', parentType: '父親', homeAddress: '臺中市...', contactAddress: '臺中市...', mobile: '0988-666-777', email: 'father@example.com', company: '製造業', gender: '男', isLeave: false },
+    parent2: { name: '林媽媽', birth: '1968-09-30', id: 'K123456789', parentType: '母親', homeAddress: '臺中市...', contactAddress: '臺中市...', mobile: '0987-777-888', email: 'mother@example.com', company: '家庭主婦', gender: '女', isLeave: false },
+    selectedAgency: '小太陽幼兒園',
+    selectedClass: '小班',
+    withdrawNote: null,
+    children: [{ name: '小光', gender: '男', age: '1', birth: '2024-01-05' }],
+    files: [ { name: '戶口名簿.pdf', url: '' } ]
+  },
+  'C1005': {
+    id: 'C1005',
+    applyDate: '2025/07/01',
+    status: REJECTED,
+    institution: '安心托育',
+    identityType: '一般',
+    queueNo: null,
+    applicant: { name: '張小姐', birth: '1994-06-06', id: 'L123456789', homeAddress: '臺中市北區...', mailAddress: '', mobile: '0944-555-666', email: 'zhang@example.com' },
+    parent1: { name: '張爸爸', birth: '1970-03-03', id: 'M123456789', parentType: '父親', homeAddress: '臺中市...', contactAddress: '', mobile: '0919-000-111', email: '', company: '', gender: '男', isLeave: false },
+    parent2: null,
+    selectedAgency: '',
+    selectedClass: '',
+    withdrawNote: null,
+    children: [{ name: '小安', gender: '女', age: '0', birth: '2025-07-10' }],
+    files: []
+  },
+  'C1006': {
+    id: 'C1006',
+    applyDate: '2025/06/15',
+    status: REJECTED,
+    institution: '快樂托育中心',
+    identityType: '一般',
+    queueNo: null,
+    applicant: { name: '劉先生', birth: '1980-01-01', id: 'N123456789', homeAddress: '臺中市東區...', mailAddress: 'liu@example.com', mobile: '0966-111-222', email: 'liu@example.com' },
+    parent1: { name: '劉媽媽', birth: '1982-02-02', id: 'O123456789', parentType: '母親', homeAddress: '臺中市...', contactAddress: '臺中市...', mobile: '0900-123-456', email: 'momliu@example.com', company: '金融', gender: '女', isLeave: false },
+    parent2: null,
+    selectedAgency: '快樂托育中心',
+    selectedClass: '',
+    withdrawNote: null,
+    children: [{ name: '小星', gender: '男', age: '5', birth: '2019-04-01' }],
+    files: [ { name: '證明.pdf', url: '' } ]
+  },
+  'C1007': {
+    id: 'C1007',
+    applyDate: '2025/05/20',
+    status: REVOKED,
+    institution: '愛心幼兒園',
+    identityType: '中低收入戶',
+    queueNo: null,
+    applicant: { name: '高太太', birth: '1990-10-10', id: 'P123456789', homeAddress: '臺中市...', mailAddress: 'gao@example.com', mobile: '0977-222-333', email: 'gao@example.com' },
+    parent1: { name: '高先生', birth: '1988-08-08', id: 'Q123456789', parentType: '父親', homeAddress: '臺中市...', contactAddress: '', mobile: '0955-333-444', email: '', company: 'IT', gender: '男', isLeave: false },
+    parent2: null,
+    selectedAgency: '',
+    selectedClass: '',
+    withdrawNote: null,
+    children: [{ name: '小心', gender: '女', age: '2', birth: '2023-08-20' }],
+    files: []
   }
 }
 
@@ -399,7 +487,8 @@ function revoke() {
     caseData.value.withdrawNote = withdrawNote.value.trim()
   }
   if (!confirm('確定要執行退托嗎？')) return
-  caseData.value.status = REVOKED
+  // mark as withdrawn (已退托)
+  caseData.value.status = WITHDRAWN
   alert('已退托')
   // 停留於本頁（不自動返回）
 }

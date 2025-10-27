@@ -10,7 +10,7 @@
         <div class="warning-card">
           <h3>⚠️ 重要提醒</h3>
           <ul>
-            <li>撤銷申請後，您的序位將被取消，無法復原</li>
+            <li>撤銷申請後，您的申請將被取消，無法復原</li>
             <li>如需重新申請，須重新排序</li>
             <li>撤銷申請需經審核，審核期間約 3-5 個工作天</li>
           </ul>
@@ -39,30 +39,10 @@
           </div>
 
           <div class="form-grid">
+            <!-- Only keep a single textarea for revoke reason -->
             <div class="form-group">
               <label>撤銷原因：<span class="required">*</span></label>
-              <select v-model="revokeReason">
-                <option value="">請選擇</option>
-                <option value="已找到其他托育機構">已找到其他托育機構</option>
-                <option value="家庭狀況改變">家庭狀況改變</option>
-                <option value="自行照顧">決定自行照顧</option>
-                <option value="其他">其他原因</option>
-              </select>
-            </div>
-
-            <div v-if="revokeReason === '其他'" class="form-group">
-              <label>請說明其他原因：<span class="required">*</span></label>
-              <textarea v-model="otherReason" placeholder="請詳細說明撤銷原因" rows="4"></textarea>
-            </div>
-
-            <div class="form-group">
-              <label>補充說明：</label>
-              <textarea v-model="additionalNote" placeholder="（選填）其他補充說明" rows="3"></textarea>
-            </div>
-
-            <div class="form-group">
-              <label>聯絡電話：<span class="required">*</span></label>
-              <input v-model="contactPhone" type="tel" placeholder="請輸入聯絡電話" />
+              <textarea v-model="revokeReason" placeholder="請詳細說明撤銷原因" rows="5"></textarea>
             </div>
           </div>
 
@@ -99,15 +79,11 @@ const childName = ref('王小寶')
 const queueNumber = ref(15)
 
 const revokeReason = ref('')
-const otherReason = ref('')
-const additionalNote = ref('')
-const contactPhone = ref(authStore.user?.phone || '')
 const agreeTerms = ref(false)
 
 const canSubmit = computed(() => {
-  if (!revokeReason.value || !contactPhone.value || !agreeTerms.value) return false
-  if (revokeReason.value === '其他' && !otherReason.value.trim()) return false
-  return true
+  // require revoke reason and agreement
+  return revokeReason.value.trim() !== '' && agreeTerms.value
 })
 
 onMounted(() => {
@@ -126,10 +102,7 @@ const submitRevoke = () => {
 
   const revokeData = {
     applicationId: applicationId.value,
-    revokeReason: revokeReason.value,
-    otherReason: otherReason.value,
-    additionalNote: additionalNote.value,
-    contactPhone: contactPhone.value
+    revokeReason: revokeReason.value
   }
 
   // TODO: 呼叫 API 提交撤銷申請

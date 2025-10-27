@@ -110,13 +110,28 @@ import { useRoute } from 'vue-router'
 const route = useRoute()
 const isEditing = computed(() => route.name === 'AdminCaseManagementEdit')
 
-const WAITING = '通過候補中'
-const ADMITTED = '錄取'
+// 狀態常數
+const STATUS = {
+  processing: '審核中',
+  supplement: '需要補件',
+  rejected: '已退件',
+  waitingForAdmission: '錄取候補中',
+  revokeProcessing: '撤銷申請審核中',
+  revoked: '撤銷申請通過',
+  admitted: '已錄取',
+  withdrawn: '已退托',
+}
 
 // Base list
 const items = ref([
-  { id: 'C1001', applyDate: '2025/10/01', institution: '幸福幼兒園', status: WAITING, identityType: '中低收入戶', className: '小班', applicantId: 'A123456789', childName: '小寶', childBirth: '2022-03-15', queueNo: 12 },
-  { id: 'C1002', applyDate: '2025/10/05', institution: '快樂托育中心', status: ADMITTED, identityType: '一般', className: '中班', applicantId: 'D223456789', childName: '小美', childBirth: '2021-07-20', queueNo: null }
+  { id: 'C1001', applyDate: '2025/10/01', institution: '幸福幼兒園', status: STATUS.waitingForAdmission, identityType: '中低收入戶', className: '小班', applicantId: 'A123456789', childName: '小寶', childBirth: '2022-03-15', queueNo: 12 },
+  { id: 'C1002', applyDate: '2025/10/05', institution: '快樂托育中心', status: STATUS.admitted, identityType: '一般', className: '中班', applicantId: 'D223456789', childName: '小美', childBirth: '2021-07-20', queueNo: null },
+  { id: 'C1003', applyDate: '2025/09/20', institution: '幸福幼兒園', status: STATUS.processing, identityType: '低收入戶', className: '大班', applicantId: 'B123456789', childName: '小明', childBirth: '2020-12-01', queueNo: null },
+  { id: 'C1004', applyDate: '2025/09/25', institution: '快樂托育中心', status: STATUS.supplement, identityType: '一般', className: '小班', applicantId: 'C123456789', childName: '小華', childBirth: '2022-01-10', queueNo: null },
+  { id: 'C1005', applyDate: '2025/09/28', institution: '幸福幼兒園', status: STATUS.rejected, identityType: '中低收入戶', className: '中班', applicantId: 'E123456789', childName: '小強', childBirth: '2021-05-05', queueNo: null },
+  { id: 'C1006', applyDate: '2025/10/10', institution: '快樂托育中心', status: STATUS.revokeProcessing, identityType: '一般', className: '大班', applicantId: 'F123456789', childName: '小美', childBirth: '2020-11-11', queueNo: null },
+  { id: 'C1007', applyDate: '2025/10/12', institution: '幸福幼兒園', status: STATUS.revoked, identityType: '低收入戶', className: '小班', applicantId: 'G123456789', childName: '小安', childBirth: '2022-04-22', queueNo: null },
+  { id: 'C1008', applyDate: '2025/10/15', institution: '快樂托育中心', status: STATUS.withdrawn, identityType: '一般', className: '中班', applicantId: 'H123456789', childName: '小新', childBirth: '2021-09-09', queueNo: null }
 ])
 
 // Result list (shown in table)
@@ -138,7 +153,7 @@ const classOptions = computed(() => {
   return Array.from(new Set(list)).filter(Boolean)
 })
 const identityOptions = ref(['一般', '中低收入戶', '低收入戶'])
-const statusOptions = ref([WAITING, ADMITTED])
+const statusOptions = ref(Object.values(STATUS))
 
 const showBack = ref(false)
 
