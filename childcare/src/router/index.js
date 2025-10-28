@@ -347,6 +347,12 @@ const routes = [
                 meta: { breadcrumb: '候補清冊' }
             }
         ]
+    },
+    {
+        path: '/AdminLogin',
+        name: 'AdminLogin',
+        component: () => import('../views/AdminLogin.vue'),
+        meta: { requiresAdminLogin: true }
     }
 ]
 
