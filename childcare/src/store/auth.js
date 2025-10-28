@@ -73,6 +73,23 @@ export const useAuthStore = defineStore('auth', {
           this.logoutUser()
         }
       }
+    },
+
+    async changePassword(newPassword) {
+      if (!this.user || !this.user.account) {
+        throw new Error('找不到使用者帳號')
+      }
+      // 若有舊密碼需求可擴充
+      try {
+        const response = await import('../api/auth.js').then(m => m.changePassword(this.user.account, '', newPassword))
+        if (response.success) {
+          return { success: true }
+        } else {
+          throw new Error(response.message || '密碼修改失敗')
+        }
+      } catch (error) {
+        throw error
+      }
     }
   }
 })

@@ -84,3 +84,11 @@ export function getUserProfile() {
     }
     return http.get("/auth/profile");
 }
+
+// 修改密碼
+export function changePassword(account, oldPassword, newPassword) {
+    if (USE_MOCK_API) {
+        return mockAuth.changePassword(account, oldPassword, newPassword);
+    }
+    return http.post("/auth/change-password", { account, oldPassword, newPassword });
+}

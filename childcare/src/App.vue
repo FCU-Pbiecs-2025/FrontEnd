@@ -98,6 +98,13 @@
         <div class="modal-footer">
           <button class="btn-secondary" @click="closeAccountModal">關閉</button>
           <button class="btn-danger" @click="handleLogout">登出</button>
+          <button class="btn-secondary" v-if="authStore.user?.role !== 'citizen' && authStore.user?.role !== 'test'" @click="showChangePassword = !showChangePassword">修改密碼</button>
+        </div>
+        <div v-if="showChangePassword && authStore.user?.role !== 'citizen' && authStore.user?.role !== 'test'" class="password-change-form">
+          <input type="password" v-model="newPassword" placeholder="新密碼" />
+          <input type="password" v-model="confirmPassword" placeholder="確認新密碼" />
+          <button class="btn-danger" @click="handleChangePassword">送出</button>
+          <div v-if="passwordError" class="error">{{ passwordError }}</div>
         </div>
       </div>
     </div>
@@ -170,6 +177,41 @@ const closeAccountModal = () => { showAccountModal.value = false }
 const onKey = (e) => { if (e.key === 'Escape') closeAccountModal() }
 onMounted(() => window.addEventListener('keydown', onKey))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
+
+// 修改密碼相關的狀態與方法
+const newPassword = ref('')
+const confirmPassword = ref('')
+const passwordError = ref('')
+
+const showChangePassword = ref(false)
+
+const handleChangePassword = () => {
+  passwordError.value = '' // 重置錯誤訊息
+
+  // 簡單的前端驗證
+  if (newPassword.value.length < 6) {
+    passwordError.value = '密碼長度至少為 6 個字元'
+    return
+  }
+
+  if (newPassword.value !== confirmPassword.value) {
+    passwordError.value = '兩次輸入的密碼不相符'
+    return
+  }
+
+  // 呼叫後端 API 進行密碼修改
+  authStore.changePassword(newPassword.value)
+    .then(() => {
+      // 密碼修改成功後的處理
+      closeAccountModal()
+      router.push('/') // 可選：修改密碼後導向的頁面
+    })
+    .catch(err => {
+      // 處理錯誤
+      passwordError.value = '修改密碼失敗，請稍後再試'
+      console.error(err)
+    })
+}
 </script>
 
 <style scoped>
@@ -474,4 +516,39 @@ footer {
   cursor: pointer;
 }
 .btn-danger:hover { background: #d94a58; }
+
+/* 新增的修改密碼表單樣式 */
+.password-change-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  align-items: center;
+}
+.password-change-form input {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.password-change-form .error {
+  color: #e35d6a;
+  font-size: 12px;
+  margin-top: -8px;
+}
+.password-change-form button {
+  background: #e35d6a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  padding: 8px 14px;
+  min-width: 80px;
+  cursor: pointer;
+  align-self: center;
+  box-shadow: 0 2px 8px rgba(227,93,106,0.08);
+  transition: background 0.2s;
+  margin-top: 16px;
+  margin-bottom: 12px;
+}
 </style>

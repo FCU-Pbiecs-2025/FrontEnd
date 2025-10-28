@@ -238,7 +238,8 @@ const handleTestLogin = async () => {
   authStore.user = {
     id: 'test-user',
     name: '測試用戶',
-    email: 'test@example.com'
+    email: 'test@example.com',
+    role: 'test'
   }
   authStore.isAuthenticated = true
 
@@ -247,7 +248,8 @@ const handleTestLogin = async () => {
   localStorage.setItem('user', JSON.stringify({
     id: 'test-user',
     name: '測試用戶',
-    email: 'test@example.com'
+    email: 'test@example.com',
+    role: 'test'
   }))
 
   // 只有有 redirect 參數才跳轉，否則停留原頁
