@@ -76,7 +76,7 @@
               <td>
                 <div class="child-col">
                   <div class="child-row"><span>{{ item.childName || '-' }}</span></div>
-                  <div class="child-row"><span>{{ ageInMonths(item.childBirth) }}</span></div>
+                  <div class="child-row"><span>{{ ageInYearsMonths(item.childBirth) }}</span></div>
                 </div>
               </td>
               <td class="title-cell">{{ item.queueNo ?? '—' }}</td>
@@ -171,6 +171,20 @@ const ageInMonths = (dateStr) => {
   if (now.getDate() < birth.getDate()) months -= 1
   if (months < 0) months = 0
   return `${months} 月`
+}
+
+// 計算歲月齡（以 2025/10/27 為基準）
+const ageInYearsMonths = (dateStr) => {
+  if (!dateStr) return '-'
+  const birth = new Date(dateStr)
+  if (isNaN(birth)) return '-'
+  const now = new Date('2025-10-27')
+  let months = (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth())
+  if (now.getDate() < birth.getDate()) months -= 1
+  if (months < 0) months = 0
+  const years = Math.floor(months / 12)
+  const remainMonths = months % 12
+  return `${years}歲${remainMonths}月`
 }
 
 const doQuery = () => {

@@ -171,6 +171,12 @@ const routes = [
                 meta: { breadcrumb: '民眾帳號' }
             },
             {
+                path: 'detail/:id',
+                name: 'AdminAnnouncementDetail',
+                component: () => import('../views/AdminAnnouncementDetail.vue'),
+                meta: { breadcrumb: '公告詳情' }
+            },
+            {
                 path: 'backend',
                 name: 'AdminBackendAccount',
                 component: () => import('../views/AdminBackendAccount.vue'),

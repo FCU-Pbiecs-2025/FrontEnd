@@ -36,7 +36,7 @@
             <tr>
               <th>案號</th>
               <th>幼兒姓名</th>
-              <th>幼兒年紀(月)</th>
+              <th>幼兒年紀</th>
               <th>序位</th>
               <th>班級名稱</th>
               <th>排序</th>
@@ -116,19 +116,24 @@ function computeRanks() {
   }
 }
 
+// 幼兒年齡 x歲x月（以 2025/10/27 為基準）
+function ageInYearsMonths(dob) {
+  if (!dob) return '-';
+  const birthDate = new Date(dob);
+  if (isNaN(birthDate)) return '-';
+  const today = new Date('2025-10-27');
+  let months = (today.getFullYear() - birthDate.getFullYear()) * 12 + (today.getMonth() - birthDate.getMonth());
+  if (today.getDate() < birthDate.getDate()) months -= 1;
+  if (months < 0) months = 0;
+  const years = Math.floor(months / 12);
+  const remainMonths = months % 12;
+  return `${years}歲${remainMonths}月`;
+}
+
 const displayedList = computed(() => {
   const selectedId = Number(selectedInstitutionId.value)
   const kw = keyword.value.trim().toLowerCase()
   const nameById = new Map(institutions.value.map(i => [i.id, i.name]))
-
-  const calculateAgeInMonths = (dob) => {
-    const birthDate = new Date(dob);
-    const today = new Date();
-    let months = (today.getFullYear() - birthDate.getFullYear()) * 12;
-    months -= birthDate.getMonth();
-    months += today.getMonth();
-    return months <= 0 ? 0 : months;
-  };
 
   return waitlist.value
     .filter(w => selectedId === 0 || w.institutionId === selectedId)
@@ -142,7 +147,7 @@ const displayedList = computed(() => {
     .map(w => ({
       ...w,
       institutionName: nameById.get(w.institutionId) || '-',
-      ageInMonths: calculateAgeInMonths(w.dob),
+      ageInMonths: ageInYearsMonths(w.dob),
       className: '混齡班'
     }))
     .sort((a, b) => {

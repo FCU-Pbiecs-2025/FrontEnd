@@ -111,6 +111,23 @@
 
     <!-- Main Content -->
     <main class="main-content">
+      <div v-if="$route.name === 'Home'" class="carousel-wrapper">
+        <button class="carousel-btn left" @click="prevSlide">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polyline points="20,8 12,16 20,24" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </button>
+        <div class="carousel-image-box">
+          <img :src="carouselImages[currentSlide]" alt="輪播圖" class="carousel-image" @click="openImageInNewWindow" style="cursor: pointer;" />
+        </div>
+        <button class="carousel-btn right" @click="nextSlide">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polyline points="12,8 20,16 12,24" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </button>
+      </div>
+
+
       <!-- Router View - 顯示不同頁面的內容 -->
 
       <div class="content-area">
@@ -212,9 +229,80 @@ const handleChangePassword = () => {
       console.error(err)
     })
 }
+// carousel state (使用 composition API，放在同一個 <script setup> 內)
+const carouselImages = [
+  'https://ws.hsinchu.gov.tw/001/Upload/8/relpic/8665/251571/1b12c0d3-3d5a-422f-ae64-59fffccffae6.jpg',
+  'https://img2.91mai.com/o2o/image/5207d606-ab3f-4ae3-94cf-1f474a3beebe.jpg',
+  'https://cdn-thumbnail.mamilove.com.tw/uSIu-DQx74dIfAI_Uhf4b0DZuKM=/0x0/https://images.mamilove.com.tw/origin/blog/1096/1096-aa73faad1a-1706173628.png'
+]
+
+const currentSlide = ref(0)
+
+function nextSlide() {
+  currentSlide.value = (currentSlide.value + 1) % carouselImages.length
+}
+
+function prevSlide() {
+  currentSlide.value = (currentSlide.value - 1 + carouselImages.length) % carouselImages.length
+}
+
+function openImageInNewWindow() {
+  const imageUrl = carouselImages[currentSlide.value]
+  window.open(imageUrl, '_blank')
+}
+
 </script>
 
 <style scoped>
+/* 新增到 `childcare/src/App.vue` 的 <style scoped> 底部 */
+.carousel-wrapper {
+  width: 100vw;               /* 撐滿整個視窗寬度 */
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;         /* 將元素拉滿至視窗左邊 */
+  margin-right: -50vw;        /* 將元素拉滿至視窗右邊 */
+  padding: 0;
+  background: transparent;    /* 若需背景色可在此調整 */
+  z-index: 90;                /* 比 header 低，或視需求調整 */
+}
+
+/* 內部圖片區塊限制最大寬度並置中 */
+.carousel-image-box {
+  width: 100%;
+       /* 內容寬度上限，依需調整 */
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 圖片拉滿內部容器並保持 cover */
+.carousel-image {
+  width: 100%;
+  height: 600px;              /* 可調整高度 */
+  object-fit: cover;
+  display: block;
+}
+
+/* 調整左右切換按鈕位置（相對於視窗） */
+.carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,0.25);
+  border-radius: 50%;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  z-index: 100;
+}
+.carousel-btn.left { left: 8px; }
+.carousel-btn.right { right: 8px; }
+
+/* 若原本 .main-content 有左右 padding/margin，不影響輪播（已移出 main） */
+/* 保持 main-content 的 margin-top 以避免被 header 遮擋 */
+
 /* App Container */
 .app-container {
   display: flex;
@@ -351,8 +439,7 @@ margin-bottom: 10px;
 /* Main Content */
 .main-content {
   flex: 1;
-  padding: 0 40px;
-  margin-top: 130px;
+  margin-top: 100px;
 
   /* Add padding to the main content */
 }

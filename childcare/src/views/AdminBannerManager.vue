@@ -18,6 +18,7 @@
           </div>
         </div>
         <div class="btn-query">
+          <button class="btn primary" @click="openNew">新增</button>
           <button class="btn query" @click="doQuery">查詢</button>
         </div>
       </div>
@@ -50,7 +51,7 @@
       </div>
 
       <div class="bottom-row">
-        <button class="btn primary" @click="openNew">新增</button>
+
         <button class="btn primary" v-show="showBack" @click="goBack">返回</button>
       </div>
     </div>
@@ -200,7 +201,7 @@ const isEditPage = computed(() => {
 .to-label { color:#888; margin:0 8px; }
 .btn-query { display: flex; justify-content: center; margin-top: 30px; }
 .btn { padding:7px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:600; }
-.btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff }
+.btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff ; margin-right:12px; }
 .btn.query { background:#e6f2ff; color:#2e6fb7; border:1px solid #b3d4fc }
 .btn.small { padding:6px 12px; font-size:0.95rem; background:#f3f4f6; margin-right:6px; }
 .btn.danger { background:#ff7b8a; color:#fff }

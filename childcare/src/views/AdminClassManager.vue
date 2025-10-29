@@ -15,7 +15,10 @@
                 <label class="search-label" for="queryInstitution">查詢條件：</label>
                 <input id="queryInstitution" type="text" v-model="searchKeyword" placeholder="機構名稱" class="search-input" />
               </div>
-              <button class="btn query" @click="doQueryInstitution">查詢</button>
+              <div class="btn-query">
+                <button class="btn primary" @click="goToAdminClassEdit">新增</button>
+                <button class="btn query" @click="doQueryInstitution">查詢</button>
+              </div>
             </div>
           </div>
           <div class="table-section">
@@ -49,7 +52,7 @@
             </table>
           </div>
           <div class="bottom-row">
-            <button class="btn primary" @click="goToAdminClassEdit">新增</button>
+            <button class="btn primary" v-show="showBack" @click="goBack">返回</button>
           </div>
         </div>
       </div>
@@ -109,6 +112,7 @@ const classes = ref(loadClasses())
 
 const searchKeyword = ref('')
 const filteredInstitutions = ref([])
+const showBack = ref(false)
 
 // 當進入班級相關子路由時（班級列表/新增/編輯），顯示子路由畫面
 const isEditPage = computed(() => {
@@ -122,6 +126,14 @@ const doQueryInstitution = () => {
     if (!kw) return true
     return (inst.name || '').toLowerCase().includes(kw)
   })
+  showBack.value = true
+}
+
+// 返回：重置查詢
+const goBack = () => {
+  searchKeyword.value = ''
+  filteredInstitutions.value = institutions.value
+  showBack.value = false
 }
 
 // 新增：編輯/刪除機構
@@ -154,6 +166,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.btn-query { display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 30px; }
+
 .class-page {
   display: flex;
 
@@ -175,6 +189,7 @@ onMounted(() => {
 .btn.primary {
   background: linear-gradient(90deg,#3b82f6,#2563eb);
   color: #fff;
+  margin-right: 12px;
 }
 .btn.small { padding:6px 12px; font-size:0.95rem; background:#f3f4f6; margin-right:6px; }
 .btn.danger { background:#ff7b8a; color:#fff }

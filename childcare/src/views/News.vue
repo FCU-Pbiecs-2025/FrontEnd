@@ -3,21 +3,7 @@
     <!-- 詳情頁時只顯示 <router-view />，否則顯示列表與 <router-view /> -->
     <template v-if="$route.name === 'News'">
       <!-- 輪播圖區塊 -->
-      <div class="carousel-wrapper">
-        <button class="carousel-btn left" @click="prevSlide">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <polyline points="20,8 12,16 20,24" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          </svg>
-        </button>
-        <div class="carousel-image-box">
-          <img :src="carouselImages[currentSlide]" alt="輪播圖" class="carousel-image" />
-        </div>
-        <button class="carousel-btn right" @click="nextSlide">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <polyline points="12,8 20,16 12,24" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          </svg>
-        </button>
-      </div>
+
       <div>
         <div class="news-list-title" >消息列表</div>
         <div class="news-title-decoration"></div>
@@ -30,11 +16,11 @@
           <span>公告內容</span>
         </div>
         <div
-          v-for="item in pagedNews"
-          :key="item.id"
-          class="news-list-row"
-          @click="goToDetail(item.id)"
-          style="cursor:pointer;"
+            v-for="item in pagedNews"
+            :key="item.id"
+            class="news-list-row"
+            @click="goToDetail(item.id)"
+            style="cursor:pointer;"
         >
           <span class="news-date-cell">{{ item.date }}</span>
           <span class="news-title-cell" :title="item.title">{{ item.title.length > 18 ? item.title.slice(0, 18) + '...' : item.title }}</span>
@@ -56,17 +42,10 @@
 </template>
 
 <script>
-import { useRouter } from 'vue-router'
 export default {
   name: 'News',
   data() {
     return {
-      carouselImages: [
-        'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
-        'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=800&q=80',
-        'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80'
-      ],
-      currentSlide: 0,
       // 公告假資料
       newsList: [
         { id: 1, title: '新竹縣公共托育服務申請流程更新通知', content: '為提供更優質的托育服務，本縣公共托育申請流程將於近期進行調整，請家長注意相關變更內容...', date: '2024/01/15' },
@@ -97,12 +76,6 @@ export default {
     }
   },
   methods: {
-    nextSlide() {
-      this.currentSlide = (this.currentSlide + 1) % this.carouselImages.length;
-    },
-    prevSlide() {
-      this.currentSlide = (this.currentSlide - 1 + this.carouselImages.length) % this.carouselImages.length;
-    },
     goToDetail(id) {
       this.$router.push({ name: 'NewsDetail', params: { id } })
     }
@@ -209,54 +182,6 @@ export default {
   font-size: 16px;
   line-height: 1.6;
   font-weight: 500;
-}
-.carousel-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 50px;
-  margin-bottom: 32px;
-  gap: 12px;
-}
-.carousel-image-box {
-  width: 100%;
-  height: 450px;
-  overflow: hidden;
-  border-radius: 24px; /* 16 * 1.5 */
-  box-shadow: 0 3px 18px rgba(249, 175, 174, 0.15);
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.carousel-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: opacity 0.3s;
-}
-.carousel-btn {
-  background: #ffcbb3; /* 米色 */
-  border: none;
-  border-radius: 20%;
-  width: 54px;
-  height: 54px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(210, 180, 140, 0.25), 0 1.5px 6px rgba(0,0,0,0.08);
-  transition: background 0.2s, box-shadow 0.2s, color 0.2s;
-  padding: 0;
-}
-.carousel-btn svg {
-  display: block;
-  width: 32px;
-  height: 32px;
-}
-.carousel-btn:hover {
-  background: #efad8f; /* 深一點的米色 */
-  box-shadow: 0 6px 20px rgba(210, 180, 140, 0.35), 0 2px 8px rgba(0,0,0,0.12);
 }
 .news-list-section {
   background: #fff;
@@ -378,10 +303,6 @@ export default {
   font-size: 2rem;
 }
 @media (max-width: 600px) {
-  .carousel-image-box {
-    width: 98vw;
-    height: 120px;
-  }
   .news-list-header, .news-list-row {
     grid-template-columns: 1fr;
     gap: 6px;

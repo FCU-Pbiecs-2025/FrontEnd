@@ -98,7 +98,13 @@
               <span>公告標題</span>
               <span>公告內容</span>
             </div>
-            <div v-for="item in announcementList" :key="item.id" class="news-list-row">
+            <div
+              v-for="item in announcementList"
+              :key="item.id"
+              class="news-list-row"
+              @click="goAdminAnnouncementDetail(item.id)"
+              style="cursor: pointer;"
+            >
               <span class="news-date-cell">{{ item.date }}</span>
               <span class="news-title-cell" :title="item.title">{{ item.title.length > 18 ? item.title.slice(0, 18) + '...' : item.title }}</span>
               <span class="news-content-cell">{{ item.content }}</span>
@@ -191,6 +197,11 @@ const announcementList = [
   { id: 1, title: '系統維護通知', content: '後台系統將於本週末進行維護，請提前完成重要作業。', date: '2025/10/08' },
   { id: 2, title: '新功能上線', content: '公告管理功能已上線，歡迎使用。', date: '2025/10/05' }
 ]
+
+const goAdminAnnouncementDetail = (id) => {
+  // 導向後台公告詳情頁
+  router.push({ name: 'AdminAnnouncementDetail', params: { id: String(id) } })
+}
 </script>
 
 <style scoped>

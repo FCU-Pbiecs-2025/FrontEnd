@@ -69,9 +69,9 @@ const agency = ref({
   fanpage: 'https://facebook.com/childcare',
   license: '立案字號：新竹縣府社字第123456號',
   classes: [
-    { name: '嬰幼班', age: '0-2歲' },
-    { name: '幼幼班', age: '2-3歲' },
-    { name: '大班', age: '3-6歲' }
+    { name: '嬰幼班', age: '2個月-6個月' },
+    { name: '幼幼班', age: '6個月-1歲3個月' },
+    { name: '大班', age: '1歲3個月-2歲' }
   ]
 })
 const currentImg = ref(0)

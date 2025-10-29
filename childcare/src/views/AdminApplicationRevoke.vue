@@ -10,17 +10,6 @@
         <div class="query-container">
           <div class="query-row">
             <div class="search-area">
-              <label class="type-label">撤銷類型：</label>
-              <select v-model="filters.type" class="date-input" style="width:120px">
-                <option value="">全部</option>
-                <option value="qualification">資格不符</option>
-                <option value="document">文件不全</option>
-                <option value="other">其他原因</option>
-              </select>
-            </div>
-          </div>
-          <div class="query-row">
-            <div class="search-area">
               <label class="type-label">撤銷編號：</label>
               <input v-model="filters.revokeId" placeholder="請輸入撤銷編號" class="date-input" style="width:200px" />
             </div>

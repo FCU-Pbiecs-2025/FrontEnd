@@ -12,7 +12,10 @@
               <label class="search-label" for="queryInstitution">查詢條件：</label>
               <input id="queryInstitution" type="text" v-model="searchKeyword" placeholder="機構名稱" class="search-input" />
             </div>
-            <button class="btn query" @click="doQuery">查詢</button>
+            <div class="btn-query">
+             <button class="btn primary" @click="addNew">新增</button>
+             <button class="btn query" @click="doQuery">查詢</button>
+            </div>
           </div>
         </div>
         <div class="table-section">
@@ -46,7 +49,6 @@
           </table>
         </div>
         <div class="bottom-row">
-          <button class="btn primary" @click="addNew">新增</button>
           <button class="btn primary" v-show="showBack" @click="goBack">返回</button>
         </div>
       </div>
@@ -138,6 +140,7 @@ const isEditPage = computed(() => {
 </script>
 
 <style scoped>
+.btn-query { display: flex; justify-content: center; margin-top: 30px; }
 .institution-page {
   display: flex;
 
@@ -155,7 +158,7 @@ const isEditPage = computed(() => {
 .search-label { font-weight:600; color:#2e6fb7 }
 .search-input { padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; width:300px }
 .btn { padding:7px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:600 }
-.btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff }
+.btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff ;margin-right: 12px; }
 .btn.query { background:#e6f2ff; color:#2e6fb7; border:1px solid #b3d4fc }
 .btn.small { padding:6px 12px; font-size:0.95rem; background:#f3f4f6; margin-right:6px; }
 .btn.danger { background:#ff7b8a; color:#fff }

@@ -27,7 +27,8 @@
             </div>
           </div>
 
-          <div class="btn-query">
+          <div class="btn-query" style="display:flex; align-items:center; gap: 10px;">
+            <button class="btn primary" @click="addNew">新增</button>
             <button class="btn query" @click="doQuery">查詢</button>
           </div>
         </div>
@@ -43,9 +44,9 @@
             <tbody>
               <tr v-for="item in resultList" :key="item.id">
                 <td class="date-cell">{{ item.date }}</td>
-                <td class="title-cell">{{ item.title }}</td>
-                <td class="action-cell">
-                  <button class="btn small" @click="edit(item)">編輯</button>
+                <td class="title-cell">
+                  <span class="title-link" @click="goDetail(item)">{{ item.title }}</span>
+                </td>
                   <button class="btn small danger" @click="remove(item)">刪除</button>
                 </td>
               </tr>
@@ -56,7 +57,7 @@
           </table>
         </div>
         <div class="bottom-row">
-          <button class="btn primary" @click="addNew">新增</button>
+
           <button class="btn primary" v-show="showBack" @click="goBack">返回</button>
         </div>
       </div>
@@ -173,9 +174,9 @@ const isEditPage = computed(() => {
 })
 </script>
 
-<style scoped>
-.announcement-page {
-  width: 100%;
+
+const goDetail = (item) => {
+  router.push({ name: 'AdminAnnouncementDetail', params: { id: String(item.id) } })
 }
 .announcement-card {
   max-width:820px;min-width: 85%;margin: 0 auto;
@@ -194,7 +195,7 @@ const isEditPage = computed(() => {
 .to-label { color:#888; margin:0 8px; }
 .btn-query { display: flex;justify-content: center;margin-top: 30px; }
 .btn { padding:7px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:600; }
-.btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff }
+.btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff ;margin-right: 12px}
 .btn.query { background:#e6f2ff; color:#2e6fb7; border:1px solid #b3d4fc }
 .btn.small { padding:6px 12px; font-size:0.95rem; background:#f3f4f6; margin-right:6px; }
 .btn.danger { background:#ff7b8a; color:#fff }

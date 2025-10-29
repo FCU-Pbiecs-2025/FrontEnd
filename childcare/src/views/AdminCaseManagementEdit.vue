@@ -496,41 +496,33 @@ function revoke() {
 function goBack() {
   router.push('/admin/case-management')
 }
-
-// Compute child's age from birth date string as "X月 Y周 Z天"
 function computeChildAge(birth) {
   if (!birth) return ''
-  // try to parse common formats
   const bd = new Date(birth)
   if (isNaN(bd)) return ''
-  const now = new Date()
+  const now = new Date('2025-10-27')
 
-  // If birth is in the future, return 0天
-  if (bd > now) return '0天'
+  if (bd > now) return '0歲0月0周'
 
-  // months difference
+  // 計算總月數
   let months = (now.getFullYear() - bd.getFullYear()) * 12 + (now.getMonth() - bd.getMonth())
-  // adjust if day of month not yet reached
   if (now.getDate() < bd.getDate()) months -= 1
 
-  // compute date after adding months to birth
+  // 計算年、月
+  const years = Math.floor(months / 12)
+  const remainMonths = months % 12
+
+  // 計算剩餘天數
   const tmp = new Date(bd.getTime())
   tmp.setMonth(tmp.getMonth() + months)
-
-  // remaining days difference
   let daysDiff = Math.floor((now - tmp) / (1000 * 60 * 60 * 24))
   if (isNaN(daysDiff) || daysDiff < 0) daysDiff = 0
 
   const weeks = Math.floor(daysDiff / 7)
-  const days = daysDiff % 7
 
-  const parts = []
-  if (months > 0) parts.push(`${months}月`)
-  if (weeks > 0) parts.push(`${weeks}周`)
-  if (days > 0) parts.push(`${days}天`)
-  if (parts.length === 0) return '0天'
-  return parts.join(' ')
+  return `${years}歲${remainMonths}月${weeks}周`
 }
+
 </script>
 
 <style scoped>

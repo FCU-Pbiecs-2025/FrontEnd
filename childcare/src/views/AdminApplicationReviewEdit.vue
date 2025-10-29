@@ -72,6 +72,7 @@
             <div class="info-row"><label class="info-label">姓名：</label><span class="info-value">{{ childData.name }}</span></div>
             <div class="info-row"><label class="info-label">性別：</label><span class="info-value">{{ childData.gender }}</span></div>
             <div class="info-row"><label class="info-label">出生年月日：</label><span class="info-value">{{ childData.birth }}</span></div>
+            <div class="info-row"><label class="info-label">年齡：</label><span class="info-value">{{ childData.age }}</span></div>
             <div class="info-row"><label class="info-label">戶籍地址：</label><span class="info-value">{{ childData.householdAddr }}</span></div>
           </div>
         </transition>
@@ -160,20 +161,86 @@ const childData = ref({
   householdAddr: '台北市中正區仁愛路1號'
 })
 
+// 計算幼兒年齡
+function getChildAge(birthDate) {
+  // 支援 yyyy/MM/dd 或 yyyy-MM-dd
+  let birthArr = birthDate.includes('/') ? birthDate.split('/') : birthDate.split('-');
+  let birthYear = parseInt(birthArr[0]);
+  let birthMonth = parseInt(birthArr[1]);
+  let birthDay = parseInt(birthArr[2]);
+  // 固定現在日期為 2025/10/27
+  let nowYear = 2025;
+  let nowMonth = 10;
+  let nowDay = 27;
+  // 計算總月數
+  let totalMonths = (nowYear - birthYear) * 12 + (nowMonth - birthMonth);
+  // 計算本月剩餘天數
+  let days = nowDay - birthDay;
+  if (days < 0) {
+    totalMonths--;
+    // 取得上個月天數
+    let prevMonth = nowMonth - 1;
+    let prevYear = nowYear;
+    if (prevMonth === 0) {
+      prevMonth = 12;
+      prevYear--;
+    }
+    let daysInPrevMonth = new Date(prevYear, prevMonth, 0).getDate();
+    days = daysInPrevMonth + days;
+  }
+  let years = Math.floor(totalMonths / 12);
+  let months = totalMonths % 12;
+  let weeks = Math.floor(days / 7);
+  return `${years}歲${months}月${weeks}周`;
+}
+
+
 // 模擬資料 - 實際應用中這裡會從 API 獲取資料
 const mockData = {
-  'A1001': { id: 'A1001', Date: '2025/10/17', applicant: '王小明', institution: '幸福幼兒園', status: '待審核', type: 'public', content: '參考資料...' },
-  'A1002': { id: 'A1002', Date: '2025/10/17', applicant: '陳小華', institution: '快樂托育中心', status: '待審核', type: 'private', content: '參考資料...' },
-  'A1003': { id: 'A1003', Date: '2025/10/17', applicant: '李大明', institution: '陽光幼兒園', status: '已通過', type: 'public', content: '參考資料...' },
-  'A1004': { id: 'A1004', Date: '2025/10/17', applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...' },
-  'A1005': { id: 'A1005', Date: '2025/10/17', applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...' },
-  'A1006': { id: 'A1006', Date: '2025/10/17', applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...' }
+  'A1001': {
+    id: 'A1001', Date: '2025/10/17', applicant: '王小明', institution: '幸福幼兒園', status: '待審核', type: 'public', content: '參考資料...',
+    child: {
+      id: 'B1001', name: '王小明', gender: '男', birth: '2020/05/10', householdAddr: '台北市中正區仁愛路1號', age: getChildAge('2020/05/10')
+    }
+  },
+  'A1002': {
+    id: 'A1002', Date: '2025/10/17', applicant: '陳小華', institution: '快樂托育中心', status: '待審核', type: 'private', content: '參考資料...',
+    child: {
+      id: 'B1002', name: '陳小華', gender: '女', birth: '2021/03/15', householdAddr: '台中市西屯區幸福路2號', age: getChildAge('2021/03/15')
+    }
+  },
+  'A1003': {
+    id: 'A1003', Date: '2025/10/17', applicant: '李大明', institution: '陽光幼兒園', status: '已通過', type: 'public', content: '參考資料...',
+    child: {
+      id: 'B1003', name: '李大明', gender: '男', birth: '2019/12/01', householdAddr: '高雄市鼓山區明誠路3號', age: getChildAge('2019/12/01')
+    }
+  },
+  'A1004': {
+    id: 'A1004', Date: '2025/10/17', applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...',
+    child: {
+      id: 'B1004', name: '張小花', gender: '女', birth: '2022/08/20', householdAddr: '新竹市東區光復路4號', age: getChildAge('2022/08/20')
+    }
+  },
+  'A1005': {
+    id: 'A1005', Date: '2025/10/17', applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...',
+    child: {
+      id: 'B1005', name: '張小花', gender: '女', birth: '2023/01/05', householdAddr: '新竹市東區光復路4號', age: getChildAge('2023/01/05')
+    }
+  },
+  'A1006': {
+    id: 'A1006', Date: '2025/10/17', applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...',
+    child: {
+      id: 'B1006', name: '張小花', gender: '女', birth: '2024/06/30', householdAddr: '新竹市東區光復路4號', age: getChildAge('2024/06/30')
+    }
+  }
 }
 
 onMounted(() => {
   // 載入申請資料
   if (mockData[applicationId.value]) {
     applicationData.value = { ...mockData[applicationId.value] }
+    // 幼兒資料同步 mockData.child
+    childData.value = { ...mockData[applicationId.value].child }
     // 如果已有審核記錄，載入之前的審核資料
     if (applicationData.value.reviewDate) {
       reviewDate.value = applicationData.value.reviewDate
@@ -184,6 +251,10 @@ onMounted(() => {
   } else {
     // 如果找不到資料，返回列表頁
     router.push('/admin/application-review')
+  }
+  // 若 childData 沒有 age，則補算一次
+  if (!childData.value.age) {
+    childData.value.age = getChildAge(childData.value.birth)
   }
 })
 

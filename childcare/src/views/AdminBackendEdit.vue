@@ -19,7 +19,12 @@
         </div>
         <div class="form-row">
           <label class="form-label">機構名稱：</label>
-          <input v-model="account.org" class="form-input" placeholder="請輸入機構名稱" />
+          <select v-model="account.org" class="form-input">
+            <option value="">請選擇機構</option>
+            <option value="市政府">市政府</option>
+            <option value="托育中心A">托育中心A</option>
+            <option value="托育中心B">托育中心B</option>
+          </select>
         </div>
         <div class="form-row">
           <label class="form-label">權限設定：</label>

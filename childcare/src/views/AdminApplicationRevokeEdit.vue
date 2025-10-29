@@ -72,6 +72,7 @@
             <div class="info-row"><label class="info-label">姓名：</label><span class="info-value">{{ childData.name }}</span></div>
             <div class="info-row"><label class="info-label">性別：</label><span class="info-value">{{ childData.gender }}</span></div>
             <div class="info-row"><label class="info-label">出生年月日：</label><span class="info-value">{{ childData.birth }}</span></div>
+            <div class="info-row"><label class="info-label">年齡：</label><span class="info-value">{{ childData.age }}</span></div>
             <div class="info-row"><label class="info-label">戶籍地址：</label><span class="info-value">{{ childData.householdAddr }}</span></div>
           </div>
         </transition>
@@ -87,14 +88,6 @@
           <div class="form-row">
             <label class="form-label">備註說明：</label>
             <textarea v-model="revokeNote" class="form-input" rows="5" placeholder="請輸入撤銷備註..."></textarea>
-          </div>
-          <div class="form-row">
-            <label class="form-label">撤銷類型：</label>
-            <select v-model="revokeType" class="form-input">
-              <option value="qualification">資格不符</option>
-              <option value="document">文件不全</option>
-              <option value="other">其他原因</option>
-            </select>
           </div>
         </div>
       </div>
@@ -118,9 +111,56 @@ const revokeId = ref(route.params.id)
 const revokeData = ref({})
 const revokeDate = ref(new Date().toISOString().slice(0, 10))
 const revokeNote = ref('')
-const revokeType = ref('')
 const parentOpen = ref(false)
 const childOpen = ref(false)
+
+// 計算幼兒年齡
+function getChildAge(birthDate) {
+  let birthArr = birthDate.includes('/') ? birthDate.split('/') : birthDate.split('-');
+  let birthYear = parseInt(birthArr[0]);
+  let birthMonth = parseInt(birthArr[1]);
+  let birthDay = parseInt(birthArr[2]);
+  let nowYear = 2025;
+  let nowMonth = 10;
+  let nowDay = 27;
+  let totalMonths = (nowYear - birthYear) * 12 + (nowMonth - birthMonth);
+  let days = nowDay - birthDay;
+  if (days < 0) {
+    totalMonths--;
+    let prevMonth = nowMonth - 1;
+    let prevYear = nowYear;
+    if (prevMonth === 0) {
+      prevMonth = 12;
+      prevYear--;
+    }
+    let daysInPrevMonth = new Date(prevYear, prevMonth, 0).getDate();
+    days = daysInPrevMonth + days;
+  }
+  let years = Math.floor(totalMonths / 12);
+  let months = totalMonths % 12;
+  let weeks = Math.floor(days / 7);
+  return `${years}歲${months}月${weeks}周`;
+}
+
+// 模擬資料 - 實際應用中這裡會從 API 獲取資料
+const mockData = {
+  'R2001': {
+    id: 'R2001', Date: '2025/01/01', applicant: '張麗麗', institution: '快樂托育', reason: '資格不符', type: 'qualification',
+    child: { id: 'B2001', name: '張小寶', gender: '女', birth: '2021/03/15', householdAddr: '台中市西屯區幸福路2號', age: getChildAge('2021/03/15') }
+  },
+  'R2002': {
+    id: 'R2002', Date: '2025/01/01', applicant: '王小明', institution: '幸福幼兒園', reason: '文件不全', type: 'document',
+    child: { id: 'B2002', name: '王小明', gender: '男', birth: '2020/05/10', householdAddr: '台北市中正區仁愛路1號', age: getChildAge('2020/05/10') }
+  },
+  'R2003': {
+    id: 'R2003', Date: '2025/01/01', applicant: '李小華', institution: '陽光托育所', reason: '其他原因', type: 'other',
+    child: { id: 'B2003', name: '李小華', gender: '男', birth: '2019/12/01', householdAddr: '高雄市鼓山區明誠路3號', age: getChildAge('2019/12/01') }
+  },
+  'R2004': {
+    id: 'R2004', Date: '2025/01/01', applicant: '陳大同', institution: '愛心幼兒園', reason: '資格不符', type: 'qualification',
+    child: { id: 'B2004', name: '陳大同', gender: '男', birth: '2022/08/20', householdAddr: '新竹市東區光復路4號', age: getChildAge('2022/08/20') }
+  }
+}
 
 const parentList = ref([
   {
@@ -153,28 +193,20 @@ const parentList = ref([
   }
 ])
 
-// 模擬資料 - 實際應用中這裡會從 API 獲取資料
-const mockData = {
-  'R2001': { id: 'R2001', Date: '2025/01/01', applicant: '張麗麗', institution: '快樂托育', reason: '資格不符', type: 'qualification' },
-  'R2002': { id: 'R2002', Date: '2025/01/01', applicant: '王小明', institution: '幸福幼兒園', reason: '文件不全', type: 'document' },
-  'R2003': { id: 'R2003', Date: '2025/01/01', applicant: '李小華', institution: '陽光托育所', reason: '其他原因', type: 'other' },
-  'R2004': { id: 'R2004', Date: '2025/01/01', applicant: '陳大同', institution: '愛心幼兒園', reason: '資格不符', type: 'qualification' }
-}
-
-// 模擬幼兒資料
 const childData = ref({
   id: 'B987654321',
   name: '王小明',
   gender: '男',
   birth: '2020/05/10',
-  householdAddr: '台北市中正區仁愛路1號'
+  householdAddr: '台北市中正區仁愛路1號',
+  age: ''
 })
 
 onMounted(() => {
   // 載入撤銷資料
   if (mockData[revokeId.value]) {
     revokeData.value = { ...mockData[revokeId.value] }
-    revokeType.value = revokeData.value.type
+    childData.value = { ...mockData[revokeId.value].child }
     // 如果已有撤銷記錄，載入之前的撤銷資料
     if (revokeData.value.revokeDate) {
       revokeDate.value = revokeData.value.revokeDate
@@ -185,6 +217,9 @@ onMounted(() => {
   } else {
     // 如果找不到資料，返回列表頁
     router.push('/admin/application-revoke')
+  }
+  if (!childData.value.age) {
+    childData.value.age = getChildAge(childData.value.birth)
   }
 })
 
@@ -198,8 +233,7 @@ function confirmRevoke() {
   console.log('撤銷資料:', {
     revokeId: revokeId.value,
     revokeDate: revokeDate.value,
-    revokeNote: revokeNote.value,
-    revokeType: revokeType.value
+    revokeNote: revokeNote.value
   })
 
   alert('撤銷完成！')
