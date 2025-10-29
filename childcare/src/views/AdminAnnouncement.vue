@@ -47,6 +47,7 @@
                 <td class="title-cell">
                   <span class="title-link" @click="goDetail(item)">{{ item.title }}</span>
                 </td>
+                <td>
                   <button class="btn small danger" @click="remove(item)">刪除</button>
                 </td>
               </tr>
@@ -172,12 +173,15 @@ const goBack = () => {
 const isEditPage = computed(() => {
   return route.name === 'AdminAnnouncementCreate' || route.name === 'AdminAnnouncementEdit'
 })
-</script>
-
 
 const goDetail = (item) => {
   router.push({ name: 'AdminAnnouncementDetail', params: { id: String(item.id) } })
 }
+</script>
+
+
+
+<style>
 .announcement-card {
   max-width:820px;min-width: 85%;margin: 0 auto;
 }
