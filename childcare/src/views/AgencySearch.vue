@@ -59,22 +59,32 @@
 
         <div class="results-section">
           <div>
-            <div class="list-title" >搜尋結果</div>
+            <div class="list-title">搜尋結果</div>
             <div class="title-decoration"></div>
           </div>
-          <div class="agency-list">
+
+          <!-- 載入狀態顯示 -->
+          <div v-if="isLoading" class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>載入托育機構資料中...</p>
+          </div>
+
+          <!-- 錯誤狀態顯示 -->
+          <div v-else-if="error" class="error-state">
+            <p class="error-message">{{ error }}</p>
+            <button @click="loadAgenciesData" class="retry-btn">重新載入</button>
+          </div>
+
+          <!-- 機構列表 -->
+          <div v-else class="agency-list">
             <div class="agency-item" v-for="agency in agencies" :key="agency.id" @click="goToInfo(agency)" style="cursor:pointer;">
               <div class="agency-info">
                 <h3>{{ agency.name }}</h3>
-                <p class="agency-address">📍 {{ agency.address }}</p>
-                <p class="agency-phone">📞 {{ agency.phone }}</p>
-                <p class="agency-capacity">👶 收托人數：{{ agency.capacity }}人</p>
+                <p class="agency-address">地址: {{ agency.address }}</p>
+                <p class="agency-phone" v-if="agency.phone">聯絡電話: {{ agency.phone }}</p>
+                <p class="agency-email" v-if="agency.email">信箱:{{ agency.email }}</p>
+                <p class="agency-description" v-if="agency.description">特色描述: {{ agency.description }}</p>
               </div>
-              <div class="agency-status">
-                <span class="status-badge" :class="agency.statusClass">
-                  <PlaceRating inline :placeName="agency.name + ' ' + agency.address" :fallbackText="agency.statusText" :apiKey="API_KEY" />
-                </span>
-               </div>
             </div>
           </div>
         </div>
@@ -94,9 +104,10 @@
 </template>
 
 <script>
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import PlaceRating from '@/components/PlaceRating.vue'
+import { getAllAgencies } from '@/api/agencies.js'
 
 export default {
   components: { PlaceRating },
@@ -108,11 +119,47 @@ export default {
     // Provide API key from env to PlaceRating (can be overridden per-component via prop)
     const API_KEY = import.meta.env?.VITE_GOOGLE_MAPS_API_KEY || null
 
-    const agencies = [
-      { id: 1, name: '新竹市東區公共托嬰中心', address: '新竹市東區金城一路50-8號1樓', phone: '', capacity: 30, statusText: '有名額', statusClass: 'available' },
-      { id: 2, name: '禾田托嬰中心 Hetian Baby Care Center', address: '新竹市北區金竹路146號148號', phone: '', capacity: 25, statusText: '有名額', statusClass: 'available' },
-      { id: 3, name: '新竹市私立樂橙托嬰中心', address: '新竹市北區水田街1號2樓', phone: '', capacity: 20, statusText: '有名額', statusClass: 'available' }
-    ]
+    // 響應式資料
+    const agencies = ref([])
+    const isLoading = ref(false)
+    const error = ref(null)
+
+    // 載入托育機構資料
+    const loadAgenciesData = async () => {
+      isLoading.value = true
+      error.value = null
+      try {
+        const response = await getAllAgencies()
+        // 處理後端返回的數據格式
+        agencies.value = response.data
+          .map(item => ({
+            id: item.institutionID,
+            name: item.institutionName,
+            address: item.address,
+            phone: item.phoneNumber || '',
+            email: item.email || '',
+            fax: item.fax || '',
+            description: item.description || ''
+          }))
+      } catch (err) {
+        console.error('載入托育機構資料失敗:', err)
+        if (err.response) {
+          error.value = `載入失敗: ${err.response.status} ${err.response.statusText}`
+        } else if (err.request) {
+          error.value = '網路連接失敗，請檢查網路連接'
+        } else {
+          error.value = '載入托育機構資料失敗，請稍後再試'
+        }
+        // 如果 API 失敗，使用預設資料作為後備
+        agencies.value = [
+          { id: 1, name: '新竹市東區公共托嬰中心', address: '新竹市東區金城一路50-8號1樓', phone: '', capacity: 30, statusText: '有名額', statusClass: 'available' },
+          { id: 2, name: '禾田托嬰中心 Hetian Baby Care Center', address: '新竹市北區金竹路146號148號', phone: '', capacity: 25, statusText: '有名額', statusClass: 'available' },
+          { id: 3, name: '新竹市私立樂橙托嬰中心', address: '新竹市北區水田街1號2樓', phone: '', capacity: 20, statusText: '有名額', statusClass: 'available' }
+        ]
+      } finally {
+        isLoading.value = false
+      }
+    }
 
     const isMapView = computed(() => route.name === 'AgencyMap')
     const isInfoView = computed(() => route.name === 'AgencyInfo')
@@ -129,7 +176,22 @@ export default {
       router.push({ name: 'AgencyInfo', query: { id: agency.id } })
     }
 
-    return { agencies, isMapView, isInfoView, switchView, goToInfo, API_KEY }
+    // 組件掛載時載入資料
+    onMounted(() => {
+      loadAgenciesData()
+    })
+
+    return {
+      agencies,
+      isLoading,
+      error,
+      isMapView,
+      isInfoView,
+      switchView,
+      goToInfo,
+      loadAgenciesData,
+      API_KEY
+    }
   }
 }
 </script>
@@ -294,6 +356,64 @@ export default {
 .status-badge.full {
   background: #ffebee;
   color: #c62828;
+}
+
+/* 載入狀態樣式 */
+.loading-state {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #F9AFAE;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-state p {
+  color: #666;
+  font-size: 1.1rem;
+}
+
+/* 錯誤狀態樣式 */
+.error-state {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.error-message {
+  color: #c62828;
+  font-size: 1.1rem;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #ffebee;
+  border-radius: 8px;
+  border: 1px solid #ffcdd2;
+}
+
+.retry-btn {
+  background: #F9AFAE;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.retry-btn:hover {
+  background: #f5a1a1;
 }
 
 @media (max-width: 768px) {
