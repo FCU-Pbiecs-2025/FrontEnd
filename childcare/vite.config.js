@@ -14,7 +14,8 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8080', // Spring Boot 後端地址
         changeOrigin: true,
-        secure: false
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, '') // 移除 /api 前綴
       }
     }
   }

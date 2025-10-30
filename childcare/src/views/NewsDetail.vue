@@ -8,7 +8,14 @@
 
       </div>
 
-      <div v-if="news" class="news-content-block">
+      <div v-if="isLoading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>載入中...</p>
+      </div>
+      <div v-else-if="error" class="error-state">
+        <p>{{ error }}</p>
+      </div>
+      <div v-else-if="news" class="news-content-block">
         <div class="news-content" v-html="news.content"></div>
         <div v-if="news.attachments && news.attachments.length" class="attachments-section">
           <div class="news-date">相關附件：</div>
@@ -34,44 +41,28 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { getAnnouncementDetail } from '../api/announcements.js'
 
 const route = useRoute()
 const news = ref(null)
+const isLoading = ref(false)
+const error = ref(null)
 
-// 假資料，實際應從 API 取得
-const newsList = [
-  {
-    id: '1',
-    title: '新竹市加碼托育補助',
-    date: '114-02-08',
-    category: '經濟補助',
-    content: `
-      <div class='news-section'>
-        <b class='highlight'>一、資格對象：</b><br>
-        符合「直轄市、縣(市)政府辦理未滿二歲兒童托育公共化及準公共化服務條件要點」資格之父母、監護人或其他實際照顧兒童之人(以下稱申請人)，將分別送托於本市公共化或準公共化托育服務，且申請人一方或雙方均設籍本市。<br>
-      </div>
-      <div class='news-section'>
-        <b class='highlight'>二、補助標準：</b><br>
-        (一)送托於本市公共化托育服務提供者，包括與本府簽訂下述二歲兒童托育公共化服務合作契約，之居家托育人員或私立托嬰中心：<br>
-        除原領有補助金額外，補助金額每月新臺幣(下同)1,500元至滿二歲前一日止。<br>
-        (二)送托於本市社區公共托育家園或本市公共托嬰中心：<br>
-        除原領有補助金額外，補助金額每月500元至滿二歲前一日止。<br>
-        前項補助送托日數超過一個月未滿一個月者，依一個月以下天數比例計算。<br>
-      </div>
-      <div class='news-section'>
-        <b class='highlight'>三、注意事項：</b><br>
-        (一)為確保兒童及申請人申請權益，本府同收政府機關書面同意書等相關證明，申請，以免延誤補助權益。<br>
-        (二)公共化及準公共化托育服務提供者，須依本府公告之規定辦理。<br>
-        (三)本補助如有未盡事宜，悉依本府公告及相關法令規定辦理。<br>
-      </div>
-    `,
-    attachments: [
-      { name: '申請表.docx', url: '/files/申請表.docx' },
-      { name: '補助說明.pdf', url: '/files/補助說明.pdf' },
-      { name: '申請表.odt', url: '/files/申請表.odt' }
-    ]
+// 載入公告詳細資料
+const loadNewsDetail = async (id) => {
+  isLoading.value = true
+  error.value = null
+  try {
+    const response = await getAnnouncementDetail(id)
+    news.value = response.data
+  } catch (err) {
+    console.error('載入公告詳細資料失敗:', err)
+    error.value = '載入公告詳細資料失敗'
+    news.value = null
+  } finally {
+    isLoading.value = false
   }
-]
+}
 
 function fileClass(name) {
   const ext = name.split('.').pop().toLowerCase()
@@ -80,6 +71,7 @@ function fileClass(name) {
   if (ext === 'odt') return 'file-odt'
   return ''
 }
+
 function fileIcon(name) {
   const ext = name.split('.').pop().toLowerCase()
   if (ext === 'pdf') return `<svg width='20' height='20' viewBox='0 0 20 20'><rect width='20' height='20' rx='4' fill='#e35d6a'/><text x='4' y='15' font-size='10' fill='#fff'>PDF</text></svg>`
@@ -87,13 +79,16 @@ function fileIcon(name) {
   if (ext === 'odt') return `<svg width='20' height='20' viewBox='0 0 20 20'><rect width='20' height='20' rx='4' fill='#1e88e5'/><text x='4' y='15' font-size='10' fill='#fff'>ODT</text></svg>`
   return `<svg width='20' height='20' viewBox='0 0 20 20'><rect width='20' height='20' rx='4' fill='#aaa'/></svg>`
 }
+
 function goBack() {
   window.location.href = '/news';
 }
 
 onMounted(() => {
   const id = route.params.id
-  news.value = newsList.find(n => n.id === id)
+  if (id) {
+    loadNewsDetail(id)
+  }
 })
 </script>
 
@@ -214,6 +209,37 @@ onMounted(() => {
   text-align: center;
   font-size: 1.2rem;
   margin: 40px 0;
+}
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: #666;
+}
+.loading-spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #e35d6a;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.error-state {
+  color: #e35d6a;
+  text-align: center;
+  font-size: 1.1rem;
+  margin: 40px 0;
+  padding: 20px;
+  background: #fff8f6;
+  border-radius: 8px;
+  border-left: 4px solid #e35d6a;
 }
 .news-detail-footer {
   display: flex;

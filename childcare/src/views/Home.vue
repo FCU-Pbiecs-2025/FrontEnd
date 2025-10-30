@@ -37,13 +37,15 @@
         <div class="content-area">
           <div class="news-list">
             <div
-              v-for="item in homeNewsList"
-              :key="item.id"
+              v-for="item in newsItems"
+              :key="item.announcementID"
               class="news-item"
-              @click="goToNewsDetail(item.id)"
+              @click="goToNewsDetail(item.announcementID)"
               style="cursor:pointer;"
             >
-              <div class="news-date">{{ item.date }}</div>
+              <div class="news-date">
+                {{ item.startDate ? `${formatDate(item.startDate).year}/${formatDate(item.startDate).month}/${formatDate(item.startDate).day}` : '未定' }}
+              </div>
               <div class="news-content">
                 <h3>{{ item.title }}</h3>
                 <p>{{ item.content }}</p>
@@ -158,33 +160,24 @@ const formatDate = (dateString) => {
 const loadNewsData = async () => {
   isLoading.value = true
   error.value = null
-
   try {
     const response = await getAllAnnouncements()
-
     // 處理後端返回的數據格式
     newsItems.value = response.data
-        .filter(item => item.status === 1) // 只顯示啟用的公告
-        .map(item => ({
-          id: item.announcementId,
-          title: item.title,
-          content: item.content,
-          date: item.startDate || item.createdTime,
-          type: item.type,
-          formattedDate: formatDate(item.startDate || item.createdTime)
-        }))
-        .sort((a, b) => new Date(b.date) - new Date(a.date)) // 按日期降序排列
-
+      .map(item => ({
+        announcementID: item.announcementID,
+        title: item.title,
+        content: item.content,
+        startDate: item.startDate
+      }))
+      // .sort((a, b) => new Date(b.startDate) - new Date(a.startDate)) // 按日期降序排列
   } catch (err) {
     console.error('載入最新消息失敗:', err)
     if (err.response) {
-      // 服務器響應錯誤
       error.value = `載入失敗: ${err.response.status} ${err.response.statusText}`
     } else if (err.request) {
-      // 網絡錯誤
       error.value = '網絡連接失敗，請檢查網絡連接'
     } else {
-      // 其他錯誤
       error.value = '載入最新消息失敗，請稍後再試'
     }
   } finally {
