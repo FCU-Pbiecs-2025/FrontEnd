@@ -27,7 +27,7 @@ export const searchAgencies = async (searchParams = {}) => {
 // 根據ID獲取托育機構詳細資訊
 export const getAgencyById = async (id) => {
     try {
-        const response = await http.get(`/agencies/${id}`)
+        const response = await http.get(`/institutions/info/${id}`)
         return response
     } catch (error) {
         console.error('獲取托育機構詳細資訊失敗:', error)

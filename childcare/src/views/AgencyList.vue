@@ -31,7 +31,7 @@ export default {
     ]
 
     function goToInfo(agency) {
-      router.push({ name: 'AgencyInfo' })
+      router.push({ name: 'AgencyInfo', params: { id: agency.id } })
     }
 
     return { agencies, goToInfo }

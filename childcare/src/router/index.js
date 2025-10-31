@@ -35,7 +35,7 @@ const routes = [
                         meta: {breadcrumb: '地圖檢視'}
                     },
                     {
-                        path: 'info',
+                        path: 'info/:id',
                         name: 'AgencyInfo',
                         component: () => import('../views/AgencyInfo.vue'),
                         meta: {breadcrumb: '機構說明'}

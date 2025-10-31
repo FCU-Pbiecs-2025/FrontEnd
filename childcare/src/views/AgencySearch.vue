@@ -173,7 +173,7 @@ export default {
     }
 
     function goToInfo(agency) {
-      router.push({ name: 'AgencyInfo', query: { id: agency.id } })
+      router.push({ name: 'AgencyInfo', params: { id: agency.id } })
     }
 
     // 組件掛載時載入資料

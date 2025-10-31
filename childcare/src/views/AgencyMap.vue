@@ -196,10 +196,11 @@ export default {
     goToInfo() {
       // 導到機構詳細頁（router 名稱為 AgencyInfo）
       // 這裡使用 $router，確保 this 在 options API 中可用
-      if (this.$router) {
+      if (this.$router && this.selectedAgency && this.selectedAgency.id) {
         // 先關閉浮動面板，然後導頁
+        const agencyId = this.selectedAgency.id;
         this.selectedAgency = null;
-        this.$router.push({ name: 'AgencyInfo' });
+        this.$router.push({ name: 'AgencyInfo', params: { id: agencyId } });
       }
     },
     closePopup() {

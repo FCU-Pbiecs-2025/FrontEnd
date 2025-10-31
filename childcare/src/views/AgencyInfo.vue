@@ -1,31 +1,44 @@
 <template>
   <div class="agency-info-page">
-
     <div class="info-card">
       <div class="info-header">
         <img src="https://img.icons8.com/fluency/48/000000/school-building.png" class="info-icon" alt="機構圖示" />
         <span class="info-title">托育機構介紹</span>
       </div>
-      <div class="agency-card">
-        <div class="agency-name-label">" {{ agency.name }} "</div>
-        <div class="agency-carousel">
-          <button class="carousel-btn left" @click="prevImg">&#x276E;</button>
+
+      <!-- 加載狀態 -->
+      <div v-if="loading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>正在載入機構資訊...</p>
+      </div>
+
+      <!-- 錯誤狀態 -->
+      <div v-else-if="error" class="error-state">
+        <p>{{ error }}</p>
+        <button @click="fetchAgencyData" class="retry-btn">重新載入</button>
+      </div>
+
+      <!-- 機構資訊內容 -->
+      <div v-else class="agency-card">
+        <div class="agency-name-label">" {{ agency.institutionName }} "</div>
+        <div class="agency-carousel" v-if="agency.imagePath">
           <div class="carousel-img-box">
-            <img :src="agency.images[currentImg]" alt="機構照片" class="carousel-img" />
+            <img :src="agency.imagePath" alt="機構照片" class="carousel-img" />
           </div>
-          <button class="carousel-btn right" @click="nextImg">&#x276F;</button>
         </div>
 
         <div class="agency-info-table">
-          <div class="info-row"><span>聯絡人：</span><span>{{ agency.contact }}</span></div>
-          <div class="info-row"><span>機構地址：</span><span>{{ agency.address }}</span></div>
-          <div class="info-row"><span>電話：</span><span>{{ agency.phone }}</span></div>
-          <div class="info-row"><span>傳真：</span><span>{{ agency.fax }}</span></div>
-          <div class="info-row"><span>電子信箱：</span><span>{{ agency.email }}</span></div>
-          <div class="info-row"><span>粉絲團：</span><span>{{ agency.fanpage }}</span></div>
-          <div class="info-row"><span>立案資料：</span><span>{{ agency.license }}</span></div>
+          <div class="info-row" v-if="agency.contactPerson"><span>聯絡人：</span><span>{{ agency.contactPerson }}</span></div>
+          <div class="info-row" v-if="agency.responsiblePerson"><span>負責人：</span><span>{{ agency.responsiblePerson }}</span></div>
+          <div class="info-row" v-if="agency.address"><span>機構地址：</span><span>{{ agency.address }}</span></div>
+          <div class="info-row" v-if="agency.phoneNumber"><span>電話：</span><span>{{ agency.phoneNumber }}</span></div>
+          <div class="info-row" v-if="agency.fax"><span>傳真：</span><span>{{ agency.fax }}</span></div>
+          <div class="info-row" v-if="agency.email"><span>電子信箱：</span><span>{{ agency.email }}</span></div>
+          <div class="info-row" v-if="agency.relatedLinks"><span>相關連結：</span><span><a :href="agency.relatedLinks" target="_blank" style="color: #2a4fa7; text-decoration: underline;">{{ agency.relatedLinks }}</a></span></div>
+          <div class="info-row" v-if="agency.description"><span>機構說明：</span><span>{{ agency.description }}</span></div>
         </div>
-        <div class="class-section">
+
+        <div class="class-section" v-if="agency.classes && agency.classes.length > 0">
           <div class="class-title">班級資訊</div>
           <table class="class-table">
             <thead>
@@ -44,43 +57,64 @@
         <div class="actions">
           <button class="back-to-list" @click="goBack">返回機構列表</button>
         </div>
-
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-const router = useRouter()
-const agency = ref({
-  name: '新竹縣公立托嬰中心',
-  images: [
-    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
-    'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=600&q=80'
-  ],
-  contact: '王小美',
-  address: '新竹縣竹北市中正東路123號',
-  phone: '03-1234567',
-  fax: '03-1234568',
-  email: 'info@childcare.com',
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { getAgencyById } from '@/api/agencies.js'
 
-  fanpage: 'https://facebook.com/childcare',
-  license: '立案字號：新竹縣府社字第123456號',
-  classes: [
-    { name: '嬰幼班', age: '2個月-6個月' },
-    { name: '幼幼班', age: '6個月-1歲3個月' },
-    { name: '大班', age: '1歲3個月-2歲' }
-  ]
+const router = useRouter()
+const route = useRoute()
+
+const agency = ref({
+  institutionName: '',
+  imagePath: '',
+  contactPerson: '',
+  address: '',
+  phoneNumber: '',
+  fax: '',
+  email: '',
+  relatedLinks: '',
+  description: '',
+  responsiblePerson: '',
+  classes: []
 })
-const currentImg = ref(0)
-function prevImg() {
-  currentImg.value = (currentImg.value - 1 + agency.value.images.length) % agency.value.images.length
+const loading = ref(true)
+const error = ref(null)
+
+// 獲取機構詳細資訊
+const fetchAgencyData = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    const agencyId = route.params.id
+
+    if (!agencyId) {
+      throw new Error('機構ID不存在')
+    }
+
+    // 將UUID轉換為大寫格式以匹配後端API
+    const upperCaseId = agencyId.toUpperCase()
+    const response = await getAgencyById(upperCaseId)
+    agency.value = response.data
+
+  } catch (err) {
+    error.value = err.message || '獲取機構資訊失敗'
+    console.error('獲取機構資訊失敗:', err)
+  } finally {
+    loading.value = false
+  }
 }
-function nextImg() {
-  currentImg.value = (currentImg.value + 1) % agency.value.images.length
-}
+
+onMounted(() => {
+  fetchAgencyData()
+})
+
+
 function goBack() {
   // 返回已註冊的列表頁（AgencySearch）
   router.push({ name: 'AgencySearch' })
@@ -89,12 +123,78 @@ function goBack() {
 
 <style scoped>
 
-
 .info-card {
   max-width: 900px;
   margin: 0 auto;
   padding: 32px 18px 40px 18px;
 }
+
+/* 加載狀態樣式 */
+.loading-state {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(249, 175, 174, 0.10);
+  padding: 60px 20px;
+  text-align: center;
+  border: 1px solid #f3e6e6;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3e6e6;
+  border-top: 4px solid #f9afae;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-state p {
+  color: #666;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+/* 錯誤狀態樣式 */
+.error-state {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(249, 175, 174, 0.10);
+  padding: 40px 20px;
+  text-align: center;
+  border: 1px solid #f3e6e6;
+}
+
+.error-state p {
+  color: #e74c3c;
+  font-size: 1.1rem;
+  margin-bottom: 20px;
+}
+
+.retry-btn {
+  background: linear-gradient(135deg, #F9AFAE, #f5a1a1);
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(249, 175, 174, 0.2);
+  transition: all 0.25s ease;
+}
+
+.retry-btn:hover {
+  background: linear-gradient(135deg, #f5a1a1, #f19594);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(249, 175, 174, 0.28);
+}
+
 .info-header {
   display: flex;
   align-items: center;
@@ -139,24 +239,6 @@ function goBack() {
   justify-content: center;
   gap: 18px;
   margin-bottom: 24px;
-}
-.carousel-btn {
-  background: #ffe5e5;
-  border: none;
-  border-radius: 50%;
-  width: 38px;
-  height: 38px;
-  font-size: 1.5rem;
-  color: #f9afae;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(249, 175, 174, 0.10);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
-}
-.carousel-btn:hover {
-  background: #ffd6d6;
 }
 .carousel-img-box {
   width: 320px;
