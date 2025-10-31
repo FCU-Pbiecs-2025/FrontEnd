@@ -38,16 +38,19 @@
           <div class="info-row" v-if="agency.description"><span>機構說明：</span><span>{{ agency.description }}</span></div>
         </div>
 
-        <div class="class-section" v-if="agency.classes && agency.classes.length > 0">
+        <div class="class-section" v-if="classList && classList.length > 0">
           <div class="class-title">班級資訊</div>
           <table class="class-table">
             <thead>
-            <tr><th>班級名稱</th><th>就讀年齡</th></tr>
+            <tr><th>班級名稱</th><th>收托人數</th><th>就讀中人數</th><th>收托年齡</th><th>其他資訊</th></tr>
             </thead>
             <tbody>
-            <tr v-for="cls in agency.classes" :key="cls.name">
-              <td>{{ cls.name }}</td>
-              <td>{{ cls.age }}</td>
+            <tr v-for="cls in classList" :key="cls.classID">
+              <td>{{ cls.className }}</td>
+              <td>{{ cls.capacity }}</td>
+              <td>{{ cls.currentStudents }}</td>
+              <td>{{ cls.minAgeDescription }} - {{ cls.maxAgeDescription }}</td>
+              <td>{{ cls.additionalInfo }}</td>
             </tr>
             </tbody>
           </table>
@@ -66,6 +69,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getAgencyById } from '@/api/agencies.js'
+import { getClassByInstitutionId } from '@/api/class.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -83,6 +87,7 @@ const agency = ref({
   responsiblePerson: '',
   classes: []
 })
+const classList = ref([]) // 新增：班級列表
 const loading = ref(true)
 const error = ref(null)
 
@@ -110,8 +115,38 @@ const fetchAgencyData = async () => {
   }
 }
 
+// 獲取班級資料
+const fetchData = async () => {
+  try {
+    const agencyId = route.params.id
+    if (!agencyId) {
+      throw new Error('機構ID不存在')
+    }
+    const upperCaseId = agencyId.toUpperCase()
+    const classRes = await getClassByInstitutionId(upperCaseId)
+    if (classRes.data && Array.isArray(classRes.data)) {
+      classList.value = classRes.data.map(cls => ({
+        classID: cls.classID || '',
+        className: cls.className || '',
+        capacity: cls.capacity || 0,
+        currentStudents: cls.currentStudents || 0,
+        minAgeDescription: cls.minAgeDescription || '',
+        maxAgeDescription: cls.maxAgeDescription || '',
+        additionalInfo: cls.additionalInfo || '',
+        institutionID: cls.institutionID || ''
+      }))
+    } else {
+      classList.value = []
+    }
+  } catch (err) {
+    error.value = err.message || '獲取班級資訊失敗'
+    console.error('獲取班級資訊失敗:', err)
+  }
+}
+
 onMounted(() => {
   fetchAgencyData()
+  fetchData()
 })
 
 
