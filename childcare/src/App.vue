@@ -6,7 +6,7 @@
         <div class="header-left" @click="goToPage('Home')" style="cursor:pointer;">
           <img class="logo" src="./imgs/mother.png" alt="logo" />
           <div class="vertical-stack">
-            <span class="title-second">新竹縣政府 社會處</span>
+            <span class="title-second">新竹縣政府 社會處~</span>
             <span class="system-title">社區公共托育家園</span>
           </div>
         </div>
