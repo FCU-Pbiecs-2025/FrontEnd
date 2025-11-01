@@ -9,7 +9,7 @@
       </span>
       <span v-else-if="error" class="pr-inline pr-error" :title="error">{{ fallbackText }}</span>
       <span v-else-if="inlineRating !== ''" class="pr-inline" aria-label="評分">
-        <span class="star">★</span>
+        <span class="star">⭐️</span>
         <span class="num">{{ inlineRating }}</span>
       </span>
       <span v-else class="pr-inline pr-fallback">{{ fallbackText }}</span>
@@ -150,7 +150,7 @@ if (props.inline && props.placeName && apiKeyUsed.value) {
 
 <style scoped>
 /* Block (full) mode chrome */
-.place-rating { border: 1px solid #eee; padding: 12px; border-radius: 8px; background: #fff; }
+.place-rating { padding: 8px; border-radius: 8px; background: #fff; }
 .place-rating .controls { display:flex; gap:8px; margin-bottom:8px }
 .place-rating input { flex:1; padding:8px 10px; border:1px solid #ddd; border-radius:6px }
 .place-rating button { padding:8px 12px; border: none; border-radius: 6px; background:#f9afae; color:#fff; font-weight:600; cursor:pointer }
@@ -158,17 +158,68 @@ if (props.inline && props.placeName && apiKeyUsed.value) {
 .error { color: #b00020 }
 .result h3 { margin:0 0 6px 0 }
 
-/* Inline (compact) mode — no chrome, sits nicely inside badges */
+/* Inline (compact) mode — 柔和圓弧背景，無 border 無漸層 */
 .place-rating.is-inline { border: none; padding: 0; display: inline; background: transparent }
-.pr-inline { display:inline-flex; align-items:center; gap:6px; font-weight:700; line-height:1; }
-.pr-inline .star { color:#f5a623; font-size:1em; line-height:1 }
-.pr-inline .num { color:#333; font-weight:700; font-variant-numeric: tabular-nums }
-.pr-inline.pr-fallback { color:#666; font-weight:600 }
-.pr-inline.pr-error { color:#b00020; font-weight:600 }
+.pr-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  line-height: 1;
+  padding: 12px 12px;
+  background: rgba(111, 227, 159, 0.5);
+  border-radius: 50px;
 
-/* Tiny loading dots */
-.pr-loading .dot { width:5px; height:5px; margin:0 1px; background:#999; border-radius:50%; display:inline-block; animation: pr-blink 1s infinite ease-in-out }
+
+  font-size: 1rem;
+}
+
+
+
+
+
+@keyframes starPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.pr-inline .num {
+  color: #047857;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.1em;
+}
+
+.pr-inline.pr-fallback {
+  background: rgba(148, 163, 184, 0.3);
+  color: #475569;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(100, 116, 139, 0.15);
+}
+
+.pr-inline.pr-error {
+  background: rgba(239, 68, 68, 0.3);
+  color: #dc2626;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15);
+}
+
+/* Tiny loading dots - 適配柔和背景 */
+.pr-loading {
+  background: rgba(134, 239, 172, 0.3);
+  padding: 12px 24px;
+}
+
+.pr-loading .dot {
+  width: 6px;
+  height: 6px;
+  margin: 0 2px;
+  background: #22c55e;
+  border-radius: 50%;
+  display: inline-block;
+  animation: pr-blink 1s infinite ease-in-out;
+}
+
 .pr-loading .dot:nth-child(2){ animation-delay: .2s }
 .pr-loading .dot:nth-child(3){ animation-delay: .4s }
-@keyframes pr-blink { 0%, 80%, 100% { opacity:.2 } 40% { opacity:1 } }
+@keyframes pr-blink { 0%, 80%, 100% { opacity:.3 } 40% { opacity:1 } }
 </style>

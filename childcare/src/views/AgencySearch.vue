@@ -85,6 +85,14 @@
                 <p class="agency-email" v-if="agency.email">信箱:{{ agency.email }}</p>
                 <p class="agency-description" v-if="agency.description">特色描述: {{ agency.description }}</p>
               </div>
+              <div class="agency-rating-wrapper">
+                <PlaceRating
+                  :placeName="agency.name + ' ' + agency.address"
+                  inline
+                  fallbackText="無評分資料"
+                  class="agency-rating"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -329,6 +337,10 @@ export default {
   box-shadow: 0 4px 12px rgba(249, 175, 174, 0.2);
 }
 
+.agency-info {
+  flex: 1;
+}
+
 .agency-info h3 {
   color: #333;
   font-size: 1.3rem;
@@ -341,22 +353,20 @@ export default {
   font-size: 0.95rem;
 }
 
-.status-badge {
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-weight: bold;
-  font-size: 0.9rem;
+.agency-rating-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: 20px;
+  flex-shrink: 0;
 }
 
-.status-badge.available {
-  background: #e8f5e8;
-  color: #2e7d32;
+.agency-rating {
+  font-size: 0.8rem;
+  white-space: nowrap;
 }
 
-.status-badge.full {
-  background: #ffebee;
-  color: #c62828;
-}
+
 
 /* 載入狀態樣式 */
 .loading-state {
@@ -431,6 +441,10 @@ export default {
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
+  }
+  .agency-rating-wrapper {
+    margin-left: 0;
+    justify-content: flex-start;
   }
 }
 </style>

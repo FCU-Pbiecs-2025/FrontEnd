@@ -4,7 +4,10 @@
       <div class="content-area">
         <!-- 標題區塊（用統一後的 displayName） -->
 
-
+        <div>
+          <div class="list-title">{{ uiAgency.displayName }}</div>
+          <div class="title-decoration"></div>
+        </div>
         <!-- 主內容卡片：新樣式 + 舊功能 -->
           <!-- 載入中 -->
           <div v-if="loading" class="loading-state">
@@ -22,29 +25,10 @@
           <div v-else class="agency-card">
             <!-- 顯示名稱膠囊 -->
 
-            <!-- 圖片輪播（兼容 imagePath / images） -->
-            <div class="agency-carousel" v-if="images.length">
-              <div class="carousel-image-box">
-                <img :src="images[currentImg]" alt="機構環境照片" class="carousel-image" />
-                <button class="carousel-btn left" @click="prevImg" aria-label="上一張">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <path d="M15 18l-6-6 6-6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                </button>
-                <button class="carousel-btn right" @click="nextImg" aria-label="下一張">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <path d="M9 18l6-6-6-6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                </button>
-              </div>
-
-              <div class="carousel-indicators" v-if="images.length > 1">
-                <span
-                    v-for="(img, index) in images"
-                    :key="index"
-                    :class="['indicator', { active: currentImg === index }]"
-                    @click="currentImg = index"
-                ></span>
+            <!-- 機構圖片 -->
+            <div class="agency-image-container" v-if="images.length">
+              <div class="image-box">
+                <img :src="images[0]" alt="機構環境照片" class="agency-image" />
               </div>
             </div>
 
@@ -69,7 +53,6 @@
 
             <!-- 班級資訊（新後端資料） -->
             <div class="class-section" v-if="classList && classList.length">
-              <div class="class-title">班級資訊</div>
               <table class="class-table">
                 <thead>
                 <tr>
@@ -92,21 +75,6 @@
               </table>
             </div>
 
-            <!-- 舊結構 classes 的簡表（若有） -->
-            <div class="class-section" v-if="uiAgency.classes && uiAgency.classes.length">
-              <div class="class-title">班級資訊（其他）</div>
-              <table class="class-table">
-                <thead>
-                <tr><th>班級名稱</th><th>就讀年齡</th></tr>
-                </thead>
-                <tbody>
-                <tr v-for="cls in uiAgency.classes" :key="cls.name">
-                  <td>{{ cls.name }}</td>
-                  <td>{{ cls.age }}</td>
-                </tr>
-                </tbody>
-              </table>
-            </div>
 
             <!-- 底部返回按鈕 -->
             <div class="actions">
@@ -134,8 +102,7 @@ const classList = ref([])
 const loading = ref(true)
 const error = ref(null)
 
-// 輪播
-const currentImg = ref(0)
+// 圖片
 const images = computed(() => {
   // 兼容：imagePath（單張字串）或 images（陣列）
   const fromArray = (agencyRaw.value?.images && Array.isArray(agencyRaw.value.images))
@@ -185,8 +152,6 @@ const fetchAgencyData = async () => {
   const upperCaseId = String(agencyId).toUpperCase()
   const res = await getAgencyById(upperCaseId)
   agencyRaw.value = res?.data || {}
-  // 重設輪播
-  currentImg.value = 0
 }
 
 // 取班級資料（新 API）
@@ -224,14 +189,6 @@ const loadAll = async () => {
   }
 }
 
-function prevImg() {
-  if (!images.value.length) return
-  currentImg.value = (currentImg.value - 1 + images.value.length) % images.value.length
-}
-function nextImg() {
-  if (!images.value.length) return
-  currentImg.value = (currentImg.value + 1) % images.value.length
-}
 
 function goBack() {
   router.push({ name: 'AgencySearch' })
@@ -275,7 +232,7 @@ watch(() => route.params.id, () => {
   width: 80%;
   height: 2px;
   border-radius: 4px;
-  background: var(--4th-text-color, #f9afae);
+  background: var(--4th-text-color);
   margin: 10px auto 24px;
 }
 
@@ -292,6 +249,21 @@ watch(() => route.params.id, () => {
   font-size: 1.4rem;
   font-weight: bold;
   letter-spacing: 2px;
+}
+
+.list-title{
+  text-align:center;
+  font-size:1.5rem;
+  font-weight:bold;
+  margin:50px 0 16px 0;
+  letter-spacing:2px;
+}
+.title-decoration{
+  width: 80%;
+  height: 2px;
+  border-radius: 4px;
+  background: var(--4th-text-color);
+  margin: 10px auto;
 }
 
 /* 載入/錯誤 */
@@ -341,7 +313,7 @@ watch(() => route.params.id, () => {
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 2px 12px rgba(249, 175, 174, 0.10);
-  padding: 32px 18px 24px 18px;
+  padding: 12px 12px 12px 12px;
   border: 1px solid #f3e6e6;
   margin-top: 8px;
 }
@@ -360,9 +332,12 @@ watch(() => route.params.id, () => {
   box-shadow: 0 2px 8px #f8b6b633;
 }
 
-/* 輪播 */
-.agency-carousel { position: relative; width: 100%; margin-bottom: 32px; }
-.carousel-image-box {
+/* 圖片顯示 */
+.agency-image-container {
+  width: 100%;
+  margin-bottom: 32px;
+}
+.image-box {
   width: 100%;
   height: 400px;
   border-radius: 16px;
@@ -372,40 +347,15 @@ watch(() => route.params.id, () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
 }
-.carousel-image { width: 100%; height: 100%; object-fit: cover; }
-.carousel-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.4);
-  border: none;
-  border-radius: 50%;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 10;
-  transition: all 0.3s ease;
+.agency-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
-.carousel-btn.left { left: 20px; }
-.carousel-btn.right { right: 20px; }
-.carousel-btn:hover { background: rgb(227, 102, 114); transform: translateY(-50%) scale(1.1); }
-.carousel-indicators {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 16px;
-}
-.indicator { width: 10px; height: 10px; border-radius: 50%; background: #ddd; cursor: pointer; transition: all 0.3s ease; }
-.indicator:hover { background: #f5a1a1; }
-.indicator.active { background: #f9afae; width: 28px; border-radius: 5px; }
 
 /* 資訊表 */
-.agency-info-table { margin: 32px 0; padding: 0; }
+.agency-info-table { margin: 60px 60px; padding: 0; }
 .info-row {
   display: flex;
   gap: 12px;
@@ -420,8 +370,9 @@ watch(() => route.params.id, () => {
 .info-row span:last-child { flex: 1; color: #333; }
 
 /* 班級表格 */
-.class-section { margin-top: 40px; }
-.class-title { font-size: 1.2rem; font-weight: bold; color: #333; margin-bottom: 16px; letter-spacing: 1px; }
+.class-section { margin-top: 40px;}
+.class-title {
+  font-size: 1.2rem; font-weight: bold; color: #333; margin-bottom: 16px; letter-spacing: 1px; }
 .class-table {
   width: 100%;
   border-collapse: collapse;
@@ -444,7 +395,7 @@ watch(() => route.params.id, () => {
 /* 底部 actions */
 .actions { text-align: center; margin-top: 32px; }
 .back-to-list {
-  background: var(front-btn, linear-gradient(135deg, #F9AFAE, #f5a1a1));
+  background: var(--front-btn);
   color: white;
   border: none;
   padding: 12px 32px;
@@ -459,16 +410,11 @@ watch(() => route.params.id, () => {
 /* RWD */
 @media (max-width: 768px) {
   .info-card { padding: 24px 16px; }
-  .carousel-image-box { height: 280px; }
-  .carousel-btn { width: 40px; height: 40px; }
-  .carousel-btn.left { left: 12px; }
-  .carousel-btn.right { right: 12px; }
+  .image-box { height: 280px; }
 }
 @media (max-width: 600px) {
   .info-card { padding: 16px 12px; }
-  .carousel-image-box { height: 220px; border-radius: 12px; }
-  .carousel-btn { width: 36px; height: 36px; }
-  .carousel-btn svg { width: 20px; height: 20px; }
+  .image-box { height: 220px; border-radius: 12px; }
   .info-row { flex-direction: column; gap: 4px; }
   .info-row span:first-child { min-width: auto; }
   .class-table th, .class-table td { padding: 8px 4px; font-size: 0.9rem; }
