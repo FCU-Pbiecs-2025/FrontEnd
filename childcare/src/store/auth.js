@@ -20,9 +20,21 @@ export const useAuthStore = defineStore('auth', {
         // 根據後端格式直接回傳
         if (response.success) {
           const { user } = response
+
+          // 根據 permissionType 設定對應的 role
+          let role = 'general'
+          if (user.permissionType === 1) {
+            role = 'super_admin'
+          } else if (user.permissionType === 2) {
+            role = 'admin'
+          }
+
           // temporarily disable token persistence (do not store token)
-          this.token = null
-          this.user = user
+          this.token = 'user-token'
+          this.user = {
+            ...user,
+            role: role // 設定 role 供路由守衛使用
+          }
           this.isAuthenticated = true
           // localStorage.setItem('token', token)
           // localStorage.setItem('user', JSON.stringify(user))

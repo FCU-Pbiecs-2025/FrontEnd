@@ -36,7 +36,7 @@
             <tr v-for="item in resultAdmins" :key="item.id">
               <td class="id-cell">{{ item.id }}</td>
               <td class="name-cell">{{ item.org }}</td>
-              <td class="role-cell">{{ item.role === 'superadmin' ? '最高權限' : item.role === 'admin' ? '管理員' : item.role }}</td>
+              <td class="role-cell">{{ item.role === 'super_admin' ? '最高權限' : item.role === 'admin' ? '管理員' : item.role }}</td>
               <td class="status-cell">{{ item.right === 'suspended' ? '停權' : '啟用' }}</td>
               <td class="action-cell">
                 <button class="btn small" @click="manageAdmin(item.id)">編輯</button>
@@ -95,7 +95,7 @@ const loadList = () => {
     } else {
       // 初始範例資料
       admins.value = {
-        'admin01': { id: 'admin01', org: '市政府', role: 'superadmin', right: 'enable', password: 'pass123' },
+        'admin01': { id: 'admin01', org: '市政府', role: 'super_admin', right: 'enable', password: 'pass123' },
         'admin02': { id: 'admin02', org: '托育中心A', role: 'admin', right: 'enable', password: 'pass456' },
         'admin03': { id: 'admin03', org: '托育中心B', role: 'admin', right: 'suspended', password: 'pass789' }
       }

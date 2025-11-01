@@ -382,7 +382,7 @@ router.beforeEach((to, from, next) => {
     }
 
     // 檢查是否需要 admin 權限
-    if (to.meta.requiresAdmin && authStore.user?.role !== 'admin') {
+    if (to.meta.requiresAdmin && !['admin', 'super_admin'].includes(authStore.user?.role)) {
         // 非 admin 角色，導向首頁
         next('/')
         return

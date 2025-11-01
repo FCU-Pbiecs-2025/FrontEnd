@@ -34,7 +34,7 @@ export default {
       error.value = ''
       // 呼叫 loginUser 方法
       const result = await authStore.loginUser(username.value, password.value)
-      if (result.success && authStore.user?.role === 'admin') {
+      if (result.success && ['admin', 'super_admin'].includes(authStore.user?.role)) {
         router.replace('/admin')
       } else {
         error.value = result.message || '帳號或密碼錯誤，或非管理員身分'

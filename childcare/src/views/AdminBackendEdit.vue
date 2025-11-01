@@ -30,7 +30,7 @@
           <label class="form-label">權限設定：</label>
           <div class="radio-group">
             <label class="radio-label">
-              <input type="radio" value="superadmin" v-model="account.role" />
+              <input type="radio" value="super_admin" v-model="account.role" />
               <span>最高權限</span>
             </label>
             <label class="radio-label">

@@ -92,3 +92,21 @@ export function changePassword(account, oldPassword, newPassword) {
     }
     return http.post("/auth/change-password", { account, oldPassword, newPassword });
 }
+
+// 登入 API
+export const loginUser = async (account, password) => {
+    try {
+        const response = await fetch('http://localhost:8080/Login/Verify', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ account, password })
+        })
+        const result = await response.json()
+        return result
+    } catch (error) {
+        console.error('登入失敗:', error)
+        return { success: false, message: '伺服器連線失敗' }
+    }
+}

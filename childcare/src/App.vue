@@ -40,9 +40,9 @@
             <small class="nav-translation">Member Center</small>
             <div class="nav-option"></div>
           </div>
-          <!-- 後台管理入口，僅 admin 角色顯示 -->
+          <!-- 後台管理入口，僅 admin 或 super_admin 角色顯示 -->
           <div
-              v-if="authStore.user?.role === 'admin'"
+              v-if="['admin', 'super_admin'].includes(authStore.user?.role)"
               class="nav-item"
               @click="handleNavClick('AdminHome')"
               style="cursor:pointer;"
@@ -64,6 +64,11 @@
               <path d="M6 9l6 6 6-6" stroke="#e35d6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
+        </div>
+
+        <!-- 未登入時顯示登入按鈕 -->
+        <div v-else class="login-actions">
+          <button class="login-btn" @click="handleNavClick('Login')">登入</button>
         </div>
       </nav>
     </header>
@@ -508,6 +513,32 @@ footer {
   align-items: center;
   gap: 0;
   z-index: 110;
+}
+
+.login-actions {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  z-index: 110;
+}
+
+.login-btn {
+  background: #e35d6a;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.login-btn:hover {
+  background: #d64856;
 }
 
 .account-btn {

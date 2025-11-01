@@ -79,6 +79,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth.js'
 import { generateCaptcha } from '../api/captcha.js'
 import { renderReCaptchaV2, executeReCaptchaV3, resetReCaptchaV2 } from '../api/recaptcha.js'
+import { loginUser } from '../api/auth.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -181,8 +182,6 @@ const handleLogin = async () => {
     return
   }
 
-
-
   // 執行 reCAPTCHA v3 驗證
   if (useReCaptchaV3.value) {
     const v3Valid = await executeReCaptchaV3Verification()
@@ -193,21 +192,48 @@ const handleLogin = async () => {
   errorMessage.value = ''
 
   try {
-    const result = await authStore.loginUser(
-      loginForm.account,
-      loginForm.password,
-      loginForm.captcha
-    )
+    // 改為呼叫 loginUser
+    console.log('發送登入請求:', loginForm.account)
+    const result = await loginUser(loginForm.account, loginForm.password)
+    console.log('登入結果:', result)
 
     if (result.success) {
-      // 根據 redirect 參數返回原頁面，若無則依角色給預設頁
+      console.log('登入成功，用戶資料:', result.user)
+
+      // 根據 permissionType 設定對應的 role
+      let role = 'general'
+      if (result.user.permissionType === 1) {
+        role = 'super_admin'
+      } else if (result.user.permissionType === 2) {
+        role = 'admin'
+      }
+
+      // 登入成功都存入 Pinia
+      authStore.token = 'user-token'
+      authStore.user = {
+        ...result.user,
+        role: role // 設定 role 供路由守衛使用
+      }
+      authStore.isAuthenticated = true
+      console.log('Pinia 狀態已更新，用戶角色:', role)
+
+      // 權限判斷跳轉
+      const permissionType = result.user?.permissionType
+      console.log('權限類型:', permissionType)
       const redirect = router.currentRoute.value.query.redirect
-      if (authStore.user?.role === 'admin') {
-        router.push(redirect || '/admin')
+      console.log('重定向參數:', redirect)
+
+      if (permissionType === 1 || permissionType === 2) {
+        // super_admin 和 admin 都可以進入後台
+        console.log('跳轉到後台:', redirect || '/admin')
+        await router.push(redirect || '/admin')
       } else {
-        router.push(redirect || '/')
+        // general 用戶進入前台
+        console.log('跳轉到首頁:', redirect || '/')
+        await router.push(redirect || '/')
       }
     } else {
+      console.log('登入失敗:', result.message)
       errorMessage.value = result.message
       // 重置驗證
       if (useReCaptchaV2.value) {
@@ -218,6 +244,7 @@ const handleLogin = async () => {
       }
     }
   } catch (error) {
+    console.error('登入發生錯誤:', error)
     errorMessage.value = '登入失敗，請稍後再試'
     // 重置驗證
     if (useReCaptchaV2.value) {
