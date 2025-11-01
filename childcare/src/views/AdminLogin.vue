@@ -45,8 +45,6 @@ export default {
       authStore.user = { role: 'admin', name: '測試管理員' }
       authStore.token = 'test-token'
       authStore.isAuthenticated = true
-      localStorage.setItem('token', 'test-token')
-      localStorage.setItem('user', JSON.stringify(authStore.user))
       router.replace('/admin')
     }
 

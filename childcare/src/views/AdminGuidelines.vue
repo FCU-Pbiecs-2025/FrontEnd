@@ -6,7 +6,10 @@
         <span class="main-title">規範說明管理</span>
       </div>
 
-
+      <!-- 錯誤和成功訊息 -->
+      <div v-if="error" class="alert alert-error">{{ error }}</div>
+      <div v-if="success" class="alert alert-success">{{ success }}</div>
+      <div v-if="loading" class="alert alert-info">處理中...</div>
 
       <div class="section-card">
         <div class="section-header">收托資格</div>
@@ -24,8 +27,10 @@
       </div>
 
       <div class="bottom-row">
-        <button class="btn ghost" @click="load">還原</button>
-        <button class="btn primary" @click="save">儲存</button>
+        <button class="btn ghost" @click="load" :disabled="loading">還原</button>
+        <button class="btn primary" @click="save" :disabled="loading">
+          {{ loading ? '儲存中...' : '儲存' }}
+        </button>
       </div>
     </div>
   </div>
@@ -36,6 +41,7 @@ import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import Quill from 'quill'
 import 'quill/dist/quill.snow.css'
+import { getRules, updateRule } from '../api/rules'
 
 const router = useRouter()
 
@@ -46,6 +52,11 @@ const editor3 = ref(null)
 const quill1 = ref(null)
 const quill2 = ref(null)
 const quill3 = ref(null)
+
+const ruleId = ref(1)
+const loading = ref(false)
+const error = ref('')
+const success = ref('')
 
 const STORAGE_KEY = 'guidelinesContent'
 
@@ -91,55 +102,125 @@ onMounted(async () => {
   loadContent()
 })
 
-const loadContent = () => {
-  const raw = localStorage.getItem(STORAGE_KEY)
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw)
-      data.value = { ...data.value, ...parsed }
+const loadContent = async () => {
+  loading.value = true
+  error.value = ''
+
+  try {
+    console.log('開始取得規則資料...')
+    const res = await getRules()
+    console.log('API 回應:', res)
+
+    if (res.data && res.data.length > 0) {
+      const rule = res.data[0]
+      ruleId.value = rule.id
+
+      // part1 對應 admissionEligibility (收托資格)
+      // part2 對應 serviceContentAndTime (服務內容與時間)
+      // part3 對應 feeAndRefundPolicy (收費及退費原則)
+      data.value.part1 = rule.admissionEligibility || ''
+      data.value.part2 = rule.serviceContentAndTime || ''
+      data.value.part3 = rule.feeAndRefundPolicy || ''
 
       // 設定編輯器內容
-      if (quill1.value) quill1.value.root.innerHTML = data.value.part1 || ''
-      if (quill2.value) quill2.value.root.innerHTML = data.value.part2 || ''
-      if (quill3.value) quill3.value.root.innerHTML = data.value.part3 || ''
-    } catch (e) {
-      console.warn('invalid guidelines content')
+      if (quill1.value) quill1.value.root.innerHTML = data.value.part1
+      if (quill2.value) quill2.value.root.innerHTML = data.value.part2
+      if (quill3.value) quill3.value.root.innerHTML = data.value.part3
     }
+  } catch (err) {
+    console.error('取得資料失敗:', err)
+    error.value = '取得資料失敗: ' + (err.response?.data?.message || err.message)
+
+    // 如果 API 失敗，嘗試從 localStorage 載入備份
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw)
+        data.value = { ...data.value, ...parsed }
+
+        if (quill1.value) quill1.value.root.innerHTML = data.value.part1 || ''
+        if (quill2.value) quill2.value.root.innerHTML = data.value.part2 || ''
+        if (quill3.value) quill3.value.root.innerHTML = data.value.part3 || ''
+      } catch (e) {
+        console.warn('invalid guidelines content')
+      }
+    }
+  } finally {
+    loading.value = false
   }
 }
 
-const save = () => {
-  // 收集編輯器內容
-  data.value.part1 = quill1.value ? quill1.value.root.innerHTML : ''
-  data.value.part2 = quill2.value ? quill2.value.root.innerHTML : ''
-  data.value.part3 = quill3.value ? quill3.value.root.innerHTML : ''
+const save = async () => {
+  loading.value = true
+  error.value = ''
+  success.value = ''
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data.value))
-  alert('儲存成功')
-}
-
-const load = () => {
-  const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) {
-    if (confirm('沒有已儲存的內容，是否清空？')) {
-      if (quill1.value) quill1.value.setText('')
-      if (quill2.value) quill2.value.setText('')
-      if (quill3.value) quill3.value.setText('')
-      data.value = { part1: '', part2: '', part3: '' }
-    }
+  // 確保編輯器存在
+  if (!quill1.value || !quill2.value || !quill3.value) {
+    error.value = '編輯器尚未初始化完成，請稍後再試'
+    loading.value = false
     return
   }
 
-  try {
-    const parsed = JSON.parse(raw)
-    data.value = { ...data.value, ...parsed }
+  // 收集編輯器內容
+  data.value.part1 = quill1.value.root.innerHTML
+  data.value.part2 = quill2.value.root.innerHTML
+  data.value.part3 = quill3.value.root.innerHTML
 
-    if (quill1.value) quill1.value.root.innerHTML = data.value.part1 || ''
-    if (quill2.value) quill2.value.root.innerHTML = data.value.part2 || ''
-    if (quill3.value) quill3.value.root.innerHTML = data.value.part3 || ''
-  } catch (e) {
-    console.warn('invalid data')
+  const apiData = {
+    admissionEligibility: data.value.part1,
+    serviceContentAndTime: data.value.part2,
+    feeAndRefundPolicy: data.value.part3
   }
+
+  console.log('儲存資料至 /api/rules/' + ruleId.value)
+
+  try {
+    await updateRule(ruleId.value, apiData)
+    console.log('✅ 儲存成功')
+
+    // 同時備份到 localStorage
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data.value))
+
+    success.value = '儲存成功！資料已更新'
+    setTimeout(() => {
+      success.value = ''
+    }, 3000)
+  } catch (err) {
+    console.error('❌ 儲存失敗:', err)
+
+    const status = err.response?.status
+    let errorMsg
+
+    // 根據狀態碼給出具體提示
+    if (!status) {
+      errorMsg = '無法連接到後端伺服器，請確認後端是否正常運行'
+    } else if (status === 401) {
+      errorMsg = '認證失敗，請重新登入'
+    } else if (status === 403) {
+      errorMsg = '權限不足，無法執行此操作'
+    } else if (status === 404) {
+      errorMsg = '找不到對應的資源'
+    } else if (status === 500) {
+      errorMsg = '伺服器內部錯誤，請稍後再試'
+    } else if (err.response?.data?.message) {
+      errorMsg = err.response.data.message
+    } else {
+      errorMsg = err.message || '未知錯誤'
+    }
+
+    error.value = errorMsg
+  } finally {
+    loading.value = false
+  }
+}
+
+const load = async () => {
+  if (!confirm('確定要重新載入資料？未儲存的變更將會遺失。')) {
+    return
+  }
+
+  await loadContent()
 }
 </script>
 
@@ -158,6 +239,36 @@ const load = () => {
 .btn { padding:8px 16px; border-radius:8px; cursor:pointer; font-weight:600 }
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff; border:none }
 .btn.ghost { background:transparent; border:1px solid #3b82f6; color:#2563eb }
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 訊息提示框 */
+.alert {
+  padding: 15px;
+  margin: 20px 0;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.alert-error {
+  background-color: #fee;
+  color: #c33;
+  border: 1px solid #fcc;
+}
+
+.alert-success {
+  background-color: #efe;
+  color: #3a3;
+  border: 1px solid #cfc;
+}
+
+.alert-info {
+  background-color: #def;
+  color: #369;
+  border: 1px solid #bce;
+}
 
 /* Quill 編輯器樣式調整 */
 :deep(.ql-toolbar) {

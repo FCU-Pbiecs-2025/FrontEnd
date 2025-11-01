@@ -444,7 +444,7 @@ watch(() => route.params.id, () => {
 /* 底部 actions */
 .actions { text-align: center; margin-top: 32px; }
 .back-to-list {
-  background: var(--front-btn, linear-gradient(135deg, #F9AFAE, #f5a1a1));
+  background: var(front-btn, linear-gradient(135deg, #F9AFAE, #f5a1a1));
   color: white;
   border: none;
   padding: 12px 32px;

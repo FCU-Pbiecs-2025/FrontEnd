@@ -21,10 +21,10 @@ export function logout() {
 
 export function getUserInfo() {
     if (USE_MOCK_API) {
-        const token = localStorage.getItem('token');
-        return mockAuth.getUserInfo(token);
+        // Disabled: don't read token from localStorage in mock mode
+        return mockAuth.getUserInfo(/* no token */)
     }
-    return http.get("/auth/me");
+    return http.get("/auth/me")
 }
 
 export function forgotPassword(email, recaptchaToken = null) {

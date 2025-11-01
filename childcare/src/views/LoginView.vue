@@ -243,14 +243,14 @@ const handleTestLogin = async () => {
   }
   authStore.isAuthenticated = true
 
-  // 將資訊存到 localStorage
-  localStorage.setItem('token', 'test-token')
-  localStorage.setItem('user', JSON.stringify({
-    id: 'test-user',
-    name: '測試用戶',
-    email: 'test@example.com',
-    role: 'test'
-  }))
+  // 將資訊存到 localStorage - disabled
+  // localStorage.setItem('token', 'test-token')
+  // localStorage.setItem('user', JSON.stringify({
+  //   id: 'test-user',
+  //   name: '測試用戶',
+  //   email: 'test@example.com',
+  //   role: 'test'
+  // }))
 
   // 只有有 redirect 參數才跳轉，否則停留原頁
   const redirect = router.currentRoute.value.query.redirect
@@ -270,8 +270,8 @@ const handleAdminTestLogin = async () => {
     role: 'admin'
   }
   authStore.isAuthenticated = true
-  localStorage.setItem('token', 'admin-test-token')
-  localStorage.setItem('user', JSON.stringify(authStore.user))
+  // localStorage.setItem('token', 'admin-test-token')
+  // localStorage.setItem('user', JSON.stringify(authStore.user))
   // 回到原始頁面（若有），否則到後台首頁
   const redirect = router.currentRoute.value.query.redirect
   router.push(redirect || '/admin')

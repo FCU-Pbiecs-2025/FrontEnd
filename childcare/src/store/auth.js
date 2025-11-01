@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia'
-import { login, logout, getUserInfo } from '../api/auth.js'
+import { login, logout } from '../api/auth.js'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    token: localStorage.getItem('token') || null,
+    // token: localStorage.getItem('token') || null,
+    token: null, // disabled JWT persistence
     user: null,
     isAuthenticated: false
   }),
@@ -18,12 +19,13 @@ export const useAuthStore = defineStore('auth', {
         const response = await login(account, password, captcha)
         // 根據後端格式直接回傳
         if (response.success) {
-          const { token, user } = response
-          this.token = token
+          const { user } = response
+          // temporarily disable token persistence (do not store token)
+          this.token = null
           this.user = user
           this.isAuthenticated = true
-          localStorage.setItem('token', token)
-          localStorage.setItem('user', JSON.stringify(user))
+          // localStorage.setItem('token', token)
+          // localStorage.setItem('user', JSON.stringify(user))
           return { success: true }
         } else {
           return {
@@ -50,29 +52,30 @@ export const useAuthStore = defineStore('auth', {
         this.user = null
         this.isAuthenticated = false
 
-        // 清除 localStorage
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
+        // 清除 localStorage - disabled
+        // localStorage.removeItem('token')
+        // localStorage.removeItem('user')
       }
     },
 
     async initializeAuth() {
-      const token = localStorage.getItem('token')
-      const user = localStorage.getItem('user')
+      // Disabled: do not read token from localStorage
+      // const token = localStorage.getItem('token')
+      // const user = localStorage.getItem('user')
 
-      if (token && user) {
-        this.token = token
-        this.user = JSON.parse(user)
-        this.isAuthenticated = true
+      // if (token && user) {
+      //   this.token = token
+      //   this.user = JSON.parse(user)
+      //   this.isAuthenticated = true
 
-        // 驗證 token 是否仍有效
-        try {
-          await getUserInfo()
-        } catch (error) {
-          console.error('Token validation failed:', error)
-          this.logoutUser()
-        }
-      }
+      //   // 驗證 token 是否仍有效
+      //   try {
+      //     await getUserInfo()
+      //   } catch (error) {
+      //     console.error('Token validation failed:', error)
+      //     this.logoutUser()
+      //   }
+      // }
     },
 
     async changePassword(newPassword) {

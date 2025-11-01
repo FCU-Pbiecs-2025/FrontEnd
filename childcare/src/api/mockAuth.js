@@ -41,8 +41,8 @@ export const mockAuth = {
           resolve({ success: false, message: '密碼錯誤' })
           return
         }
-        // 生成模擬 JWT token
-        const token = `mock_jwt_token_${user.id}_${Date.now()}`
+        // 生成模擬 JWT token - disabled
+        // const token = `mock_jwt_token_${user.id}_${Date.now()}`
         // 模擬 user 欄位格式
         const userData = {
           userId: user.id,
@@ -59,7 +59,7 @@ export const mockAuth = {
         }
         resolve({
           success: true,
-          token,
+          // token,
           user: userData
         })
       }, 1000) // 模擬網路延遲
@@ -80,40 +80,29 @@ export const mockAuth = {
   },
 
   // 模擬獲取用戶資訊 API
-  getUserInfo: (token) => {
+  getUserInfo: () => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
-        if (token && token.startsWith('mock_jwt_token_')) {
-          const userId = token.split('_')[3]
-          const user = mockAuth.users.find(u => u.id.toString() === userId)
+        // Disabled token check: simply return first user for mock
+        const user = mockAuth.users[0]
 
-          if (user) {
-            resolve({
-              data: {
-                id: user.id,
-                account: user.account,
-                name: user.name,
-                email: user.email,
-                phone: user.phone,
-                address: user.address
-              }
-            })
-          } else {
-            reject({
-              response: {
-                status: 401,
-                data: {
-                  message: 'Token 無效'
-                }
-              }
-            })
-          }
+        if (user) {
+          resolve({
+            data: {
+              id: user.id,
+              account: user.account,
+              name: user.name,
+              email: user.email,
+              phone: user.phone,
+              address: user.address
+            }
+          })
         } else {
           reject({
             response: {
               status: 401,
               data: {
-                message: 'Token 缺失或無效'
+                message: 'Token 無效'
               }
             }
           })
@@ -216,14 +205,15 @@ export const mockAuth = {
   updateUserProfile: (profileData) => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        const token = localStorage.getItem('token')
-        if (!token || !token.startsWith('mock_jwt_token_')) {
-          resolve({ success: false, message: '未授權，請重新登入' })
-          return
-        }
+        // Disabled token check - allow update for mock
+        // const token = localStorage.getItem('token')
+        // if (!token || !token.startsWith('mock_jwt_token_')) {
+        //   resolve({ success: false, message: '未授權，請重新登入' })
+        //   return
+        // }
 
-        const userId = token.split('_')[3]
-        const userIndex = mockAuth.users.findIndex(u => u.id.toString() === userId)
+        const userId = profileData.userId || 1
+        const userIndex = mockAuth.users.findIndex(u => u.id.toString() === userId.toString())
 
         if (userIndex === -1) {
           resolve({ success: false, message: '用戶不存在' })
@@ -257,14 +247,14 @@ export const mockAuth = {
   getUserProfile: () => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        const token = localStorage.getItem('token')
-        if (!token || !token.startsWith('mock_jwt_token_')) {
-          resolve({ success: false, message: '未授權，請重新登入' })
-          return
-        }
+        // Disabled token check
+        // const token = localStorage.getItem('token')
+        // if (!token || !token.startsWith('mock_jwt_token_')) {
+        //   resolve({ success: false, message: '未授權，請重新登入' })
+        //   return
+        // }
 
-        const userId = token.split('_')[3]
-        const user = mockAuth.users.find(u => u.id.toString() === userId)
+        const user = mockAuth.users[0]
 
         if (!user) {
           resolve({ success: false, message: '用戶不存在' })
