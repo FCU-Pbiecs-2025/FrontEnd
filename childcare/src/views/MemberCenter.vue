@@ -60,34 +60,51 @@
 
       <div class="applications-section">
         <h2>申請狀態</h2>
-        <!-- 四欄：案號/標題/內容/狀態 -->
-        <div class="news-list-section applications-list">
-          <div class="news-list-header">
-            <span>申請案號</span>
-            <span>申請標題</span>
-            <span>申請內容</span>
-            <span>狀態</span>
-          </div>
+        <!-- 使用 ApplicationStatus 的卡片式布局 -->
+        <div v-if="applications.length === 0" class="no-applications">目前沒有申請紀錄</div>
 
+        <div class="applications-list">
           <div
-            v-for="application in applications"
-            :key="application.id"
-            class="news-list-row application-row"
+            v-for="item in applications"
+            :key="item.id"
+            class="application-item"
             role="button"
             tabindex="0"
-            @click="goToProgress(application)"
-            @keydown.enter.prevent="goToProgress(application)"
-            @keydown.space.prevent="goToProgress(application)"
+            @click="goToProgress(item)"
+            @keydown.enter.prevent="goToProgress(item)"
+            @keydown.space.prevent="goToProgress(item)"
           >
-            <span class="application-id-cell">{{  application.caseNumber || 'N/A' }}</span>
-            <span class="application-title-cell" :title="application.title">{{ application.title.length > 20 ? application.title.slice(0, 20) + '...' : application.title }}</span>
-            <span class="application-content-cell" :title="application.details">{{ application.details.length > 25 ? application.details.slice(0, 25) + '...' : application.details }}</span>
-            <span class="application-status-cell">
-              <span :class="['status-badge', application.statusClass || application.status]">{{ getStatusLabel(application.statusClass || application.status, application.status) }}</span>
-            </span>
-          </div>
+            <div class="application-info">
+              <h4 class="application-title">{{ item.caseNumber || 'N/A' }}</h4>
+              <p class="application-date">申請日期: {{ item.date }}</p>
+              <p v-if="item.details" class="application-details">{{ item.details }}</p>
+              <p v-else class="application-details muted">無詳細說明</p>
 
-          <div v-if="applications.length === 0" class="empty-tip">目前沒有申請記錄</div>
+              <p v-if="item.status === 'waitingForAdmission' && item.queueNumber" class="queue-info">
+                目前序位：<span class="queue-number">第 {{ item.queueNumber }} 位</span>
+              </p>
+            </div>
+
+            <div class="application-status">
+              <span :class="['status-badge', item.statusClass || item.status]">
+                {{ getStatusLabel(item.statusClass || item.status, item.status) }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- helper: include all status class combinations so CSS selectors are recognized -->
+        <div style="display:none" aria-hidden="true" class="__status-class-helpers">
+          <span class="status-badge processing"></span>
+          <span class="status-badge pending"></span>
+          <span class="status-badge approved"></span>
+          <span class="status-badge rejected"></span>
+          <span class="status-badge supplement"></span>
+          <span class="status-badge waitingForAdmission"></span>
+          <span class="status-badge revokeProcessing"></span>
+          <span class="status-badge revoked"></span>
+          <span class="status-badge admitted"></span>
+          <span class="status-badge withdrawn"></span>
         </div>
       </div>
 
@@ -908,7 +925,6 @@ const manageChildren = () => {
 .news-list-section {
   background: #fff;
   border-radius: 16px;
-  box-shadow: 0 4px 16px rgba(249, 175, 174, 0.12);
   padding: 24px;
   margin: 10px auto 0 auto;
   max-width: 900px;
