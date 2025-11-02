@@ -160,11 +160,12 @@
       <p>Copyright © 2019 <span>新竹縣政府社會處</span> All Rights Reserved.</p>
       <p>建議最佳瀏覽解析度 1920×1080　手機瀏覽解析度建議414×736或360×640</p>
     </footer>
+    <Chatbot />
   </div>
 </template>
 
 <script setup>
-
+import Chatbot from "@/components/Chatbot.vue";
 import { useRouter } from 'vue-router'
 import { useAuthStore } from './store/auth.js'
 import Breadcrumbs from "@/components/Breadcrumbs.vue";
