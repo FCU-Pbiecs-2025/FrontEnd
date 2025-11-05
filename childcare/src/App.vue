@@ -4,7 +4,7 @@
     <header>
       <nav class="header-nav">
         <div class="header-left" @click="goToPage('Home')" style="cursor:pointer;">
-          <img class="logo" src="./imgs/mother.png" alt="logo" />
+          <img class="logo" src="./imgs/moon.png" alt="logo" />
           <div class="vertical-stack">
             <span class="title-second">新竹縣政府 社會處</span>
             <span class="system-title">社區公共托育家園</span>
@@ -69,6 +69,7 @@
         <!-- 未登入時顯示登入按鈕 -->
         <div v-else class="login-actions">
           <button class="login-btn" @click="handleNavClick('Login')">登入</button>
+          <button class="login-btn">註冊</button>
         </div>
       </nav>
     </header>
@@ -527,20 +528,18 @@ footer {
 }
 
 .login-btn {
-  background: #e35d6a;
-  color: white;
+  background: none;
+  color:  #e35d6a;
   border: none;
   border-radius: 6px;
-  padding: 8px 16px;
+  padding: 8px 8px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 300;
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
-.login-btn:hover {
-  background: #d64856;
-}
+
 
 .account-btn {
   background: #fdd2d2;
