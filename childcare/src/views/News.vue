@@ -16,21 +16,21 @@
           <span>公告內容</span>
         </div>
         <div
-            v-for="item in pagedNews"
-            :key="item.id"
+            v-for="item in newsList"
+            :key="item.announcementID"
             class="news-list-row"
-            @click="goToDetail(item.id)"
+            @click="goToDetail(item.announcementID)"
             style="cursor:pointer;"
         >
-          <span class="news-date-cell">{{ item.date }}</span>
+          <span class="news-date-cell">{{ formatDate(item.createdTime) }}</span>
           <span class="news-title-cell" :title="item.title">{{ item.title.length > 18 ? item.title.slice(0, 18) + '...' : item.title }}</span>
           <span class="news-content-cell">{{ item.content }}</span>
         </div>
-        <div v-if="pagedNews.length === 0" class="empty-tip">目前沒有公告</div>
+        <div v-if="newsList.length === 0" class="empty-tip">目前沒有公告</div>
         <div class="pagination-bar" v-if="totalPages > 1">
-          <button :disabled="currentPage === 1" @click="currentPage--">上一頁</button>
+          <button :disabled="currentPage === 1" @click="previousPage">上一頁</button>
           <span>第 {{ currentPage }} / {{ totalPages }} 頁</span>
-          <button :disabled="currentPage === totalPages" @click="currentPage++">下一頁</button>
+          <button :disabled="currentPage === totalPages" @click="nextPage">下一頁</button>
         </div>
       </div>
     </template>
@@ -42,42 +42,57 @@
 </template>
 
 <script>
+import { getAnnouncementsByOffset } from '@/api/announcements.js'
+
 export default {
   name: 'News',
   data() {
     return {
-      // 公告假資料
-      newsList: [
-        { id: 1, title: '新竹縣公共托育服務申請流程更新通知', content: '為提供更優質的托育服務，本縣公共托育申請流程將於近期進行調整，請家長注意相關變更內容...', date: '2024/01/15' },
-        { id: 2, title: '托育補助申請期限提醒', content: '提醒各位家長，本年度托育補助申請將於月底截止，尚未申請的家長請儘速辦理相關手續...', date: '2024/01/10' },
-        { id: 3, title: '托育機構評鑑結果公告', content: '新竹縣各托育機構評鑑結果已公布，家長可至本系統查詢各機構的評鑑等級與服務品質...', date: '2024/01/05' },
-        { id: 4, title: '新年度托育補助政策說明', content: '新年度補助政策已公布，請家長參閱最新公告內容...', date: '2024/01/02' },
-        { id: 5, title: '托育人員培訓課程開放報名', content: '歡迎有志從事托育服務者報名參加培訓課程...', date: '2023/12/28' },
-        { id: 6, title: '冬季流感防疫宣導', content: '請家長及托育人員注意防疫措施，保護幼兒健康...', date: '2023/12/20' },
-        { id: 7, title: '托育機構消防演練公告', content: '近期將進行消防演練，請配合相關安全指引...', date: '2023/12/15' },
-        { id: 8, title: '托育補助申請系統維護通知', content: '系統將於本週末進行維護，暫停服務，敬請見諒...', date: '2023/12/10' },
-        { id: 9, title: '新竹縣托育資源中心開幕', content: '歡迎家長蒞臨參觀，了解更多托育資源...', date: '2023/12/01' },
-        { id: 10, title: '新竹縣托育資源中心開幕', content: '歡迎家長蒞臨參觀，了解更多托育資源...', date: '2023/12/01' },
-        { id: 11, title: '新竹縣托育資源中心開幕', content: '歡迎家長蒞臨參觀，了解更多托育資源...', date: '2023/12/01' },
-        { id: 12, title: '新竹縣托育資源中心開幕', content: '歡迎家長蒞臨參觀，了解更多托育資源...', date: '2023/12/01' },
-        { id: 13, title: '新竹縣托育資源中心開幕', content: '歡迎家長蒞臨參觀，了解更多托育資源...', date: '2023/12/01' }
-      ],
+      newsList: [],
       currentPage: 1,
-      pageSize: 8
+      totalPages: 1,
+      pageSize: 8,
+      loading: false
     }
   },
-  computed: {
-    totalPages() {
-      return Math.ceil(this.newsList.length / this.pageSize)
-    },
-    pagedNews() {
-      const start = (this.currentPage - 1) * this.pageSize
-      return this.newsList.slice(start, start + this.pageSize)
-    }
+  async created() {
+    await this.fetchNews()
   },
   methods: {
-    goToDetail(id) {
-      this.$router.push({ name: 'NewsDetail', params: { id } })
+    async fetchNews() {
+      try {
+        this.loading = true
+        const offset = (this.currentPage - 1) * this.pageSize
+        const response = await getAnnouncementsByOffset(offset)
+
+        this.newsList = response.data.content
+        this.totalPages = response.data.totalPages
+      } catch (error) {
+        console.error('獲取公告失敗:', error)
+        this.newsList = []
+        this.totalPages = 1
+      } finally {
+        this.loading = false
+      }
+    },
+    async nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++
+        await this.fetchNews()
+      }
+    },
+    async previousPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--
+        await this.fetchNews()
+      }
+    },
+    goToDetail(announcementID) {
+      this.$router.push({ name: 'NewsDetail', params: { id: announcementID } })
+    },
+    formatDate(dateString) {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('zh-TW')
     }
   }
 }
