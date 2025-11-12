@@ -4,41 +4,61 @@
       <div v-if="!isChildRoute">
         <div class="title-row">
           <img src="https://img.icons8.com/ios/48/2e6fb7/classroom.png" class="icon" alt="icon" />
-          <span class="main-title">{{ institution?.name }} </span>
+          <span class="main-title">{{ institution?.name || '全部班級' }} </span>
         </div>
 
         <div class="table-section">
           <table class="class-table">
             <thead>
-              <tr>
-                <th>班級名稱</th>
-                <th>收托人數</th>
-                <th>在園人數</th>
-                <th>收托年齡</th>
-                <th>備註</th>
-                <th>操作</th>
-              </tr>
+            <tr>
+              <th>班級名稱</th>
+              <th>收托人數</th>
+              <th>在園人數</th>
+              <th>收托年齡</th>
+              <th>備註</th>
+              <th>操作</th>
+            </tr>
             </thead>
             <tbody>
-              <tr v-if="filteredClasses.length > 0" v-for="cls in filteredClasses" :key="cls.id">
-                <td>{{ cls.unit }}</td>
-                <td>{{ cls.capacity }}</td>
-                <td>{{ cls.enrolled }}</td>
-                <td>{{ cls.age_from }} - {{ cls.age_to }}</td>
-                <td>{{ cls.notes }}</td>
-                <td class="action-cell">
-                  <button class="btn small" @click="editClass(cls)">編輯</button>
-                  <button class="btn small danger" @click="deleteClass(cls)">刪除</button>
-                </td>
-              </tr>
-              <tr v-if="filteredClasses.length === 0">
-                <td colspan="6" class="empty-tip">目前沒有班級資料</td>
-              </tr>
+            <tr v-if="filteredClasses.length > 0" v-for="cls in filteredClasses" :key="cls.id">
+              <td>{{ cls.unit }}</td>
+              <td>{{ cls.capacity }}</td>
+              <td>{{ cls.enrolled }}</td>
+              <td>{{ cls.age_from }} - {{ cls.age_to }}</td>
+              <td>{{ cls.notes }}</td>
+              <td class="action-cell">
+                <button class="btn small" @click="editClass(cls)">編輯</button>
+                <button class="btn small danger" @click="deleteClass(cls)">刪除</button>
+              </td>
+            </tr>
+            <tr v-if="filteredClasses.length === 0">
+              <td colspan="6" class="empty-tip">目前沒有班級資料</td>
+            </tr>
             </tbody>
           </table>
         </div>
         <div class="bottom-row">
           <button class="btn ghost" @click="goBack">返回機構列表</button>
+        </div>
+        <!-- 分頁控制區域 -->
+        <div class="pagination-row">
+          <div class="pagination-info">
+            共 {{ totalElements }} 筆資料，第 {{ currentPage }} / {{ totalPages }} 頁
+          </div>
+          <div class="pagination-controls">
+            <button class="btn small pagination-btn" :disabled="currentPage === 1 || totalPages <= 1" @click="prevPage">上一頁</button>
+            <button
+              v-for="page in pageNumbers"
+              :key="page"
+              class="btn small pagination-btn"
+              :class="{ 'btn-active': page === currentPage }"
+              :disabled="totalPages <= 1"
+              @click="goToPage(page)"
+            >
+              {{ page }}
+            </button>
+            <button class="btn small pagination-btn" :disabled="currentPage === totalPages || totalPages <= 1" @click="nextPage">下一頁</button>
+          </div>
         </div>
       </div>
       <router-view v-else />
@@ -57,87 +77,85 @@ const STORAGE_KEY = 'admin_classes'
 const classes = ref([])
 const institution = ref(null)
 
-// 機構假資料
-const institutions = [
-  { id: 1, name: '快樂幼兒園', age_from: 2, age_to: 6, capacity: 60, enrolled: 48 },
-  { id: 2, name: '幸福幼兒園', age_from: 3, age_to: 5, capacity: 40, enrolled: 35 },
-  { id: 3, name: '希望幼兒園', age_from: 2, age_to: 4, capacity: 30, enrolled: 20 }
-]
+// 分頁相關的變數
+const PAGE_SIZE = 8
+const currentPage = ref(1)
+const totalPages = ref(1)
+const totalElements = ref(0)
 
-const loadClasses = () => {
+// 分頁按鈕數字計算
+const pageNumbers = computed(() => {
+  const tp = Number(totalPages.value) || 1
+  const cp = Number(currentPage.value) || 1
+  const maxButtons = 5
+  if (tp <= maxButtons) return Array.from({ length: tp }, (_, i) => i + 1)
+  const half = Math.floor(maxButtons / 2)
+  let start = Math.max(1, cp - half)
+  let end = Math.min(tp, start + maxButtons - 1)
+  if (end - start + 1 < maxButtons) start = Math.max(1, end - maxButtons + 1)
+  const arr = []
+  for (let i = start; i <= end; i++) arr.push(i)
+  return arr
+})
+
+// 以 offset API 取得班級清單（支援分頁）
+const fetchClasses = async (page = 1) => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    return parsed || []
+    const offset = (page - 1) * PAGE_SIZE
+    const url = `http://localhost:8080/classes/offset?offset=${offset}&size=${PAGE_SIZE}`
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
+    const data = await res.json()
+
+    // 更新分頁資訊
+    totalElements.value = Number(data.totalElements) || 0
+    totalPages.value = Number(data.totalPages) || Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE))
+    currentPage.value = page
+
+    // 轉換列表資料
+    const list = Array.isArray(data.content) ? data.content : []
+    classes.value = list.map(cls => ({
+      id: cls.classID,
+      classID: cls.classID,
+      unit: cls.className,
+      capacity: cls.capacity,
+      enrolled: cls.currentStudents ?? cls.enrolled ?? 0,
+      age_from: cls.minAgeDescription,
+      age_to: cls.maxAgeDescription,
+      notes: cls.additionalInfo ?? cls.notes ?? '',
+      institutionId: cls.institutionName,
+    }))
+
+    // 標題
+    institution.value = { name: '全部班級' }
   } catch (e) {
-    console.error('載入班級資料失敗:', e)
-    return []
+    console.error('載入班級清單失敗:', e)
+    classes.value = []
+    totalPages.value = 1
+    totalElements.value = 0
+    institution.value = { name: '全部班級' }
   }
 }
 
-const saveClasses = (list) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
-}
+// 覆蓋 filteredClasses：固定顯示 8 筆
+const filteredClasses = computed(() => classes.value.slice(0, PAGE_SIZE))
 
-const filteredClasses = computed(() => {
-  const institutionId = Number(route.params.institutionId)
-  return classes.value.filter(cls => cls.institutionId === institutionId)
-})
+// 是否為子路由
+const isChildRoute = computed(() => route.name === 'AdminClassNew' || route.name === 'AdminClassEdit')
 
-const isChildRoute = computed(() => {
-  return route.name === 'AdminClassNew' || route.name === 'AdminClassEdit'
-})
+// 導覽
+const goBack = () => { router.push({ name: 'AdminClassManager' }) }
 
-const showAddClass = () => {
-  router.push({
-    name: 'AdminClassNew',
-    params: { institutionId: route.params.institutionId }
-  })
-}
+// 分頁控制：呼叫 fetchClasses
+const goToPage = (page) => { if (page >= 1 && page <= totalPages.value) fetchClasses(page) }
+const prevPage = () => { if (currentPage.value > 1) fetchClasses(currentPage.value - 1) }
+const nextPage = () => { if (currentPage.value < totalPages.value) fetchClasses(currentPage.value + 1) }
 
-const editClass = (cls) => {
-  router.push({
-    name: 'AdminClassEdit',
-    params: {
-      institutionId: route.params.institutionId,
-      id: cls.id
-    }
-  })
-}
+// 監聽路由，回到列表時重新讀取第一頁
+watch(() => route.name, (newName) => { if (newName === 'AdminClassList') fetchClasses(1) })
 
-const deleteClass = (cls) => {
-  if (confirm('確定要刪除這個班級嗎？')) {
-    const idx = classes.value.findIndex(c => c.id === cls.id)
-    if (idx !== -1) {
-      classes.value.splice(idx, 1)
-      saveClasses(classes.value)
-    }
-  }
-}
-
-const goBack = () => {
-  router.push({ name: 'AdminClassManager' })
-}
-
-watch(() => route.name, (newName) => {
-  if (newName === 'AdminClassList') {
-    classes.value = loadClasses()
-  }
-})
-
-onMounted(() => {
-  const institutionId = Number(route.params.institutionId)
-  institution.value = institutions.find(i => i.id === institutionId)
-
-  if (!institution.value) {
-    alert('找不到指定的機構')
-    router.push({ name: 'AdminClassManager' })
-    return
-  }
-
-  classes.value = loadClasses()
-})
+// 掛載時讀取第一頁
+onMounted(() => { fetchClasses(1) })
 </script>
 
 <style scoped>
@@ -223,5 +241,58 @@ onMounted(() => {
   justify-content: center;
   gap: 12px;
   margin-top: 20px;
+}
+.pagination-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: 30px 0;
+  padding: 20px;
+  background: #fff;
+  border: 2px solid #e6f3ff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.pagination-info {
+  font-size: 1rem;
+  color: #2e6fb7;
+  font-weight: 600;
+}
+.pagination-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.pagination-btn {
+  min-width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  background: #fff;
+  color: #2e6fb7;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.pagination-btn:hover:not(:disabled) {
+  background: #f6f8fa;
+  border-color: #2e6fb7;
+}
+.pagination-btn:disabled {
+  background: #f6f8fa;
+  color: #8b949e;
+  cursor: not-allowed;
+  border-color: #d0d7de;
+}
+.btn-active {
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  color: #fff;
+  border-color: #2563eb;
+}
+.btn-active:hover {
+  background: linear-gradient(90deg, #2563eb, #1d4ed8);
 }
 </style>

@@ -1,7 +1,7 @@
 <template>
   <div class="class-page">
     <div class="class-card">
-      <div v-if="!isEditPage">
+      <div v-if="!isChildRoute && !showClassList">
 
         <div class="title-row">
           <img src="https://img.icons8.com/ios/48/2e6fb7/classroom.png" class="icon" alt="icon" />
@@ -17,46 +17,108 @@
               </div>
               <div class="btn-query">
                 <button class="btn primary" @click="goToAdminClassEdit">新增</button>
-                <button class="btn query" @click="doQueryInstitution">查詢</button>
+                <button class="btn query" @click="() => doQueryInstitution(1)">查詢</button>
               </div>
             </div>
           </div>
           <div class="table-section">
             <table class="class-table">
               <thead>
-                <tr>
-                  <th>機構名稱</th>
-                  <th>班級名稱</th>
-                  <th>收托年紀起</th>
-                  <th>收托年紀迄</th>
-                  <th>剩餘名額</th>
-                  <th>操作</th>
-                </tr>
+              <tr>
+                <th>機構名稱</th>
+                <th>班級名稱</th>
+                <th>收托年紀起</th>
+                <th>收托年紀迄</th>
+                <th>收托人數</th>
+                <th>操作</th>
+              </tr>
               </thead>
               <tbody>
-                <tr v-for="inst in filteredInstitutions" :key="inst.id">
-                  <td>{{ inst.name }}</td>
-                  <td>{{ inst.unit || '-' }}</td>
-                  <td>{{ inst.age_from }}</td>
-                  <td>{{ inst.age_to }}</td>
-                  <td>{{ inst.capacity - inst.enrolled }}</td>
-                  <td class="action-cell">
-                    <button class="btn small" @click="editInstitution(inst)">編輯</button>
-                    <button class="btn small danger" @click="deleteInstitution(inst)">刪除</button>
-                  </td>
-                </tr>
-                <tr v-if="filteredInstitutions.length === 0">
-                  <td colspan="6" class="empty-tip">目前沒有機構資料</td>
-                </tr>
+              <tr v-for="cls in filteredClasses" :key="cls.classID">
+                <td>{{ cls.institutionName }}</td>
+                <td>{{ cls.className }}</td>
+                <td>{{ cls.minAgeDescription }}</td>
+                <td>{{ cls.maxAgeDescription }}</td>
+                <td>{{ cls.capacity }}</td>
+                <td class="action-cell">
+                  <button class="btn small" @click="editClass(cls)">編輯</button>
+                  <button class="btn small danger" @click="deleteClass(cls)">刪除</button>
+                </td>
+              </tr>
+              <tr v-if="filteredClasses.length === 0">
+                <td colspan="6" class="empty-tip">目前沒有班級資料</td>
+              </tr>
               </tbody>
             </table>
           </div>
           <div class="bottom-row">
             <button class="btn primary" v-show="showBack" @click="goBack">返回</button>
           </div>
+          <!-- 分頁控制區域（列表） -->
+          <div class="pagination-row">
+            <div class="pagination-info">
+              共 {{ totalElements }} 筆資料，第 {{ currentPage }} / {{ totalPages }} 頁
+            </div>
+            <div class="pagination-controls">
+              <button class="btn small pagination-btn" :disabled="currentPage === 1 || totalPages <= 1" @click="prevPage">上一頁</button>
+              <button v-for="page in pageNumbers" :key="page" class="btn small pagination-btn" :class="{ 'btn-active': page === currentPage }" :disabled="totalPages <= 1" @click="goToPage(page)">{{ page }}</button>
+              <button class="btn small pagination-btn" :disabled="currentPage === totalPages || totalPages <= 1" @click="nextPage">下一頁</button>
+            </div>
+          </div>
         </div>
       </div>
-      <router-view v-else />
+      <div v-if="showClassList">
+        <!-- 整合自 AdminClassList.vue 的班級列表區塊 -->
+        <div class="title-row">
+          <img src="https://img.icons8.com/ios/48/2e6fb7/classroom.png" class="icon" alt="icon" />
+          <span class="main-title">{{ selectedInstitution?.name }} 班級列表</span>
+        </div>
+        <div class="table-section">
+          <table class="class-table">
+            <thead>
+            <tr>
+              <th>班級名稱</th>
+              <th>收托人數</th>
+              <th>在園人數</th>
+              <th>收托年齡</th>
+              <th>備註</th>
+              <th>操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-for="cls in filteredClasses" :key="cls.classID">
+              <td>{{ cls.institutionName }}</td>
+              <td>{{ cls.className }}</td>
+              <td>{{ cls.capacity }}</td>
+              <td>{{ cls.minAgeDescription }}</td>
+              <td>{{ cls.maxAgeDescription }}</td>
+              <td class="action-cell">
+                <button class="btn small" @click="editClass(cls)">編輯</button>
+                <button class="btn small danger" @click="deleteClass(cls)">刪除</button>
+              </td>
+            </tr>
+            <tr v-if="filteredClasses.length === 0">
+              <td colspan="6" class="empty-tip">目前沒有班級資料</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="bottom-row">
+          <button class="btn ghost" @click="closeClassList">返回機構列表</button>
+        </div>
+        <!-- 分頁控制區域（子列表） -->
+        <div class="pagination-row">
+          <div class="pagination-info">
+            共 {{ totalElements }} 筆資料，第 {{ currentPage }} / {{ totalPages }} 頁
+          </div>
+          <div class="pagination-controls">
+            <button class="btn small pagination-btn" :disabled="currentPage === 1 || totalPages <= 1" @click="prevPage">上一頁</button>
+            <button v-for="page in pageNumbers" :key="page" class="btn small pagination-btn" :class="{ 'btn-active': page === currentPage }" :disabled="totalPages <= 1" @click="goToPage(page)">{{ page }}</button>
+            <button class="btn small pagination-btn" :disabled="currentPage === totalPages || totalPages <= 1" @click="nextPage">下一頁</button>
+          </div>
+        </div>
+      </div>
+      <router-view v-else-if="isChildRoute" />
     </div>
   </div>
 </template>
@@ -64,104 +126,186 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+
 const router = useRouter()
 const route = useRoute()
 
-// 機構假資料
-const institutions = ref([
-  { id: 1, name: '快樂幼兒園', unit: 'A班', age_from: '6個月', age_to: '2歲整', capacity: 60, enrolled: 48 },
-  { id: 2, name: '幸福幼兒園', unit: 'B班', age_from: '6個月', age_to:'2歲整', capacity: 40, enrolled: 35 },
-  { id: 3, name: '希望幼兒園', unit: 'C班', age_from: '6個月', age_to: '2歲整', capacity: 30, enrolled: 20 }
-])
+const classes = ref([])
+const searchKeyword = ref('')
+const filteredClasses = computed(() => classes.value.slice(0, PAGE_SIZE))
+const showClassList = ref(false)
+const selectedInstitution = ref(null)
 
-// 如果專案仍保留班級 localStorage 資料，保留 classes 資料與儲存函式以便刪除機構時同步移除
-const STORAGE_KEY = 'admin_classes'
-const defaultClasses = [
-  { id: 1, institutionId: 1, unit: 'A班', capacity: 20, enrolled: 18, age_from: 2, age_to: 4, notes: '' },
-  { id: 2, institutionId: 1, unit: 'B班', capacity: 20, enrolled: 15, age_from: 4, age_to: 6, notes: '' },
-  { id: 3, institutionId: 2, unit: 'C班', capacity: 20, enrolled: 17, age_from: 3, age_to: 5, notes: '' },
-  { id: 4, institutionId: 2, unit: 'D班', capacity: 20, enrolled: 18, age_from: 3, age_to: 5, notes: '' },
-  { id: 5, institutionId: 3, unit: 'E班', capacity: 15, enrolled: 10, age_from: 2, age_to: 3, notes: '' },
-  { id: 6, institutionId: 3, unit: 'F班', capacity: 15, enrolled: 10, age_from: 3, age_to: 4, notes: '' }
-]
+// 分頁資料（顯示用）
+const PAGE_SIZE = 10 // 每頁顯示筆數改回 10
+const currentPage = ref(1)
+const totalPages = ref(1)
+const totalElements = ref(0)
 
-const loadClasses = () => {
+// 舊的分頁資料物件（保留，但不直接用於畫面）
+const paginationData = ref({
+  offset: 0,
+  size: PAGE_SIZE,
+  totalPages: 0,
+  hasNext: false,
+  totalElements: 0
+})
+
+// 頁碼按鈕（最多5個）
+const pageNumbers = computed(() => {
+  const tp = Number(totalPages.value) || 1
+  const cp = Number(currentPage.value) || 1
+  const maxButtons = 5
+  if (tp <= maxButtons) return Array.from({ length: tp }, (_, i) => i + 1)
+  const half = Math.floor(maxButtons / 2)
+  let start = Math.max(1, cp - half)
+  let end = Math.min(tp, start + maxButtons - 1)
+  if (end - start + 1 < maxButtons) start = Math.max(1, end - maxButtons + 1)
+  const arr = []
+  for (let i = start; i <= end; i++) arr.push(i)
+  return arr
+})
+
+// 取得 API 班級資料（分頁）
+const fetchClasses = async (page = 1) => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultClasses))
-      return [...defaultClasses]
+    const offset = (page - 1) * PAGE_SIZE
+    const res = await fetch(`http://localhost:8080/classes/offset?offset=${offset}&size=${PAGE_SIZE}`)
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
+    const data = await res.json()
+
+    // 更新分頁資料
+    totalElements.value = Number(data.totalElements) || 0
+    totalPages.value = Number(data.totalPages) || Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE))
+    currentPage.value = page
+
+    paginationData.value = {
+      offset: data.offset ?? offset,
+      size: data.size ?? PAGE_SIZE,
+      totalPages: totalPages.value,
+      hasNext: Boolean(data.hasNext),
+      totalElements: totalElements.value
     }
-    const parsed = JSON.parse(raw)
-    if (!parsed || parsed.length === 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultClasses))
-      return [...defaultClasses]
-    }
-    return parsed
+
+    classes.value = Array.isArray(data.content) ? data.content : []
+    console.log('班級資料載入成功:', { page, classes: classes.value.length, totalPages: totalPages.value })
   } catch (e) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultClasses))
-    return [...defaultClasses]
+    console.error('載入班級資料失敗:', e)
+    classes.value = []
+    totalPages.value = 1
+    totalElements.value = 0
   }
 }
 
-const saveClasses = (list) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
-}
+// 查詢班級（依機構名稱關鍵字，支援分頁）
+const doQueryInstitution = async (page = 1) => {
+  const kw = (searchKeyword.value || '').trim()
 
-const classes = ref(loadClasses())
+  if (!kw) {
+    await fetchClasses(1)
+    return
+  }
 
-const searchKeyword = ref('')
-const filteredInstitutions = ref([])
-const showBack = ref(false)
+  try {
+    const offset = (page - 1) * PAGE_SIZE
+    const res = await fetch(`http://localhost:8080/classes/search/institution?name=${encodeURIComponent(kw)}&offset=${offset}&size=${PAGE_SIZE}`)
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
+    const data = await res.json()
 
-// 當進入班級相關子路由時（班級列表/新增/編輯），顯示子路由畫面
-const isEditPage = computed(() => {
-  return route.name === 'AdminClassList' || route.name === 'AdminClassNew' || route.name === 'AdminClassEdit'
-})
+    // 更新分頁資料
+    totalElements.value = Number(data.totalElements) || 0
+    totalPages.value = Number(data.totalPages) || Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE))
+    currentPage.value = page
 
-// 查詢機構
-const doQueryInstitution = () => {
-  const kw = (searchKeyword.value || '').toLowerCase().trim()
-  filteredInstitutions.value = institutions.value.filter(inst => {
-    if (!kw) return true
-    return (inst.name || '').toLowerCase().includes(kw)
-  })
-  showBack.value = true
+    paginationData.value = {
+      offset: data.offset ?? offset,
+      size: data.size ?? PAGE_SIZE,
+      totalPages: totalPages.value,
+      hasNext: Boolean(data.hasNext),
+      totalElements: totalElements.value
+    }
+
+    // 使用content陣列
+    classes.value = Array.isArray(data.content) ? data.content : []
+    console.log('搜索結果:', { kw, page, count: classes.value.length })
+  } catch (e) {
+    console.error('搜索失敗:', e)
+    alert('搜索失敗，請稍後再試')
+  }
 }
 
 // 返回：重置查詢
-const goBack = () => {
+const goBack = async () => {
   searchKeyword.value = ''
-  filteredInstitutions.value = institutions.value
-  showBack.value = false
-}
-
-// 新增：編輯/刪除機構
-function editInstitution(inst) {
-  // 直接導向班級編輯頁面，需帶 institutionId 和 id（班級 id）
-  router.push({ name: 'AdminClassEdit', params: { institutionId: inst.id, id: inst.id } })
-}
-
-function deleteInstitution(inst) {
-  if (!confirm('確定要刪除這個機構嗎？\n刪除後將移除其所有班級資料。')) return
-  // 移除機構
-  const idx = institutions.value.findIndex(i => i.id === inst.id)
-  if (idx !== -1) {
-    institutions.value.splice(idx, 1)
-  }
-  // 同步移除該機構的班級資料
-  classes.value = classes.value.filter(c => c.institutionId !== inst.id)
-  saveClasses(classes.value)
-  doQueryInstitution()
+  await fetchClasses(1)
 }
 
 const goToAdminClassEdit = () => {
   router.push({ name: 'AdminClassNew' })
 }
 
+// 關閉班級列表
+const closeClassList = () => {
+  showClassList.value = false
+  selectedInstitution.value = null
+}
+
+// 編輯班級
+const editClass = (cls) => {
+  router.push({
+    name: 'AdminClassEdit',
+    params: {
+      institutionId: cls.institutionName,
+      id: cls.classID
+    }
+  })
+}
+
+// 刪除班級
+const deleteClass = async (cls) => {
+  if (!cls || !cls.classID) {
+    alert('找不到要刪除的班級 ID')
+    return
+  }
+  if (!confirm(`確定要刪除班級「${cls.className}」嗎？此動作無法復原。`)) return
+
+  try {
+    const res = await fetch(`http://localhost:8080/classes/${encodeURIComponent(cls.classID)}`, {
+      method: 'DELETE'
+    })
+
+    if (res.ok || res.status === 204) {
+      // 後端刪除成功，從前端列表移除該筆
+      const idx = classes.value.findIndex(c => c.classID === cls.classID)
+      if (idx !== -1) classes.value.splice(idx, 1)
+      alert('刪除成功')
+    } else {
+      const txt = await res.text()
+      alert(`刪除失敗：${res.status} - ${txt}`)
+    }
+  } catch (e) {
+    console.error('刪除班級失敗:', e)
+    alert('刪除失敗，請檢查網路或伺服器狀態')
+  }
+}
+
+// 是否顯示返回按鈕
+const showBack = computed(() => searchKeyword.value.trim() !== '')
+
+
+const isChildRoute = computed(() => route.name === 'AdminClassNew' || route.name === 'AdminClassEdit' || route.name === 'AdminClassList')
+
+// 分頁控制：根據是否在搜尋模式呼叫對應 API
+const goToPage = (page) => {
+  if (page < 1 || page > totalPages.value) return
+  if (searchKeyword.value.trim()) doQueryInstitution(page)
+  else fetchClasses(page)
+}
+const prevPage = () => goToPage(currentPage.value - 1)
+const nextPage = () => goToPage(currentPage.value + 1)
+
 onMounted(() => {
-  filteredInstitutions.value = institutions.value
-  classes.value = loadClasses()
+  fetchClasses(1)
 })
 </script>
 
@@ -194,19 +338,73 @@ onMounted(() => {
 .btn.small { padding:6px 12px; font-size:0.95rem; background:#f3f4f6; margin-right:6px; }
 .btn.danger { background:#ff7b8a; color:#fff }
 .class-table { width:100%; border-collapse:collapse }
-.class-table thead th { background:#cfe8ff; color:#2e6fb7; padding:10px; text-align:left; font-weight:700; }
-.class-table td { padding:12px; border-bottom:1px solid #f3f4f6; vertical-align: middle; }
-.action-cell { text-align:left }
-.empty-tip { color:#999; text-align:center; padding:18px 0 }
+.class-table thead th {
+  background: #cfe8ff;
+  color: #2e6fb7;
+  padding: 10px;
+  text-align: left;
+  font-weight: 700;
+}
+.class-table td {
+  padding: 12px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+}
+.action-cell {
+  text-align: left;
+}
+.empty-tip {
+  color: #999;
+  text-align: center;
+  padding: 18px 0;
+}
+.btn {
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn.primary {
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  color: #fff;
+}
+.btn.ghost {
+  background: transparent;
+  border: 1px solid #3b82f6;
+  color: #2563eb;
+}
+.btn.small {
+  padding: 6px 12px;
+  font-size: 0.95rem;
+  background: #f3f4f6;
+  margin-right: 6px;
+}
+.btn.danger {
+  background: #ff7b8a;
+  color: #fff;
+}
 .bottom-row {
   display: flex;
   justify-content: center;
   gap: 12px;
-  margin-top: 10vh;
-  margin-bottom: 20px;
+  margin-top: 20px;
 }
-@media (max-width:900px){
-  .class-card{ width:100%; padding:16px }
-  .search-input{ width:100% }
+/* 分頁樣式 */
+.pagination-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: 24px 0 12px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #e6f3ff;
+  border-radius: 10px;
 }
+.pagination-info { font-size: 0.95rem; color: #2e6fb7; font-weight: 600; }
+.pagination-controls { display: flex; gap: 8px; align-items: center; }
+.pagination-btn { min-width: 40px; height: 40px; display:flex; align-items:center; justify-content:center; border:1px solid #d0d7de; border-radius:8px; background:#fff; color:#2e6fb7; font-weight:600; }
+.pagination-btn:disabled { background:#f6f8fa; color:#8b949e; border-color:#d0d7de; cursor:not-allowed }
+.btn-active { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff; border-color:#2563eb }
 </style>
