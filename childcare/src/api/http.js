@@ -1,56 +1,53 @@
 import axios from 'axios'
 
 const http = axios.create({
-    baseURL: '/api',//專案Proxy 轉到後端多一個/api的路由
-    timeout: 10000,
-    headers: {
-        'Content-Type': 'application/json'
-    }
+    baseURL: '/api', // 專案 Proxy 轉到後端多一個 /api 的路由
+    timeout: 10000
+    // 不要在這裡固定設定 Content-Type，避免影響 FormData 上傳
 })
 
-// 請求攔截器 - 原本自動添加 JWT token，先註解掉以停用 JWT 功能
+// 請求攔截器 - 依據 payload 類型決定 Content-Type
 http.interceptors.request.use(
     (config) => {
-        // // 暫時停用：從 localStorage 讀取 token 並附加到 Authorization header
-        // try {
-        //     const token = localStorage.getItem('token')
-        //     if (token) {
-        //         config.headers['Authorization'] = `Bearer ${token}`
-        //     }
-        // } catch (e) {
-        //     console.debug('http interceptor: unable to read token from localStorage', e)
-        // }
+        // 偵測是否為 FormData，上傳檔案必須由瀏覽器自動帶入 multipart/form-data 與 boundary
+        const isFormData = typeof FormData !== 'undefined' && config.data instanceof FormData
 
+        // 先移除之前可能殘留的 Content-Type，避免覆寫 axios 對 FormData 的自動設定
+        if (isFormData) {
+            if (config.headers) {
+                delete config.headers['Content-Type']
+            }
+        } else {
+            // 針對一般 JSON 物件才設定 Content-Type: application/json
+            const method = (config.method || 'get').toLowerCase()
+            const hasBodyMethod = ['post', 'put', 'patch', 'delete'].includes(method)
+            const isPlainObject = config.data && Object.prototype.toString.call(config.data) === '[object Object]'
+            if (hasBodyMethod && isPlainObject) {
+                config.headers = config.headers || {}
+                config.headers['Content-Type'] = 'application/json'
+            } else {
+                // 其他情況不強制設置，交由 axios/瀏覽器處理（例如 URLSearchParams、ArrayBuffer...）
+                if (config.headers) {
+                    delete config.headers['Content-Type']
+                }
+            }
+        }
+
+        // 這裡可選擇性加入 JWT Token（目前停用）
+        // try {
+        //   const token = localStorage.getItem('token')
+        //   if (token) { config.headers = config.headers || {}; config.headers['Authorization'] = `Bearer ${token}` }
+        // } catch {}
 
         return config
     },
-    (error) => {
-        return Promise.reject(error)
-    }
+    (error) => Promise.reject(error)
 )
 
-// 響應攔截器 - 原本處理 401 清除 token 並導向登入，先註解掉
+// 響應攔截器 - 目前僅傳回錯誤
 http.interceptors.response.use(
-    (response) => {
-        return response
-    },
+    (response) => response,
     (error) => {
-        // const status = error?.response?.status
-        // if (status === 401) {
-        //     // Token 過期或無效，清除本地存儲並導向登入頁
-        //     try {
-        //         localStorage.removeItem('token')
-        //         localStorage.removeItem('user')
-        //     } catch (e) {
-        //         console.debug('http interceptor: unable to clear localStorage', e)
-        //     }
-
-        //     // Prevent redirect loop if already on /login
-        //     if (typeof window !== 'undefined' && window.location && window.location.pathname !== '/login') {
-        //         window.location.href = '/login'
-        //     }
-        // }
-
         return Promise.reject(error)
     }
 )

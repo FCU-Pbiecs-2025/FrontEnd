@@ -134,7 +134,7 @@
           </svg>
         </button>
         <div class="carousel-image-box">
-          <img :src="carouselImages[currentSlide]" alt="輪播圖" class="carousel-image" />
+          <img ref="carouselImg" :src="carouselImages[currentSlide]" alt="輪播圖" class="carousel-image" @error="retryCarouselImage" />
         </div>
         <button class="carousel-btn right" @click="nextSlide">
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -171,6 +171,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from './store/auth.js'
 import Breadcrumbs from "@/components/Breadcrumbs.vue";
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import bannersApi from './api/banners.js'
 
 // 路由器實例
 const router = useRouter()
@@ -254,39 +255,116 @@ const handleChangePassword = () => {
 
   // 呼叫後端 API 進行密碼修改
   authStore.changePassword(newPassword.value)
-    .then(() => {
-      // 密碼修改成功後的處理
-      closeAccountModal()
-      router.push('/') // 可選：修改密碼後導向的頁面
-    })
-    .catch(err => {
-      // 處理錯誤
-      passwordError.value = '修改密碼失敗，請稍後再試'
-      console.error(err)
-    })
+      .then(() => {
+        // 密碼修改成功後的處理
+        closeAccountModal()
+        router.push('/') // 可選：修改密碼後導向的頁面
+      })
+      .catch(err => {
+        // 處理錯誤
+        passwordError.value = '修改密碼失敗，請稍後再試'
+        console.error(err)
+      })
 }
 
-const carouselImages = [
-  'https://ws.hsinchu.gov.tw/001/Upload/8/relpic/8665/251571/1b12c0d3-3d5a-422f-ae64-59fffccffae6.jpg',
-  'https://img2.91mai.com/o2o/image/5207d606-ab3f-4ae3-94cf-1f474a3beebe.jpg',
-  'https://cdn-thumbnail.mamilove.com.tw/uSIu-DQx74dIfAI_Uhf4b0DZuKM=/0x0/https://images.mamilove.com.tw/origin/blog/1096/1096-aa73faad1a-1706173628.png'
-]
-
+const carouselImages = ref([])
 const currentSlide = ref(0)
+const carouselImg = ref(null)
+
+async function fetchCarousel() {
+  try {
+    const res = await bannersApi.list()
+    const imgs = (res.data || [])
+      .map(item => (item && typeof item.imageName === 'string' ? item.imageName.trim() : ''))
+      .filter(name => !!name)
+      .map(name => bannersApi.imageUrl(name))
+    // 加上 cache buster，避免瀏覽器快取舊圖
+    const ts = Date.now()
+    carouselImages.value = imgs.map(u => `${u}${u.includes('?') ? '&' : '?'}_=${ts}`)
+    currentSlide.value = 0
+    if (carouselImg.value) carouselImg.value.removeAttribute('data-attempt-index')
+  } catch (e) {
+    console.error('載入輪播圖失敗', e)
+    carouselImages.value = []
+  }
+}
+
+onMounted(async () => {
+  await fetchCarousel()
+  // 監聽後台更新事件
+  window.addEventListener('banners:updated', fetchCarousel)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('banners:updated', fetchCarousel)
+})
 
 function nextSlide() {
-  currentSlide.value = (currentSlide.value + 1) % carouselImages.length
+  if (carouselImages.value.length === 0) return
+  currentSlide.value = (currentSlide.value + 1) % carouselImages.value.length
+  if (carouselImg.value) carouselImg.value.removeAttribute('data-attempt-index')
 }
 
 function prevSlide() {
-  currentSlide.value = (currentSlide.value - 1 + carouselImages.length) % carouselImages.length
+  if (carouselImages.value.length === 0) return
+  currentSlide.value = (currentSlide.value - 1 + carouselImages.value.length) % carouselImages.value.length
+  if (carouselImg.value) carouselImg.value.removeAttribute('data-attempt-index')
 }
 
 function openImageInNewWindow() {
-  const imageUrl = carouselImages[currentSlide.value]
+  if (carouselImages.value.length === 0) return
+  const imageUrl = carouselImages.value[currentSlide.value]
   window.open(imageUrl, '_blank')
 }
 
+function retryCarouselImage(event) {
+  try {
+    const img = event.target
+    const currentUrl = carouselImages.value[currentSlide.value] || ''
+    const name = currentUrl ? decodeURIComponent(currentUrl.split('/').pop() || '') : ''
+    if (!name) return
+
+    let idx = Number(img.dataset.attemptIndex || 0)
+    const encoded = encodeURIComponent(name)
+
+    const candidates = [
+      bannersApi.imageUrl(name),
+      `/api/BannerResource/${name}`,
+      `/api/BannerResource/${encoded}`,
+      `/BannerResource/${name}`,
+      `/BannerResource/${encoded}`,
+      `/api/banners/image/${name}`,
+      `/api/banners/image/${encoded}`,
+      `/banners/image/${name}`,
+      `/banners/image/${encoded}`,
+      `http://localhost:8080/BannerResource/${name}`,
+      `http://localhost:8080/BannerResource/${encoded}`,
+      `http://localhost:8080/banners/image/${name}`,
+      `http://localhost:8080/banners/image/${encoded}`
+    ]
+
+    // unique and drop blanks
+    const uniq = Array.from(new Set(candidates.filter(Boolean)))
+      // avoid retrying with exactly the same URL as current
+      .filter(u => u !== currentUrl)
+
+    if (idx >= uniq.length) {
+      console.warn('Carousel image failed. Tried all candidates for:', name, '\nCandidates:', uniq)
+      img.dataset.attemptIndex = uniq.length
+      img.src = ''
+      return
+    }
+
+    img.dataset.attemptIndex = idx + 1
+    const nextUrl = uniq[idx]
+    console.debug('Carousel retry', { name, attempt: idx + 1, nextUrl })
+    img.src = nextUrl
+    // 同步更新陣列，之後重繪會直接用可用的 URL
+    carouselImages.value.splice(currentSlide.value, 1, nextUrl)
+  } catch (e) {
+    console.debug('retryCarouselImage failed', e)
+  }
+}
 </script>
 
 <style scoped>
@@ -353,7 +431,7 @@ header {
   margin-left: 20px;
   align-items: center;
   height: 70px;
-margin-bottom: 10px;
+  margin-bottom: 10px;
   margin-right: auto;
 }
 .header-nav {

@@ -27,6 +27,7 @@
         <table class="banner-table">
           <thead>
             <tr>
+              <th>ID</th>
               <th>Banner</th>
               <th>導向連結</th>
               <th>狀態</th>
@@ -34,25 +35,37 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(b, idx) in resultBanners" :key="b.id">
-              <td class="img-cell"><img :src="b.image" alt="banner" /></td>
+            <tr v-for="b in resultBanners" :key="b.id">
+              <td>
+                <span v-if="b.id">{{ b.id }}</span>
+                <span v-else style="color:red;font-weight:bold;">⚠️</span>
+              </td>
+              <td class="img-cell"><img :src="b.image" alt="banner" @error="handleImgError($event, b)" /></td>
               <td>{{ b.link }}</td>
               <td>{{ b.status }}</td>
               <td class="action-cell">
-                <button class="btn small" @click="goEdit(b.id)">編輯</button>
-                <button class="btn small danger" @click="remove(b.id)">刪除</button>
+                <button class="btn small" @click="goEdit(b.id)" :disabled="!b.id">編輯</button>
+                <button class="btn small danger" @click="remove(b.id)" :disabled="!b.id">刪除</button>
               </td>
             </tr>
             <tr v-if="resultBanners.length === 0">
-              <td colspan="5" class="empty-tip">目前沒有海報</td>
+              <td colspan="6" class="empty-tip">目前沒有海報</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div class="bottom-row">
+      <div class="pagination">
+        <button class="btn small" @click="prevPage" :disabled="!canPrev">上一頁</button>
+        <button class="btn small" @click="nextPage" :disabled="!canNext">下一頁</button>
+      </div>
 
+      <div class="bottom-row">
         <button class="btn primary" v-show="showBack" @click="goBack">返回</button>
+      </div>
+
+      <div class="page-info" v-if="totalPages !== null">
+        <span>第 {{ currentPage }} / {{ totalPages }} 頁</span>
       </div>
     </div>
     <router-view v-if="isEditPage" />
@@ -62,69 +75,122 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import bannersApi from '../api/banners'
 
 const router = useRouter()
 const route = useRoute()
-const storageKey = 'siteBanners'
+
+// removed storageKey and localStorage reliance; use backend API instead
 const banners = ref([])
 const resultBanners = ref([])
 const showBack = ref(false)
+
+// pagination
+const offset = ref(0)
+const size = ref(10)
+const total = ref(null) // totalElements
+const totalPages = ref(null)
+const hasNext = ref(null)
+
+const currentPage = computed(() => {
+  return Math.floor(offset.value / size.value) + 1
+})
 
 // 日期查詢條件
 const dateStart = ref('')
 const dateEnd = ref('')
 
-const loadList = () => {
+// load list from backend (paged)
+const loadList = async () => {
   try {
-    const raw = localStorage.getItem(storageKey)
-    if (raw) {
-      banners.value = JSON.parse(raw)
-    } else {
-      // 初始範例資料
-      banners.value = [
-        {
-          id: 1,
-          image: 'https://via.placeholder.com/800x300/3b82f6/ffffff?text=Banner+1',
-          link: '/news',
-          displayDate: '2025-01-01',
-          status: '顯示'
-        },
-        {
-          id: 2,
-          image: 'https://via.placeholder.com/800x300/2563eb/ffffff?text=Banner+2',
-          link: '/apply-service',
-          displayDate: '2025-01-15',
-          status: '顯示'
-        },
-        {
-          id: 3,
-          image: 'https://via.placeholder.com/800x300/1e40af/ffffff?text=Banner+3',
-          link: '/subsidy-calculator',
-          displayDate: '2025-02-01',
-          status: '隱藏'
-        }
-      ]
-      localStorage.setItem(storageKey, JSON.stringify(banners.value))
+    const resp = await bannersApi.listPaged(offset.value, size.value)
+    console.debug('DEBUG bannersApi.listPaged response:', resp)
+    // backend returns { content, offset, size, totalElements, totalPages, hasNext }
+    let data = []
+    if (resp.data) {
+      if (Array.isArray(resp.data)) {
+        data = resp.data
+        total.value = null
+        totalPages.value = null
+        hasNext.value = null
+      } else if (Array.isArray(resp.data.content)) {
+        data = resp.data.content
+        total.value = typeof resp.data.totalElements === 'number' ? resp.data.totalElements : (typeof resp.data.totalElements === 'string' ? Number(resp.data.totalElements) : null)
+        totalPages.value = typeof resp.data.totalPages === 'number' ? resp.data.totalPages : (typeof resp.data.totalPages === 'string' ? Number(resp.data.totalPages) : null)
+        hasNext.value = typeof resp.data.hasNext === 'boolean' ? resp.data.hasNext : null
+      } else if (Array.isArray(resp.data.items)) {
+        data = resp.data.items
+        total.value = typeof resp.data.total === 'number' ? resp.data.total : null
+        totalPages.value = typeof resp.data.totalPages === 'number' ? resp.data.totalPages : null
+        hasNext.value = typeof resp.data.hasNext === 'boolean' ? resp.data.hasNext : null
+      }
     }
+
+    banners.value = data.map(item => {
+      const getDatePart = (iso) => {
+        if (!iso) return ''
+        try {
+          return new Date(iso).toISOString().slice(0,10)
+        } catch (e) {
+          return ''
+        }
+      }
+      // 列出所有 key，方便 debug
+      console.debug('Mapping banner item keys:', Object.keys(item))
+      console.debug('Mapping banner item:', item)
+      return {
+        id: item.id || item.ID || item.bannerId || item.bannerID || item.pk || item._id || item.sortOrder,
+        // 圖片路徑統一改為經過 API
+        image: item.imageName ? `/banners/image/${item.imageName}` : '',
+        link: item.linkUrl || '',
+        displayDate: getDatePart(item.startTime),
+        status: item.status ? '下架' : '顯示',
+        _raw: item
+      }
+    })
+    console.debug('Mapped banners:', banners.value) // Add debug log
+    resultBanners.value = [...banners.value]
   } catch (e) {
-    console.error('loadList error', e)
+    console.error('failed to load banners', e)
+    banners.value = []
+    resultBanners.value = []
+    total.value = null
+    totalPages.value = null
+    hasNext.value = null
   }
 }
 
-const saveList = () => {
-  localStorage.setItem(storageKey, JSON.stringify(banners.value))
+const canPrev = computed(() => offset.value > 0)
+const canNext = computed(() => {
+  if (hasNext.value !== null) return hasNext.value
+  if (total.value !== null) return offset.value + size.value < total.value
+  // unknown total -> allow next
+  return true
+})
+
+// modify prevPage/nextPage to guard by canPrev/canNext
+const prevPage = async () => {
+  if (!canPrev.value) return
+  offset.value = Math.max(0, offset.value - size.value)
+  await loadList()
 }
 
-onMounted(() => {
-  loadList()
-  resultBanners.value = [...banners.value]
+const nextPage = async () => {
+  if (!canNext.value) return
+  offset.value = offset.value + size.value
+  await loadList()
+}
+
+onMounted(async () => {
+  // remove any leftover local demo data to prevent showing stale placeholder banners
+  try { localStorage.removeItem('siteBanners') } catch (e) { /* ignore */ }
+  await loadList()
 })
 
 // 監聽路由變化，從編輯頁面返回時重新載入資料
-watch(() => route.name, (newName, oldName) => {
+watch(() => route.name, async (newName, oldName) => {
   if (newName === 'AdminBannerManager' && (oldName === 'AdminBannerNew' || oldName === 'AdminBannerEdit')) {
-    loadList()
-    resultBanners.value = [...banners.value]
+    await loadList()
     // 重置查詢條件
     dateStart.value = ''
     dateEnd.value = ''
@@ -133,16 +199,10 @@ watch(() => route.name, (newName, oldName) => {
 })
 
 const doQuery = () => {
-  // 重新載入以確保資料是最新的
-  loadList()
-
+  // client-side filter for now; paging remains
   resultBanners.value = banners.value.filter(item => {
-    // 日期篩選
-    if (dateStart.value && item.displayDate < dateStart.value) return false
-    if (dateEnd.value && item.displayDate > dateEnd.value) return false
-    return true
+    return (!(dateStart.value && item.displayDate < dateStart.value)) && (!(dateEnd.value && item.displayDate > dateEnd.value))
   })
-
   showBack.value = true
 }
 
@@ -151,27 +211,55 @@ const openNew = () => {
 }
 
 const goEdit = (id) => {
-  router.push({ name: 'AdminBannerEdit', params: { id: id } })
+  console.debug('goEdit clicked with id:', id)
+  console.debug('current route name:', route.name)
+
+  if (!id) {
+    console.error('Invalid ID for edit:', id)
+    alert('無法編輯：ID 無效')
+    return
+  }
+
+  try {
+    router.push({ name: 'AdminBannerEdit', params: { id: String(id) } })
+    console.debug('router.push executed successfully')
+  } catch (e) {
+    console.error('router.push failed:', e)
+    alert('導航失敗，請稍後再試')
+  }
 }
 
-const remove = (id) => {
+const remove = async (id) => {
+  console.debug('remove clicked with id:', id)
+
+  if (!id) {
+    console.error('Invalid ID for remove:', id)
+    alert('無法刪除：ID 無效')
+    return
+  }
+
   if (!confirm('確定要刪除這筆海報嗎？')) return
-  banners.value = banners.value.filter(b => b.id !== id)
-  saveList()
-  // 重新執行查詢以更新顯示列表
-  if (showBack.value) {
-    doQuery()
-  } else {
-    resultBanners.value = [...banners.value]
+
+  try {
+    await bannersApi.remove(id)
+    console.debug('Remove successful for id:', id)
+    // reload list from backend
+    await loadList()
+    if (showBack.value) {
+      doQuery()
+    }
+    // 通知前台更新海報資料
+    try { window.dispatchEvent(new CustomEvent('banners:updated')) } catch (e) { /* ignore */ }
+    alert('刪除成功')
+  } catch (e) {
+    console.error('delete banner failed', e)
+    alert('刪除失敗，請稍後再試: ' + (e.response?.data?.message || e.message))
   }
 }
 
 const goBack = () => {
-  // 重置查詢條件
   dateStart.value = ''
   dateEnd.value = ''
-  // 恢復顯示全部資料
-  loadList()
   resultBanners.value = [...banners.value]
   showBack.value = false
 }
@@ -179,6 +267,39 @@ const goBack = () => {
 const isEditPage = computed(() => {
   return route.name === 'AdminBannerNew' || route.name === 'AdminBannerEdit'
 })
+
+// Try alternate image URLs when the image fails to load (toggle /api prefix)
+const handleImgError = (event, b) => {
+  try {
+    const img = event.target
+    const name = (b && b._raw && b._raw.imageName) || (b && b.image && b.image.split('/').pop())
+    if (!name) return
+
+    let idx = Number(img.dataset.attemptIndex || 0)
+    const candidates = [
+      `/api/BannerResource/${name}`,
+      `/BannerResource/${name}`,
+      bannersApi.imageUrl(name),
+      `/api/banners/image/${name}`,
+      `/banners/image/${name}`,
+      `http://localhost:8080/BannerResource/${name}`,
+      `http://localhost:8080/banners/image/${name}`
+    ]
+
+    const uniq = Array.from(new Set(candidates.filter(Boolean)))
+
+    if (idx >= uniq.length) {
+      img.dataset.attemptIndex = uniq.length
+      img.src = ''
+      return
+    }
+
+    img.dataset.attemptIndex = idx + 1
+    img.src = uniq[idx]
+  } catch (e) {
+    console.debug('handleImgError failed', e)
+  }
+}
 </script>
 
 <style scoped>
@@ -203,15 +324,19 @@ const isEditPage = computed(() => {
 .btn { padding:7px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:600; }
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff ; margin-right:12px; }
 .btn.query { background:#e6f2ff; color:#2e6fb7; border:1px solid #b3d4fc }
-.btn.small { padding:6px 12px; font-size:0.95rem; background:#f3f4f6; margin-right:6px; }
+.btn.small { padding:6px 12px; font-size:0.95rem; background:#f3f4f6; margin-right:6px; cursor: pointer; border: none; }
+.btn.small:hover { background:#e2e8f0; }
+.btn.small:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn.danger { background:#ff7b8a; color:#fff }
 .table-section { margin-bottom:18px; }
 .banner-table { width:100%; border-collapse:collapse; }
 .banner-table thead th { background:#cfe8ff; color:#2e6fb7; padding:10px; text-align:left; font-weight:700; }
 .banner-table td { padding:12px; border-bottom:1px solid #f3f4f6; vertical-align: middle; }
 .img-cell img { width:160px; height:56px; object-fit:cover; border-radius:6px }
-.action-cell { text-align:left }
+.action-cell { text-align:left; position: relative; z-index: 1; }
 .empty-tip { text-align:center; padding:18px; color:#999 }
 .bottom-row { display: flex; justify-content: center; gap:12px; margin-top: 10vh; }
+.pagination { display: flex; justify-content: center; gap: 12px; margin-top: 20px; }
+.page-info { text-align: center; margin-top: 10px; color: #666; }
 @media (max-width:900px){ .banner-card{ width:100%; padding:16px } .date-input{ width:100px } }
 </style>
