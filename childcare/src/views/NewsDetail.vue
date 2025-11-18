@@ -54,7 +54,24 @@ const loadNewsDetail = async (id) => {
   error.value = null
   try {
     const response = await getAnnouncementDetail(id)
-    news.value = response.data
+    const data = response.data
+    // 將後端的 attachmentPath 映射為 attachments 陣列，提供下載 URL
+    const attachments = []
+    if (data && data.attachmentPath) {
+      // attachmentPath format: UUID_originalFilename
+      let displayName = data.attachmentPath
+      const underscoreIdx = data.attachmentPath.indexOf('_')
+      if (underscoreIdx > 0 && underscoreIdx < data.attachmentPath.length - 1) {
+        displayName = data.attachmentPath.substring(underscoreIdx + 1)
+      }
+      attachments.push({
+        name: displayName,
+        // 前端使用 /api 代理，後端的下載 endpoint 為 /announcements/{id}/attachment
+        url: `/api/announcements/${id}/attachment`
+      })
+    }
+    data.attachments = attachments
+    news.value = data
   } catch (err) {
     console.error('載入公告詳細資料失敗:', err)
     error.value = '載入公告詳細資料失敗'

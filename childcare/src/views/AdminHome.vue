@@ -125,6 +125,8 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 // 導入通用的 Admin 響應式樣式
 import '@/styles/admin-responsive.css'
+// 導入後台首頁 API
+import { getTodoCounts, getAdminAnnouncements } from '@/api/AdminHome'
 
 const router = useRouter()
 const route = useRoute()
@@ -182,21 +184,91 @@ const breadcrumb = computed(() => {
 
 onMounted(() => {
   window.addEventListener('resize', handleResize)
+  // 初始化時抓取後端資料
+  fetchTodoCountsAndAnnouncements()
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
 })
 
-// AdminDashboard 設定資料
-const todoList = [
-  { id: 1, title: '審核新申請', content: '有 3 筆新申請待審核', date: '2025/10/10' },
-  { id: 2, title: '補位抽籤', content: '本週需進行補位抽籤', date: '2025/10/09' }
-]
-const announcementList = [
+// AdminDashboard 設定資料（預設本地展示，會被後端回應覆蓋）
+// helper: 是否為每年 7/25 - 7/31 的抽籤週
+function isLotteryWindow(date = new Date()) {
+  const m = date.getMonth() // 0-based, July is 6
+  const d = date.getDate()
+  return m === 6 && d >= 25 && d <= 31
+}
+
+// 建立待辦清單的工廠函式（方便在初始值與更新時使用）
+function buildTodoList(pending = 0, revoke = 0) {
+  const list = [
+    { id: 'pending', title: '審核新申請', content: `有 ${pending} 筆新申請待審核`, date: null, count: pending },
+    { id: 'revoke', title: '撤銷申請', content: `有 ${revoke} 筆撤銷聲請待審`, date: null, count: revoke }
+  ]
+  if (isLotteryWindow()) {
+    // 避免重複插入：若已有相同 id 則不插入
+    if (!list.find(i => i.id === 'lottery')) {
+      list.push({ id: 'lottery', title: '抽籤通知', content: '7/31 即將進行抽籤', date: null })
+    }
+  }
+  return list
+}
+
+const todoList = ref(buildTodoList(3, 0))
+const announcementList = ref([
   { id: 1, title: '系統維護通知', content: '後台系統將於本週末進行維護，請提前完成重要作業。', date: '2025/10/08' },
   { id: 2, title: '新功能上線', content: '公告管理功能已上線，歡迎使用。', date: '2025/10/05' }
-]
+])
+
+const loading = ref(false)
+const error = ref(null)
+
+// 抓取 todo counts 與 announcements，並更新到對應的資料陣列
+async function fetchTodoCountsAndAnnouncements() {
+  loading.value = true
+  error.value = null
+  try {
+    // 使用 AdminHome.js 中的 API 函式並行呼叫後端
+    const [todosRes, annRes] = await Promise.all([
+      getTodoCounts(),
+      getAdminAnnouncements()
+    ])
+
+    // 解析 todo-counts 格式: { pending: number, revoke: number }
+    // 更新 todoList 的 content 與 count
+    if (todosRes && typeof todosRes === 'object') {
+      const pending = Number(todosRes.pending || 0)
+      const revoke = Number(todosRes.revoke || 0)
+
+      // 更新或插入兩種待辦項目
+      // 使用 buildTodoList 工廠，條件性加入抽籤通知
+      todoList.value = buildTodoList(pending, revoke)
+    }
+
+    // annRes 預期為陣列，符合 AnnouncementSummaryDTO 格式（對應資料庫 Announcement 資料表）
+    // 完整 DTO 欄位: announcementID, title, content, type, startDate, endDate, status,
+    //                createdUser, createdTime, updatedUser, updatedTime, attachmentPath
+    if (Array.isArray(annRes)) {
+      announcementList.value = annRes.map(announcement => ({
+        id: announcement.announcementID, // PK uniqueidentifier (UUID)
+        title: announcement.title || '無標題', // nvarchar(100)
+        content: announcement.content || '無內容', // nvarchar(max)
+        date: announcement.startDate || '', // date (ISO: "YYYY-MM-DD")
+        type: announcement.type, // tinyint (公告類型)
+        endDate: announcement.endDate, // date (結束日期)
+        status: announcement.status, // tinyint (公告狀態)
+        attachmentPath: announcement.attachmentPath // nvarchar(max) (附件路徑)
+      })).filter(item => item.id) // 過濾掉沒有 ID 的項目
+    }
+  } catch (e) {
+    console.error('fetchTodoCountsAndAnnouncements error', e)
+    error.value = e.message || String(e)
+    // 發生錯誤時保持預設資料，不清空列表
+  } finally {
+    loading.value = false
+  }
+}
 
 const goAdminAnnouncementDetail = (id) => {
   // 導向後台公告詳情頁
@@ -379,18 +451,21 @@ const goAdminAnnouncementDetail = (id) => {
 }
 .news-list-header {
   display: flex;
-  justify-content: space-between;
+  align-items: center; /* vertically center header cells */
   font-weight: bold;
   color: #e35d6a;
   font-size: 1.1rem;
   border-bottom: 2px solid #FFE5C2;
-  padding-bottom: 12px;
+  padding: 12px 0; /* give same vertical spacing as rows */
   margin-bottom: 8px;
 }
+/* Make header columns use the same flex ratios as the row cells so columns align */
 .news-list-header span {
-  flex: 1;
   text-align: left;
 }
+.news-list-header span:nth-child(1) { flex: 1; min-width: 110px; }
+.news-list-header span:nth-child(2) { flex: 2; min-width: 180px; }
+.news-list-header span:nth-child(3) { flex: 3; min-width: 220px; }
 .news-list-row {
   display: flex;
   align-items: center;

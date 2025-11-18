@@ -4,6 +4,9 @@ export default {
   list() {
     return http.get('/banners')
   },
+    active() {
+        return http.get('/banners/active')
+    },
   // List with offset pagination: GET /banners/offset?offset=0&size=10
   listPaged(offset = 0, size) {
     const params = {}

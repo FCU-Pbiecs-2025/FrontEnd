@@ -101,34 +101,66 @@ async function submitRegister() {
     account: form.account,
     password: form.password,
     name: form.name,
-    gender: form.gender,
-    phone: form.phone,
-    address: form.address,
+    gender: form.gender === 'male',
+    phoneNumber: form.phone,
+    mailingAddress: form.address,
     email: form.email,
-    birthday: form.birthday
+    birthDate: form.birthday,
+    accountStatus: 1,
+    permissionType: 3
   }
+
+  // 新增：顯示userData於CONSOLE
+  console.log('submitRegister userData:', userData)
 
   isLoading.value = true
 
   try {
     const response = await register(userData)
 
-    // 調試：查看實際回應
-    console.log('註冊回應:', response)
+    // 詳細檢查回應內容
+    console.log('=== 完整註冊回應 ===')
+    console.log('response:', response)
+    console.log('response.status:', response.status)
+    console.log('response.data:', response.data)
+    console.log('response.data type:', typeof response.data)
+    console.log('response.data 內容:', JSON.stringify(response.data, null, 2))
 
-    // 更寬鬆的成功判斷條件，適應不同的回應格式
-    if (response.success || response.status === 'success' || response.code === 200) {
+    // 更寬鬆的成功判斷條件
+    const resData = response.data || response
+    const isSuccess = response.status === 200 || response.status === 201 ||
+                      resData.success === true ||
+                      resData.status === 'success' ||
+                      resData.code === 200
+
+    console.log('判斷結果 isSuccess:', isSuccess)
+
+    if (isSuccess) {
       successMsg.value = '註冊成功！即將跳轉至會員中心'
-      // 縮短等待時間到2秒，並改用路徑跳轉
       setTimeout(() => {
         router.push('/member-center')
       }, 2000)
     } else {
-      errorMsg.value = response.message || '註冊失敗，請稍後再試'
+      errorMsg.value = resData.message || '註冊失敗，請稍後再試'
     }
   } catch (error) {
     console.error('Registration error:', error)
-    errorMsg.value = '註冊失敗，請檢查網路連線或稍後再試'
+
+    // 更詳細的錯誤處理
+    if (error.response && error.response.data) {
+      const errorData = error.response.data
+      if (errorData.message) {
+        errorMsg.value = errorData.message
+      } else if (errorData.error) {
+        errorMsg.value = errorData.error
+      } else {
+        errorMsg.value = `註冊失敗: ${JSON.stringify(errorData)}`
+      }
+    } else if (error.message) {
+      errorMsg.value = `註冊失敗: ${error.message}`
+    } else {
+      errorMsg.value = '註冊失敗，請檢查網路連線或稍後再試'
+    }
   } finally {
     isLoading.value = false
   }

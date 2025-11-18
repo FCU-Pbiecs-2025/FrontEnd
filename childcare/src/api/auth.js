@@ -51,7 +51,8 @@ export function resetPassword(email, resetToken, newPassword) {
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, resetToken, newPassword })
+        // Server expects field name 'token'
+        body: JSON.stringify({ email, token: resetToken, newPassword })
     }).then(response => response.json());
 }
 

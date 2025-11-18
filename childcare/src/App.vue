@@ -134,7 +134,12 @@
           </svg>
         </button>
         <div class="carousel-image-box">
-          <img ref="carouselImg" :src="carouselImages[currentSlide]" alt="輪播圖" class="carousel-image" @error="retryCarouselImage" />
+          <template v-if="carouselImages.length > 0">
+            <img ref="carouselImg" :src="carouselImages[currentSlide]" alt="輪播圖" class="carousel-image" @error="retryCarouselImage" />
+          </template>
+          <template v-else>
+            <div class="no-image-placeholder">暫無圖片</div>
+          </template>
         </div>
         <button class="carousel-btn right" @click="nextSlide">
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -273,7 +278,7 @@ const carouselImg = ref(null)
 
 async function fetchCarousel() {
   try {
-    const res = await bannersApi.list()
+    const res = await bannersApi.active()
     const imgs = (res.data || [])
       .map(item => (item && typeof item.imageName === 'string' ? item.imageName.trim() : ''))
       .filter(name => !!name)
@@ -284,7 +289,6 @@ async function fetchCarousel() {
     currentSlide.value = 0
     if (carouselImg.value) carouselImg.value.removeAttribute('data-attempt-index')
   } catch (e) {
-    console.error('載入輪播圖失敗', e)
     carouselImages.value = []
   }
 }
@@ -781,6 +785,17 @@ footer {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+}
+.no-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: #e35d6a;
+  background: #f9f9f9;
+  border-radius: 8px;
 }
 .carousel-image {
   width: 100%;

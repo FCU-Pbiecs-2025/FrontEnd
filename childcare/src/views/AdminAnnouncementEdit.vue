@@ -61,6 +61,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import http from '../api/http'
 const router = useRouter()
 const route = useRoute()
 
@@ -108,14 +109,58 @@ const saveList = () => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(list.value))
 }
 
-onMounted(() => {
+// Map frontend string values to backend numeric values (assumption)
+// Assumptions: type: front=0, back=1; status: enabled=0, disabled=1
+const mapToBackend = (payload) => {
+  return {
+    title: payload.title,
+    content: payload.content,
+    // backend expects dates as ISO yyyy-MM-dd (LocalDate)
+    startDate: payload.date || null,
+    endDate: payload.endDate || null,
+    // convert type/status
+    type: payload.type === 'back' ? 1 : 0,
+    status: payload.status === 'disabled' ? 1 : 0,
+    // optional fields: createdUser/createdTime can be omitted and backend will fill
+  }
+}
+
+onMounted(async () => {
   loadList()
   if (isEditPage.value) {
-    const id = Number(route.params.id)
-    const data = list.value.find(item => item.id === id)
-    if (data) {
-      form.value = { ...form.value, ...data }
-      form.value.attachment = null // 編輯時不自動載入附件
+    const idParam = route.params.id
+    // try load from backend first (id may be UUID string)
+    if (idParam) {
+      try {
+        const res = await http.get(`/announcements/${idParam}`)
+        if (res && res.data) {
+          const data = res.data
+          // map backend fields to frontend form
+          form.value.id = data.announcementID || data.id || idParam
+          form.value.title = data.title || ''
+          form.value.content = data.content || ''
+          // backend stores Type as numeric; map back to string
+          form.value.type = (data.type === 1 || data.type === '1') ? 'back' : 'front'
+          // status
+          form.value.status = (data.status === 1 || data.status === '1') ? 'disabled' : 'enabled'
+          // dates: could be startDate or createdTime; prefer startDate
+          form.value.date = data.startDate || data.date || getToday()
+          form.value.endDate = data.endDate || getToday()
+          form.value.attachment = null // do not auto-load file
+          return
+        }
+      } catch (e) {
+        // backend not available or not found -> fallback to localStorage
+        console.warn('Failed to load announcement from backend, falling back to localStorage', e)
+      }
+    }
+
+    // existing localStorage fallback logic (expects numeric id)
+    const idNum = Number(route.params.id)
+    const localData = list.value.find(item => Number(item.id) === idNum)
+    if (localData) {
+      form.value = { ...form.value, ...localData }
+      form.value.attachment = null
     } else {
       router.replace({ path: '/admin/announcement' })
     }
@@ -156,27 +201,73 @@ const validate = () => {
   return true
 }
 
-const save = () => {
+const save = async () => {
   if (!validate()) return
 
-  loadList()
+  // prepare backend payload
+  const meta = mapToBackend(form.value)
 
+  // If edit page: update endpoint, else create
   if (isEditPage.value) {
-    // 編輯
-    const idx = list.value.findIndex(item => Number(item.id) === Number(form.value.id))
-    if (idx !== -1) {
-      list.value[idx] = { ...form.value }
-      saveList()
-      alert('編輯成功')
+    const idParam = route.params.id
+    try {
+      if (form.value.attachment) {
+        // multipart PUT (file + meta)
+        const fd = new FormData()
+        fd.append('file', form.value.attachment)
+        fd.append('meta', new Blob([JSON.stringify(meta)], { type: 'application/json' }))
+        await http.put(`/announcements/${idParam}`, fd, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        alert('編輯成功')
+        goBack()
+      } else {
+        // JSON PUT
+        await http.put(`/announcements/${idParam}`, meta)
+        alert('編輯成功')
+        goBack()
+      }
+    } catch (e) {
+      console.warn('backend update failed, falling back to localStorage', e)
+      // fallback to localStorage behavior
+      loadList()
+      const idx = list.value.findIndex(item => String(item.id) === String(form.value.id) || Number(item.id) === Number(form.value.id))
+      if (idx !== -1) {
+        list.value[idx] = { ...form.value }
+        saveList()
+        alert('編輯成功 (已儲存在本機，後端連線失敗)')
+      }
+      goBack()
     }
   } else {
-    // 新增
-    form.value.id = Date.now()
-    list.value.push({ ...form.value })
-    saveList()
-    alert('新增成功')
+    // create
+    try {
+      if (form.value.attachment) {
+        const fd = new FormData()
+        fd.append('file', form.value.attachment)
+        fd.append('meta', new Blob([JSON.stringify(meta)], { type: 'application/json' }))
+        await http.post('/announcements/upload', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        alert('新增成功')
+        goBack()
+      } else {
+        // JSON POST
+        await http.post('/announcements', meta)
+        alert('新增成功')
+        goBack()
+      }
+    } catch (e) {
+      console.warn('backend create failed, falling back to localStorage', e)
+      // fallback to localStorage
+      loadList()
+      form.value.id = Date.now()
+      list.value.push({ ...form.value })
+      saveList()
+      alert('新增成功 (已儲存在本機，後端連線失敗)')
+      goBack()
+    }
   }
-  goBack()
 }
 </script>
 

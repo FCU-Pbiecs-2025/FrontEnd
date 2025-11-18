@@ -2,13 +2,13 @@ import http from "./http.js";
 import { mockAuth } from "./mockAuth.js";
 
 // 開發環境使用模擬 API，生產環境使用真實 API
-const USE_MOCK_API = true; // 設為 true 時使用模擬 API 進行測試
+const USE_MOCK_API = false; // 設為 false 時使用真實後端 API
 
 export function register(userData) {
     if (USE_MOCK_API) {
         return mockAuth.register(userData);
     }
-    return http.post("/auth/register", userData);
+    return http.post("/users/new-member", userData);
 }
 
 // 檢查帳號是否已存在

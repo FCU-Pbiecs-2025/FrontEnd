@@ -14,6 +14,7 @@
           <span>發布日期</span>
           <span>公告標題</span>
           <span>公告內容</span>
+          <span>附件</span>
         </div>
         <div
             v-for="item in newsList"
@@ -25,6 +26,7 @@
           <span class="news-date-cell">{{ formatDate(item.createdTime) }}</span>
           <span class="news-title-cell" :title="item.title">{{ item.title.length > 18 ? item.title.slice(0, 18) + '...' : item.title }}</span>
           <span class="news-content-cell">{{ item.content }}</span>
+          <span class="news-attachment-cell"> <span v-if="item.attachmentPath">📎</span> </span>
         </div>
         <div v-if="newsList.length === 0" class="empty-tip">目前沒有公告</div>
         <div class="pagination-bar" v-if="totalPages > 1">
@@ -209,7 +211,7 @@ export default {
 .news-list-header,
 .news-list-row {
   display: grid;
-  grid-template-columns: 130px 1.2fr 2fr;
+  grid-template-columns: 130px 1.2fr 2fr 50px;
   align-items: center;
   justify-content: stretch;
   gap: 12px;
@@ -274,6 +276,7 @@ export default {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.news-attachment-cell { text-align: center; }
 .pagination-bar {
   display: flex;
   justify-content: center;

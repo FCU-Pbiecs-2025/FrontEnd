@@ -128,11 +128,12 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { forgotPassword, resetPassword } from '@/api/auth'
-import { renderReCaptchaV2, executeReCaptchaV3, resetReCaptchaV2, getReCaptchaV2Response } from '@/api/recaptcha'
+import { useRouter, useRoute } from 'vue-router'
+import { forgotPassword, resetPassword, verifyResetToken } from '@/api/auth'
+import { renderReCaptchaV2, executeReCaptchaV3, resetReCaptchaV2 } from '@/api/recaptcha'
 
 const router = useRouter()
+const route = useRoute()
 
 // 響應式數據
 const currentStep = ref(1)
@@ -157,10 +158,33 @@ const isRecaptchaValid = ref(reCaptchaVersion === 'v3') // v3 預設為有效，
 const recaptchaWidgetId = ref(null)
 const recaptchaToken = ref('')
 
-// 組件掛載時初始化 reCAPTCHA
+// 組件掛載時初始化 reCAPTCHA 並檢查網址中的 token
 onMounted(async () => {
   if (useReCaptchaV2.value) {
     await initReCaptchaV2()
+  }
+
+  // 如果 URL 包含 token 和 email，直接驗證並進入重置步驟
+  const query = route.query
+  if (query && query.token && query.email) {
+    email.value = decodeURIComponent(query.email)
+    const token = query.token
+    loading.value = true
+    errorMessage.value = ''
+    try {
+      const resp = await verifyResetToken(email.value, token)
+      if (resp && resp.success) {
+        resetToken.value = token
+        currentStep.value = 3
+      } else {
+        errorMessage.value = resp.message || '驗證失敗或連結已失效'
+      }
+    } catch (err) {
+      console.error('Verify token error:', err)
+      errorMessage.value = '驗證連結時發生錯誤'
+    } finally {
+      loading.value = false
+    }
   }
 })
 
@@ -174,13 +198,12 @@ onUnmounted(() => {
 // 初始化 reCAPTCHA v2
 const initReCaptchaV2 = async () => {
   try {
-    const widgetId = await renderReCaptchaV2(
+    recaptchaWidgetId.value = await renderReCaptchaV2(
       'recaptcha-container',
       onRecaptchaV2Success,
       'light',
       'normal'
     )
-    recaptchaWidgetId.value = widgetId
   } catch (error) {
     console.error('Failed to initialize reCAPTCHA v2:', error)
     errorMessage.value = 'reCAPTCHA 載入失敗，請重新整理頁面'
@@ -199,8 +222,7 @@ const executeReCaptchaV3Verification = async () => {
   if (!useReCaptchaV3.value) return true
 
   try {
-    const token = await executeReCaptchaV3('forgot_password')
-    recaptchaToken.value = token
+    recaptchaToken.value = await executeReCaptchaV3('forgot_password')
     return true
   } catch (error) {
     console.error('reCAPTCHA v3 execution failed:', error)
