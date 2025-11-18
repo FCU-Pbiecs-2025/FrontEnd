@@ -22,9 +22,11 @@
           <select v-model="account.org" class="form-input">
             <option value="">請選擇機構</option>
             <option value="市政府">市政府</option>
-            <option value="托育中心A">托育中心A</option>
-            <option value="托育中心B">托育中心B</option>
+            <option v-for="inst in remoteInstitutions" :key="inst.id || inst.institutionName" :value="inst.institutionName">
+              {{ inst.institutionName }}
+            </option>
           </select>
+          <div v-if="!remoteInstitutions.length" style="color:#e35d6a; font-size:0.95em; margin-top:4px;">未取得 API 資料，請檢查後端或 Console</div>
         </div>
         <div class="form-row">
           <label class="form-label">權限設定：</label>
@@ -51,9 +53,6 @@
               <span>停用</span>
             </label>
           </div>
-
-
-
         </div>
       </div>
       <div class="bottom-row">
@@ -80,6 +79,7 @@ const accountId = computed(() => {
 })
 
 const account = ref({ id: '', password: '', org: '', role: 'admin' })
+const remoteInstitutions = ref([])
 
 const isNew = computed(() => route.name === 'AdminBackendNew')
 
@@ -94,6 +94,29 @@ const loadAccount = (id) => {
   }
 }
 
+const fetchRemoteInstitutions = async () => {
+  try {
+    const res = await fetch('http://localhost:8080/institutions')
+    if (!res.ok) {
+      console.error('fetch institutions failed', res.status)
+      return
+    }
+    const data = await res.json()
+    console.log('API回傳:', data)
+    let arr = []
+    if (Array.isArray(data)) {
+      arr = data
+    } else if (Array.isArray(data.data)) {
+      arr = data.data
+    } else if (Array.isArray(data.list)) {
+      arr = data.list
+    }
+    remoteInstitutions.value = arr.filter(x => x && x.institutionName)
+  } catch (e) {
+    console.error('error fetching institutions', e)
+  }
+}
+
 onMounted(() => {
   if (accountId.value) {
     account.value.id = accountId.value
@@ -101,6 +124,7 @@ onMounted(() => {
       loadAccount(accountId.value)
     }
   }
+  fetchRemoteInstitutions()
 })
 
 const save = () => {

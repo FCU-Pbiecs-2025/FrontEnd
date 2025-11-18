@@ -48,7 +48,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in items" :key="item.id">
+            <tr v-for="item in paginatedItems" :key="item.id">
               <td class="date-cell">{{ item.id }}</td>
               <td class="date-cell">{{ item.Date }}</td>
               <td class="title-cell">{{ item.applicant }}</td>
@@ -65,6 +65,26 @@
         </table>
       </div>
 
+      <div class="pagination-row">
+        <div class="pagination-info">
+          共 {{ totalElements }} 筆資料，第 {{ currentPage }} / {{ totalPages }} 頁
+        </div>
+        <div class="pagination-controls">
+          <button class="btn small pagination-btn" :disabled="currentPage === 1 || totalPages <= 1" @click="prevPage">上一頁</button>
+          <button
+            v-for="page in pageNumbers"
+            :key="page"
+            class="btn small pagination-btn"
+            :class="{ 'btn-active': page === currentPage }"
+            :disabled="totalPages <= 1"
+            @click="goToPage(page)"
+          >
+            {{ page }}
+          </button>
+          <button class="btn small pagination-btn" :disabled="currentPage === totalPages || totalPages <= 1" @click="nextPage">下一頁</button>
+        </div>
+      </div>
+
       <div class="bottom-row" v-show="showBack">
         <button class="btn primary" @click="goBack">返回</button>
       </div>
@@ -73,8 +93,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { getApplicationsByOffset, searchApplications } from '@/api/application.js';
+
 const router = useRouter()
 const filters = ref({ institution: '', applicationId: '', applicant: '' })
 
@@ -82,15 +104,97 @@ const today = new Date();
 const pad = n => n.toString().padStart(2, '0');
 const formatDate = d => `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())}`;
 
+// 分頁設定
+const PAGE_SIZE = 10;
+const currentPage = ref(1);
+const totalPages = ref(1);
+const totalElements = ref(0);
+
 // 原始完整資料列表
-const fullList = ref([
-  { id: 'A1001', Date: formatDate(today), applicant: '王小明', institution: '幸福幼兒園', status: '待審核', type: 'public', content: '參考資料...' },
-  { id: 'A1002', Date: formatDate(today), applicant: '陳小華', institution: '快樂托育中心', status: '待審核', type: 'private', content: '參考資料...' },
-  { id: 'A1003', Date: formatDate(today), applicant: '李大明', institution: '陽光幼兒園', status: '待審核', type: 'public', content: '參考資料...' },
-  { id: 'A1004', Date: formatDate(today), applicant: '張小花', institution: '愛心托育所', status: '待審核', type: 'private', content: '參考資料...' },
-  { id: 'A1005', Date: formatDate(today), applicant: '張小花', institution: '愛心托育所', status: '待審核', type: 'private', content: '參考資料...' },
-  { id: 'A1006', Date: formatDate(today), applicant: '張小花', institution: '愛心托育所', status: '待審核', type: 'private', content: '參考資料...' }
-])
+const fullList = ref([]);
+const items = ref([]);
+
+async function fetchApplications() {
+  try {
+    const offset = (currentPage.value - 1) * PAGE_SIZE;
+    const data = await getApplicationsByOffset(offset, PAGE_SIZE);
+
+    if (data && data.content && Array.isArray(data.content)) {
+      fullList.value = data.content.map(item => ({
+        id: item.applicationID,
+        Date: item.applicationDate,
+        applicant: item.name || '未提供',
+        institution: item.institutionName || '未提供',
+        status: item.status || '未提供'
+      }));
+      items.value = [...fullList.value];
+      totalElements.value = data.totalElements || fullList.value.length;
+      totalPages.value = data.totalPages || Math.ceil(totalElements.value / PAGE_SIZE);
+    } else {
+      fullList.value = [];
+      items.value = [];
+      totalElements.value = 0;
+      totalPages.value = 1;
+    }
+  } catch (e) {
+    console.error('Failed to fetch applications:', e);
+    fullList.value = [];
+    items.value = [];
+    totalElements.value = 0;
+    totalPages.value = 1;
+  }
+}
+
+async function searchApplicationsByFilters() {
+  try {
+    const params = {
+      institutionID: filters.value.institution,
+      institutionName: '',
+      applicationID: filters.value.applicationId
+    };
+
+    const data = await searchApplications(params);
+
+    if (data && data.content && Array.isArray(data.content)) {
+      items.value = data.content.map(item => ({
+        id: item.applicationID,
+        Date: item.applicationDate,
+        applicant: item.name || '未提供',
+        institution: item.institutionName || '未提供',
+        status: item.status || '未提供'
+      }));
+      totalElements.value = data.totalElements || items.value.length;
+      totalPages.value = data.totalPages || Math.ceil(totalElements.value / PAGE_SIZE);
+    } else {
+      items.value = [];
+      totalElements.value = 0;
+      totalPages.value = 1;
+    }
+  } catch (e) {
+    console.error('Failed to search applications:', e);
+    items.value = [];
+    totalElements.value = 0;
+    totalPages.value = 1;
+  }
+}
+
+function goToPage(page) {
+  if (page < 1 || page > totalPages.value) return;
+  currentPage.value = page;
+  fetchApplications();
+}
+
+function prevPage() {
+  goToPage(currentPage.value - 1);
+}
+
+function nextPage() {
+  goToPage(currentPage.value + 1);
+}
+
+const paginatedItems = computed(() => {
+  return items.value;
+});
 
 // 機構名稱選項（去重）
 const institutionOptions = computed(() => {
@@ -99,31 +203,49 @@ const institutionOptions = computed(() => {
 })
 
 // 顯示的資料列表（初始顯示全部）
-const items = ref([...fullList.value])
+items.value = [...fullList.value]
 
 const showBack = ref(false)
 
+async function searchByApplicationId() {
+  const applicationId = filters.value.applicationId.trim();
+  if (!applicationId) {
+    alert('請輸入申請編號');
+    return;
+  }
+
+  try {
+    const res = await fetch(`http://localhost:8080/applications/${applicationId}`);
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const data = await res.json();
+
+    if (data) {
+      items.value = [{
+        id: data.applicationID,
+        Date: data.applicationDate,
+        applicant: data.name || '未提供',
+        institution: data.institutionName || '未提供',
+        status: data.status || '未提供'
+      }];
+      totalElements.value = 1;
+      totalPages.value = 1;
+    } else {
+      items.value = [];
+      totalElements.value = 0;
+      totalPages.value = 1;
+    }
+  } catch (e) {
+    console.error('Failed to fetch application by ID:', e);
+    alert('查詢失敗，請確認申請編號是否正確');
+  }
+}
+
 function search() {
-  const qId = filters.value.applicationId.trim()
-  const qApplicant = filters.value.applicant.trim()
-  const qInstitution = filters.value.institution
-
-  // 根據條件過濾資料
-  items.value = fullList.value.filter(item => {
-    // 機構名稱篩選
-    if (qInstitution && item.institution !== qInstitution) return false
-
-    // 申請編號篩選（完全匹配或包含）
-    if (qId && !item.id.toLowerCase().includes(qId.toLowerCase())) return false
-
-    // 申請戶姓名篩選（包含匹配）
-    if (qApplicant && !item.applicant.includes(qApplicant)) return false
-
-    return true
-  })
-
-  // 如果有查詢結果，則顯示返回按鈕
-  showBack.value = items.value.length > 0
+  if (filters.value.applicationId.trim()) {
+    searchByApplicationId();
+  } else {
+    fetchApplications();
+  }
 }
 
 function openDetail(item) {
@@ -139,6 +261,10 @@ function goBack() {
   // 隱藏返回按鈕
   showBack.value = false
 }
+
+onMounted(() => {
+  fetchApplications();
+});
 </script>
 
 <style scoped>
@@ -172,5 +298,53 @@ function goBack() {
 .action-cell { text-align:left }
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
 .bottom-row { display:flex; justify-content:center; gap:12px; margin-top:10vh; }
+.pagination-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: 30px 0;
+  padding: 20px;
+  background: #fff;
+  border: 2px solid #e6f3ff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.pagination-info {
+  font-size: 1rem;
+  color: #2e6fb7;
+  font-weight: 600;
+}
+.pagination-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.pagination-btn {
+  min-width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  background: #fff;
+  color: #2e6fb7;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.pagination-btn:hover:not(:disabled) {
+  background: #f6f8fa;
+  border-color: #2e6fb7;
+}
+.pagination-btn:disabled {
+  background: #f6f8fa;
+  color: #8b949e;
+  cursor: not-allowed;
+  border-color: #d0d7de;
+}
+.btn-active {
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+}
 @media (max-width:900px){ .announcement-card{ width:100%; padding:16px } .date-input{ width:100px } .query-row{ width:100%; flex: 0 0 100%; } }
 </style>
