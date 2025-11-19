@@ -24,3 +24,20 @@ export const searchApplications = async (params) => {
         throw error;
     }
 };
+
+// 新增：透過申請編號取得單一申請資料
+// 透過申請編號與身分證取得單一申請資料（POST，參數放在 body，API url 改為 /applications/search）
+export const getApplicationById = async (id, nationalID) => {
+    if (!id && id !== 0) {
+        throw new Error('缺少 application id');
+    }
+    const url = '/applications/search';
+    const body = { applicationId: id, nationalID };
+    try {
+        const response = await http.post(url, body);
+        return response.data;
+    } catch (error) {
+        console.error(`獲取申請 ${id} 失敗:`, error);
+        throw error;
+    }
+};

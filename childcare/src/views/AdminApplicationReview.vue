@@ -42,6 +42,7 @@
               <th>申請編號</th>
               <th>申請日期</th>
               <th>申請人</th>
+              <th>幼兒姓名</th>
               <th>機構</th>
               <th>狀態</th>
               <th>操作</th>
@@ -52,6 +53,7 @@
               <td class="date-cell">{{ item.id }}</td>
               <td class="date-cell">{{ item.Date }}</td>
               <td class="title-cell">{{ item.applicant }}</td>
+              <td class="title-cell">{{ item.childName }}</td>
               <td class="title-cell">{{ item.institution }}</td>
               <td class="title-cell">{{ item.status }}</td>
               <td class="action-cell">
@@ -59,7 +61,7 @@
               </td>
             </tr>
             <tr v-if="items.length === 0">
-              <td colspan="6" class="empty-tip">目前沒有符合條件的申請</td>
+              <td colspan="7" class="empty-tip">目前沒有符合條件的申請</td>
             </tr>
           </tbody>
         </table>
@@ -95,14 +97,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getApplicationsByOffset, searchApplications } from '@/api/application.js';
+import { getApplicationsByOffset, searchApplications, getApplicationById } from '@/api/application.js';
 
 const router = useRouter()
 const filters = ref({ institution: '', applicationId: '', applicant: '' })
-
-const today = new Date();
-const pad = n => n.toString().padStart(2, '0');
-const formatDate = d => `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())}`;
 
 // 分頁設定
 const PAGE_SIZE = 10;
@@ -120,16 +118,19 @@ async function fetchApplications() {
     const data = await getApplicationsByOffset(offset, PAGE_SIZE);
 
     if (data && data.content && Array.isArray(data.content)) {
-      fullList.value = data.content.map(item => ({
+      // 只保留 participantType === '0' 的所有資料（不去重）
+      const filtered = data.content.filter(item => String(item.participantType) === '0');
+      fullList.value = filtered.map(item => ({
         id: item.applicationID,
         Date: item.applicationDate,
         applicant: item.name || '未提供',
+        childName: item.pname || '未提供',
         institution: item.institutionName || '未提供',
         status: item.status || '未提供'
       }));
       items.value = [...fullList.value];
-      totalElements.value = data.totalElements || fullList.value.length;
-      totalPages.value = data.totalPages || Math.ceil(totalElements.value / PAGE_SIZE);
+      totalElements.value = fullList.value.length;
+      totalPages.value = Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE));
     } else {
       fullList.value = [];
       items.value = [];
@@ -152,19 +153,19 @@ async function searchApplicationsByFilters() {
       institutionName: '',
       applicationID: filters.value.applicationId
     };
-
     const data = await searchApplications(params);
-
     if (data && data.content && Array.isArray(data.content)) {
-      items.value = data.content.map(item => ({
+      const filtered = data.content.filter(item => String(item.participantType) === '0');
+      items.value = filtered.map(item => ({
         id: item.applicationID,
         Date: item.applicationDate,
         applicant: item.name || '未提供',
+        childName: item.pname || '未提供',
         institution: item.institutionName || '未提供',
         status: item.status || '未提供'
       }));
-      totalElements.value = data.totalElements || items.value.length;
-      totalPages.value = data.totalPages || Math.ceil(totalElements.value / PAGE_SIZE);
+      totalElements.value = items.value.length;
+      totalPages.value = Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE));
     } else {
       items.value = [];
       totalElements.value = 0;
@@ -175,6 +176,58 @@ async function searchApplicationsByFilters() {
     items.value = [];
     totalElements.value = 0;
     totalPages.value = 1;
+  }
+}
+
+async function searchByApplicationId() {
+  const applicationId = filters.value.applicationId.trim();
+  if (!applicationId) {
+    alert('請輸入申請編號');
+    return;
+  }
+  try {
+    const data = await getApplicationById(applicationId);
+    let children = [];
+    if (data && Array.isArray(data.children)) {
+      children = data.children.filter(p => String(p.participantType) === '0');
+    }
+    if (data && Array.isArray(data.participants)) {
+      children = children.concat(data.participants.filter(p => String(p.participantType) === '0'));
+    }
+    // 若頂層本身就是 participantType === '0'
+    if (data && String(data.participantType) === '0') {
+      children.push(data);
+    }
+    // 去重（以 nationalID 做 key，避免重複）
+    const uniqueMap = new Map();
+    children.forEach(child => {
+      if (child.nationalID && !uniqueMap.has(child.nationalID)) {
+        uniqueMap.set(child.nationalID, child);
+      } else if (!child.nationalID) {
+        // 沒有 nationalID 用物件引用去重
+        uniqueMap.set(Math.random().toString(36), child);
+      }
+    });
+    const uniqueChildren = Array.from(uniqueMap.values());
+    if (uniqueChildren.length > 0) {
+      items.value = uniqueChildren.map(child => ({
+        id: data.applicationId || data.applicationID,
+        Date: data.applicationDate,
+        applicant: data.name || '未提供',
+        childName: child.pname || '未提供',
+        institution: data.institutionName || '未提供',
+        status: child.status || data.status || '未提供'
+      }));
+      totalElements.value = items.value.length;
+      totalPages.value = 1;
+    } else {
+      items.value = [];
+      totalElements.value = 0;
+      totalPages.value = 1;
+    }
+  } catch (e) {
+    console.error('Failed to fetch application by ID:', e);
+    alert('查詢失敗，請確認申請編號是否正確');
   }
 }
 
@@ -207,44 +260,11 @@ items.value = [...fullList.value]
 
 const showBack = ref(false)
 
-async function searchByApplicationId() {
-  const applicationId = filters.value.applicationId.trim();
-  if (!applicationId) {
-    alert('請輸入申請編號');
-    return;
-  }
-
-  try {
-    const res = await fetch(`http://localhost:8080/applications/${applicationId}`);
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-    const data = await res.json();
-
-    if (data) {
-      items.value = [{
-        id: data.applicationID,
-        Date: data.applicationDate,
-        applicant: data.name || '未提供',
-        institution: data.institutionName || '未提供',
-        status: data.status || '未提供'
-      }];
-      totalElements.value = 1;
-      totalPages.value = 1;
-    } else {
-      items.value = [];
-      totalElements.value = 0;
-      totalPages.value = 1;
-    }
-  } catch (e) {
-    console.error('Failed to fetch application by ID:', e);
-    alert('查詢失敗，請確認申請編號是否正確');
-  }
-}
-
 function search() {
   if (filters.value.applicationId.trim()) {
     searchByApplicationId();
   } else {
-    fetchApplications();
+    searchApplicationsByFilters();
   }
 }
 

@@ -11,23 +11,31 @@
         <div class="detail-info">
           <div class="info-row">
             <label class="info-label">申請編號：</label>
-            <span class="info-value">{{ applicationData.id }}</span>
+            <span class="info-value">{{ applicationData.applicationId }}</span>
           </div>
           <div class="info-row">
             <label class="info-label">申請日期：</label>
-            <span class="info-value">{{ applicationData.Date }}</span>
-          </div>
-          <div class="info-row">
-            <label class="info-label">申請人：</label>
-            <span class="info-value">{{ applicationData.applicant }}</span>
+            <span class="info-value">{{ applicationData.applicationDate }}</span>
           </div>
           <div class="info-row">
             <label class="info-label">機構：</label>
-            <span class="info-value">{{ applicationData.institution }}</span>
+            <span class="info-value">{{ applicationData.institutionName }}</span>
           </div>
           <div class="info-row">
             <label class="info-label">當前狀態：</label>
             <span class="info-value">{{ applicationData.status }}</span>
+          </div>
+          <div class="info-row">
+            <label class="info-label">審核日期：</label>
+            <span class="info-value">{{ applicationData.reviewDate }}</span>
+          </div>
+          <div class="info-row">
+            <label class="info-label">審核員：</label>
+            <span class="info-value">{{ applicationData.reviewer }}</span>
+          </div>
+          <div class="info-row">
+            <label class="info-label">備註說明：</label>
+            <span class="info-value">{{ applicationData.reason }}</span>
           </div>
         </div>
       </div>
@@ -42,18 +50,20 @@
           <div v-show="parentOpen" class="collapse-content">
             <template v-for="(parent, idx) in parentList" :key="idx">
               <div class="parent-title">家長資料{{ idx + 1 }}</div>
-              <div class="info-row"><label class="info-label">身分證字號/護照號碼：</label><span class="info-value">{{ parent.id }}</span></div>
+              <div class="info-row"><label class="info-label">身分證字號/護照號碼：</label><span class="info-value">{{ parent.nationalID }}</span></div>
               <div class="info-row"><label class="info-label">姓名：</label><span class="info-value">{{ parent.name }}</span></div>
               <div class="info-row"><label class="info-label">性別：</label><span class="info-value">{{ parent.gender }}</span></div>
-              <div class="info-row"><label class="info-label">與幼兒關係：</label><span class="info-value">{{ parent.relation }}</span></div>
-              <div class="info-row"><label class="info-label">職業：</label><span class="info-value">{{ parent.job }}</span></div>
-              <div class="info-row"><label class="info-label">電話：</label><span class="info-value">{{ parent.phone }}</span></div>
-              <div class="info-row"><label class="info-label">戶籍地址：</label><span class="info-value">{{ parent.householdAddr }}</span></div>
-              <div class="info-row"><label class="info-label">通訊地址：</label><span class="info-value">{{ parent.contactAddr }}</span></div>
+              <div class="info-row"><label class="info-label">與幼兒關係：</label><span class="info-value">{{ parent.relationShip }}</span></div>
+              <div class="info-row"><label class="info-label">職業：</label><span class="info-value">{{ parent.occupation }}</span></div>
+              <div class="info-row"><label class="info-label">電話：</label><span class="info-value">{{ parent.phoneNumber }}</span></div>
+              <div class="info-row"><label class="info-label">戶籍地址：</label><span class="info-value">{{ parent.householdAddress }}</span></div>
+              <div class="info-row"><label class="info-label">通訊地址：</label><span class="info-value">{{ parent.mailingAddress }}</span></div>
               <div class="info-row"><label class="info-label">電子信箱：</label><span class="info-value">{{ parent.email }}</span></div>
-              <div class="info-row"><label class="info-label">出生年月日：</label><span class="info-value">{{ parent.birth }}</span></div>
-              <div class="info-row"><label class="info-label">是否留停：</label><span class="info-value">{{ parent.suspend }}</span></div>
+              <div class="info-row"><label class="info-label">出生年月日：</label><span class="info-value">{{ parent.birthDate }}</span></div>
+              <div class="info-row"><label class="info-label">是否留停：</label><span class="info-value">{{ parent.isSuspended ? '是' : '否' }}</span></div>
               <div class="info-row"><label class="info-label">留停訖：</label><span class="info-value">{{ parent.suspendEnd }}</span></div>
+              <div class="info-row"><label class="info-label">狀態：</label><span class="info-value">{{ parent.status }}</span></div>
+              <div class="info-row"><label class="info-label">備註：</label><span class="info-value">{{ parent.reason }}</span></div>
               <hr v-if="idx !== parentList.length - 1" />
             </template>
           </div>
@@ -68,12 +78,25 @@
         </div>
         <transition name="collapse">
           <div v-show="childOpen" class="collapse-content">
-            <div class="info-row"><label class="info-label">身分證字號：</label><span class="info-value">{{ childData.id }}</span></div>
-            <div class="info-row"><label class="info-label">姓名：</label><span class="info-value">{{ childData.name }}</span></div>
-            <div class="info-row"><label class="info-label">性別：</label><span class="info-value">{{ childData.gender }}</span></div>
-            <div class="info-row"><label class="info-label">出生年月日：</label><span class="info-value">{{ childData.birth }}</span></div>
-            <div class="info-row"><label class="info-label">年齡：</label><span class="info-value">{{ childData.age }}</span></div>
-            <div class="info-row"><label class="info-label">戶籍地址：</label><span class="info-value">{{ childData.householdAddr }}</span></div>
+            <template v-for="(child, idx) in childList" :key="idx">
+              <div class="parent-title">幼兒資料{{ idx + 1 }}</div>
+              <div class="info-row"><label class="info-label">身分證字號：</label><span class="info-value">{{ child.nationalID }}</span></div>
+              <div class="info-row"><label class="info-label">姓名：</label><span class="info-value">{{ child.name }}</span></div>
+              <div class="info-row"><label class="info-label">性別：</label><span class="info-value">{{ child.gender }}</span></div>
+              <div class="info-row"><label class="info-label">與家長關係：</label><span class="info-value">{{ child.relationShip }}</span></div>
+              <div class="info-row"><label class="info-label">職業：</label><span class="info-value">{{ child.occupation }}</span></div>
+              <div class="info-row"><label class="info-label">電話：</label><span class="info-value">{{ child.phoneNumber }}</span></div>
+              <div class="info-row"><label class="info-label">戶籍地址：</label><span class="info-value">{{ child.householdAddress }}</span></div>
+              <div class="info-row"><label class="info-label">通訊地址：</label><span class="info-value">{{ child.mailingAddress }}</span></div>
+              <div class="info-row"><label class="info-label">電子信箱：</label><span class="info-value">{{ child.email }}</span></div>
+              <div class="info-row"><label class="info-label">出生年月日：</label><span class="info-value">{{ child.birthDate }}</span></div>
+              <div class="info-row"><label class="info-label">年齡：</label><span class="info-value">{{ child.age }}</span></div>
+              <div class="info-row"><label class="info-label">是否留停：</label><span class="info-value">{{ child.isSuspended ? '是' : '否' }}</span></div>
+              <div class="info-row"><label class="info-label">留停訖：</label><span class="info-value">{{ child.suspendEnd }}</span></div>
+              <div class="info-row"><label class="info-label">狀態：</label><span class="info-value">{{ child.status }}</span></div>
+              <div class="info-row"><label class="info-label">備註：</label><span class="info-value">{{ child.reason }}</span></div>
+              <hr v-if="idx !== childList.length - 1" />
+            </template>
           </div>
         </transition>
       </div>
@@ -112,73 +135,35 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { getApplicationById } from '@/api/application.js'
 
 const router = useRouter()
 const route = useRoute()
 
 const applicationId = ref(route.params.id)
 const applicationData = ref({})
-const reviewDate = ref(new Date().toISOString().slice(0, 10))
+const reviewDate = ref('')
 const reviewResult = ref('')
 const reviewNote = ref('')
 const parentOpen = ref(false)
 const childOpen = ref(false)
-const parentList = ref([
-  {
-    id: 'A123456789',
-    name: '王媽媽',
-    gender: '女',
-    relation: '母',
-    job: '教師',
-    phone: '0912-345678',
-    householdAddr: '台北市中正區仁愛路1號',
-    contactAddr: '台北市中正區信義路2號',
-    email: 'parent1@example.com',
-    birth: '1985/03/21',
-    suspend: '否',
-    suspendEnd: ''
-  },
-  {
-    id: 'A987654321',
-    name: '王爸爸',
-    gender: '男',
-    relation: '父',
-    job: '工程師',
-    phone: '0922-876543',
-    householdAddr: '台北市中正區仁愛路1號',
-    contactAddr: '台北市中正區信義路2號',
-    email: 'parent2@example.com',
-    birth: '1982/07/15',
-    suspend: '否',
-    suspendEnd: ''
-  }
-])
-const childData = ref({
-  id: 'B987654321',
-  name: '王小明',
-  gender: '男',
-  birth: '2020/05/10',
-  householdAddr: '台北市中正區仁愛路1號'
-})
+const parentList = ref([])
+const childList = ref([])
 
 // 計算幼兒年齡
 function getChildAge(birthDate) {
-  // 支援 yyyy/MM/dd 或 yyyy-MM-dd
+  if (!birthDate) return '';
   let birthArr = birthDate.includes('/') ? birthDate.split('/') : birthDate.split('-');
   let birthYear = parseInt(birthArr[0]);
   let birthMonth = parseInt(birthArr[1]);
   let birthDay = parseInt(birthArr[2]);
-  // 固定現在日期為 2025/10/27
   let nowYear = 2025;
   let nowMonth = 10;
   let nowDay = 27;
-  // 計算總月數
   let totalMonths = (nowYear - birthYear) * 12 + (nowMonth - birthMonth);
-  // 計算本月剩餘天數
   let days = nowDay - birthDay;
   if (days < 0) {
     totalMonths--;
-    // 取得上個月天數
     let prevMonth = nowMonth - 1;
     let prevYear = nowYear;
     if (prevMonth === 0) {
@@ -194,321 +179,171 @@ function getChildAge(birthDate) {
   return `${years}歲${months}月${weeks}周`;
 }
 
+onMounted(async () => {
+  // 取得申請資料
+  const response = await getApplicationById(applicationId.value)
+  applicationData.value = response // 直接賦值，不用 response.data
 
-// 模擬資料 - 實際應用中這裡會從 API 獲取資料
-const mockData = {
-  'A1001': {
-    id: 'A1001', Date: '2025/10/17', applicant: '王小明', institution: '幸福幼兒園', status: '待審核', type: 'public', content: '參考資料...',
-    child: {
-      id: 'B1001', name: '王小明', gender: '男', birth: '2020/05/10', householdAddr: '台北市中正區仁愛路1號', age: getChildAge('2020/05/10')
-    }
-  },
-  'A1002': {
-    id: 'A1002', Date: '2025/10/17', applicant: '陳小華', institution: '快樂托育中心', status: '待審核', type: 'private', content: '參考資料...',
-    child: {
-      id: 'B1002', name: '陳小華', gender: '女', birth: '2021/03/15', householdAddr: '台中市西屯區幸福路2號', age: getChildAge('2021/03/15')
-    }
-  },
-  'A1003': {
-    id: 'A1003', Date: '2025/10/17', applicant: '李大明', institution: '陽光幼兒園', status: '已通過', type: 'public', content: '參考資料...',
-    child: {
-      id: 'B1003', name: '李大明', gender: '男', birth: '2019/12/01', householdAddr: '高雄市鼓山區明誠路3號', age: getChildAge('2019/12/01')
-    }
-  },
-  'A1004': {
-    id: 'A1004', Date: '2025/10/17', applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...',
-    child: {
-      id: 'B1004', name: '張小花', gender: '女', birth: '2022/08/20', householdAddr: '新竹市東區光復路4號', age: getChildAge('2022/08/20')
-    }
-  },
-  'A1005': {
-    id: 'A1005', Date: '2025/10/17', applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...',
-    child: {
-      id: 'B1005', name: '張小花', gender: '女', birth: '2023/01/05', householdAddr: '新竹市東區光復路4號', age: getChildAge('2023/01/05')
-    }
-  },
-  'A1006': {
-    id: 'A1006', Date: '2025/10/17', applicant: '張小花', institution: '愛心托育所', status: '已退件', type: 'private', content: '參考資料...',
-    child: {
-      id: 'B1006', name: '張小花', gender: '女', birth: '2024/06/30', householdAddr: '新竹市東區光復路4號', age: getChildAge('2024/06/30')
-    }
+  // 處理家長資料
+  if (applicationData.value.parents && applicationData.value.parents.length > 0) {
+    parentList.value = applicationData.value.parents
   }
-}
 
-onMounted(() => {
-  // 載入申請資料
-  if (mockData[applicationId.value]) {
-    applicationData.value = { ...mockData[applicationId.value] }
-    // 幼兒資料同步 mockData.child
-    childData.value = { ...mockData[applicationId.value].child }
-    // 如果已有審核記錄，載入之前的審核資料
-    if (applicationData.value.reviewDate) {
-      reviewDate.value = applicationData.value.reviewDate
-    }
-    if (applicationData.value.reviewNote) {
-      reviewNote.value = applicationData.value.reviewNote
-    }
-  } else {
-    // 如果找不到資料，返回列表頁
-    router.push('/admin/application-review')
-  }
-  // 若 childData 沒有 age，則補算一次
-  if (!childData.value.age) {
-    childData.value.age = getChildAge(childData.value.birth)
+  // 處理幼兒資料
+  if (applicationData.value.children && applicationData.value.children.length > 0) {
+    childList.value = applicationData.value.children
+    childList.value.forEach(child => {
+      child.age = getChildAge(child.birthDate)
+    })
   }
 })
-
-function confirmReview() {
-  if (!reviewResult.value) {
-    alert('請選擇審核結果')
-    return
-  }
-
-  // 這裡應該發送 API 請求保存審核結果
-  console.log('審核資料:', {
-    applicationId: applicationId.value,
-    reviewDate: reviewDate.value,
-    reviewResult: reviewResult.value,
-    reviewNote: reviewNote.value
-  })
-
-  alert('審核完成！')
-  goBack()
-}
-
-function goBack() {
-  router.push('/admin/application-review')
-}
 </script>
 
 <style scoped>
 .announcement-page {
   display: flex;
   justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f4f4f9;
 }
 
 .announcement-card {
-  max-width: 820px;
-  min-width: 85%;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  width: 90%;
+  max-width: 800px;
+  padding: 24px;
 }
 
 .title-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
-  margin-top: 60px;
+  margin-bottom: 24px;
 }
 
 .icon {
-  width: 32px;
-  height: 32px;
+  width: 48px;
+  height: 48px;
+  margin-right: 16px;
 }
 
 .main-title {
-  font-size: 1.35rem;
-  color: #2e6fb7;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
 }
 
 .detail-card, .review-card {
-  background: #fff;
-  border: 1px solid #e6e6ea;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 30px;
-  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.04);
+  background-color: #f9f9fb;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
 }
 
-.detail-card h3, .review-card h3 {
-  color: #2e6fb7;
-  font-size: 1.2rem;
-  margin-bottom: 20px;
-  border-bottom: 2px solid #e6f2ff;
-  padding-bottom: 10px;
-}
-
-.detail-info {
-  display: grid;
-  gap: 16px;
+.detail-info, .review-form {
+  display: flex;
+  flex-direction: column;
 }
 
 .info-row {
   display: flex;
-  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
 }
 
 .info-label {
-  width: 120px;
-  font-weight: 600;
-  color: #2e6fb7;
+  font-weight: 500;
+  color: #555;
 }
 
 .info-value {
-  color: #334e5c;
-  font-weight: 500;
-}
-
-.review-form {
-  display: grid;
-  gap: 20px;
-}
-
-.form-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.form-label {
-  width: 120px;
-  font-weight: 600;
-  color: #2e6fb7;
-  margin-top: 8px;
-}
-
-.form-input {
-  flex: 1;
-  padding: 12px 16px;
-  border-radius: 8px;
-  border: 1px solid #d8dbe0;
-  font-size: 1rem;
-  transition: border-color 0.2s;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #2e6fb7;
-  box-shadow: 0 0 0 2px rgba(46, 111, 183, 0.1);
-}
-
-.form-input[type="date"] {
-  width: 200px;
-}
-
-select.form-input {
-  width: 200px;
-}
-
-textarea.form-input {
-  resize: vertical;
-  min-height: 120px;
-}
-
-.bottom-row {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin-top: 40px;
-}
-
-.btn {
-  padding: 12px 24px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 1rem;
-  transition: all 0.2s;
-}
-
-.btn.primary {
-  background: linear-gradient(90deg, #3b82f6, #2563eb);
-  color: #fff;
-}
-
-.btn.primary:hover {
-  background: linear-gradient(90deg, #2563eb, #1d4ed8);
-}
-
-.btn.query {
-  background: #e6f2ff;
-  color: #2e6fb7;
-  border: 1px solid #b3d4fc;
-}
-
-.btn.query:hover {
-  background: #d1e7ff;
+  font-weight: 400;
+  color: #333;
 }
 
 .collapse-card {
-  background: #fff;
-  border: 1px solid #e6e6ea;
-  border-radius: 12px;
-  margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.04);
+  margin-bottom: 16px;
 }
+
 .collapse-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
-  padding: 18px 24px;
-  font-weight: 600;
-  color: #2e6fb7;
-  font-size: 1.1rem;
-  border-bottom: 1px solid #e6f2ff;
+  padding: 12px;
+  background-color: #e9ecef;
+  border-radius: 8px;
 }
+
 .collapse-title {
-  letter-spacing: 1px;
+  font-weight: 500;
+  color: #333;
 }
+
 .collapse-toggle {
-  font-size: 1.2rem;
+  font-size: 18px;
+  color: #777;
 }
+
 .collapse-content {
-  padding: 18px 24px;
-  animation: fadeIn 0.3s;
+  padding: 0 12px 12px;
 }
-.collapse-enter-active, .collapse-leave-active {
-  transition: max-height 0.3s cubic-bezier(.4,0,.2,1);
-}
-.collapse-enter-from, .collapse-leave-to {
-  max-height: 0;
-  overflow: hidden;
-}
-.collapse-enter-to, .collapse-leave-from {
-  max-height: 300px;
-  overflow: hidden;
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+
 .parent-title {
-  font-weight: bold;
-  color: #2e6fb7;
+  font-weight: 500;
+  color: #007bff;
+  margin: 16px 0 8px;
+}
+
+.review-card {
+  background-color: #f9f9fb;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+.form-label {
+  font-weight: 500;
+  color: #555;
   margin-bottom: 8px;
-  margin-top: 12px;
 }
-hr {
+
+.form-input {
+  padding: 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 16px;
+  color: #333;
+}
+
+.btn {
+  padding: 12px 24px;
   border: none;
-  border-top: 1px solid #e6e6ea;
-  margin: 16px 0;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
 }
 
-@media (max-width: 900px) {
-  .announcement-card {
-    width: 100%;
-    padding: 16px;
-  }
+.btn.primary {
+  background-color: #007bff;
+  color: #fff;
+}
 
-  .detail-card, .review-card {
-    padding: 16px;
-  }
+.btn.query {
+  background-color: #6c757d;
+  color: #fff;
+}
 
-  .form-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .form-label {
-    width: auto;
-    margin-top: 0;
-    margin-bottom: 8px;
-  }
-
-  .form-input[type="date"], select.form-input {
-    width: 100%;
-  }
+.bottom-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
 }
 </style>
