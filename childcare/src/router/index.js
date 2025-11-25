@@ -292,13 +292,15 @@ const routes = [
                 path: 'application-revoke',
                 name: 'AdminApplicationRevoke',
                 component: () => import('../views/AdminApplicationRevoke.vue'),
-                meta: { breadcrumb: '撤銷審核' }
-            },
-            {
-                path: 'application-revoke/:id/edit',
-                name: 'AdminApplicationRevokeEdit',
-                component: () => import('../views/AdminApplicationRevokeEdit.vue'),
-                meta: { breadcrumb: '撤銷審核編輯' }
+                meta: { breadcrumb: '撤銷審核' },
+                children: [
+                    {
+                        path: ':id/edit',
+                        name: 'AdminApplicationRevokeEdit',
+                        component: () => import('../views/AdminApplicationRevokeEdit.vue'),
+                        meta: { breadcrumb: '撤銷審核編輯' }
+                    }
+                ]
             },
             {
                 path: 'class',
