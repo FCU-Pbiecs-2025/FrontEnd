@@ -281,7 +281,7 @@ const routes = [
                 meta: { breadcrumb: '個案管理' },
                 children: [
                     {
-                        path: ':id/edit',
+                        path: ':childNationalId/edit',
                         name: 'AdminCaseManagementEdit',
                         component: () => import('../views/AdminCaseManagementEdit.vue'),
                         meta: { breadcrumb: '個案管理編輯' }

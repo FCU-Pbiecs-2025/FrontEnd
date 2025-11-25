@@ -84,9 +84,14 @@
               <label>身分證</label>
               <input v-model="form.applicant.id" type="text" :disabled="sameAsMember.applicant" />
             </div>
+<!--            新增性別欄位-->
             <div class="form-row">
-              <label>戶籍地址</label>
-              <input v-model="form.applicant.homeAddress" type="text" :disabled="sameAsMember.applicant" />
+              <label>性別</label>
+              <select v-model="form.applicant.gender" :disabled="sameAsMember.applicant">
+                <option value="">請選擇</option>
+                <option value="男">男</option>
+                <option value="女">女</option>
+              </select>
             </div>
             <div class="form-row">
               <label>通訊地址</label>
@@ -277,8 +282,20 @@
         <label style="min-width: 120px;">申請之身分別</label>
         <select v-model="identityTypeSelect" class="agency-select">
           <option value="">請選擇申請之身分別</option>
-          <option value="低收入戶">低收入戶</option>
-          <option value="中低收入戶">中低收入戶</option>
+          <optgroup label="第一序位（名額為總收托人數20%）">
+            <option value="弱勢家庭(含低收入戶、中低收入戶、危機家庭、特殊境遇家庭或經濟困難未成年父母)">1. 弱勢家庭(含低收入戶、中低收入戶、危機家庭、特殊境遇家庭或經社工評估有經濟困難未成年父母)</option>
+            <option value="具原住民身分之嬰幼兒">2. 具原住民身分之嬰幼兒</option>
+            <option value="發展遲緩或持有輕度身心障礙證明之嬰幼兒">3. 發展遲緩或持有輕度身心障礙證明之嬰幼兒</option>
+            <option value="嬰幼兒其手足或父母或監護人之一為中度以上身心障礙者">4. 嬰幼兒其手足或父母或監護人之一為中度以上身心障礙者</option>
+            <option value="家庭內育有雙胞胎或三位以上同胞子女之家庭">5. 家庭內育有雙胞胎或三位以上同胞子女之家庭</option>
+          </optgroup>
+          <optgroup label="第二序位（名額為總收托人數10%）">
+            <option value="該公共托育機構員工之子女">1. 該公共托育機構員工之子女</option>
+            <option value="提供辦理該公共托育機構場地之學校教職員工之子女">2. 提供辦理該公共托育機構場地之學校教職員工之子女</option>
+          </optgroup>
+          <optgroup label="第三序位">
+            <option value="設籍本縣一般家庭嬰幼兒">設籍本縣一般家庭嬰幼兒</option>
+          </optgroup>
         </select>
         <h2 class="upload-title">上傳身份附件</h2>
         <div class="notice-card">

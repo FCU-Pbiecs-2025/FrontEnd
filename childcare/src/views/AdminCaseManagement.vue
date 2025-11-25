@@ -62,6 +62,7 @@
               <th>案件編號</th>
               <th>申請日期</th>
               <th>機構</th>
+              <th>申請人資訊</th>
               <th>幼兒資訊</th>
               <th>候補序號</th>
               <th>狀態</th>
@@ -72,7 +73,16 @@
             <tr v-for="item in resultItems" :key="item.id">
               <td class="date-cell">{{ item.id }}</td>
               <td class="date-cell">{{ item.applyDate }}</td>
-              <td class="title-cell">{{ item.institution }}</td>
+              <td class="title-cell">
+                <div>{{ item.institution }}</div>
+                <div>{{item.className}}</div>
+              </td>
+              <td>
+                <div class="user-col">
+                  <div class="user-row"><span>{{ item.applicantName || '-' }}</span></div>
+                  <div class="user-row"><span>{{ item.applicantId || '-' }}</span></div>
+                </div>
+              </td>
               <td>
                 <div class="child-col">
                   <div class="child-row"><span>{{ item.childName || '-' }}</span></div>
@@ -82,7 +92,7 @@
               <td class="title-cell">{{ item.queueNo ?? '—' }}</td>
               <td class="title-cell">{{ item.status }}</td>
               <td class="action-cell">
-                <RouterLink :to="{ name: 'AdminCaseManagementEdit', params: { id: item.id } }" class="btn small">管理</RouterLink>
+                <RouterLink :to="{ name: 'AdminCaseManagementEdit', params: { childNationalId: item.childNationalId } }" class="btn small" :disabled="!item.childNationalId">管理</RouterLink>
               </td>
             </tr>
             <tr v-if="resultItems.length === 0">
@@ -104,38 +114,21 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getInstitutionsSimpleAll } from '@/api/Institution'
+import { getClassNamesByInstitutionId } from '@/api/class'
+import { getApplicationsCasesList, IDENTITY_TYPE_MAP, CASE_STATUS_MAP } from '@/api/application'
 
 const route = useRoute()
+const router = useRouter()
 const isEditing = computed(() => route.name === 'AdminCaseManagementEdit')
 
-// 狀態常數
-const STATUS = {
-  processing: '審核中',
-  supplement: '需要補件',
-  rejected: '已退件',
-  waitingForAdmission: '錄取候補中',
-  revokeProcessing: '撤銷申請審核中',
-  revoked: '撤銷申請通過',
-  admitted: '已錄取',
-  withdrawn: '已退托',
-}
-
-// Base list
-const items = ref([
-  { id: 'C1001', applyDate: '2025/10/01', institution: '幸福幼兒園', status: STATUS.waitingForAdmission, identityType: '中低收入戶', className: '小班', applicantId: 'A123456789', childName: '小寶', childBirth: '2022-03-15', queueNo: 12 },
-  { id: 'C1002', applyDate: '2025/10/05', institution: '快樂托育中心', status: STATUS.admitted, identityType: '一般', className: '中班', applicantId: 'D223456789', childName: '小美', childBirth: '2021-07-20', queueNo: null },
-  { id: 'C1003', applyDate: '2025/09/20', institution: '幸福幼兒園', status: STATUS.processing, identityType: '低收入戶', className: '大班', applicantId: 'B123456789', childName: '小明', childBirth: '2020-12-01', queueNo: null },
-  { id: 'C1004', applyDate: '2025/09/25', institution: '快樂托育中心', status: STATUS.supplement, identityType: '一般', className: '小班', applicantId: 'C123456789', childName: '小華', childBirth: '2022-01-10', queueNo: null },
-  { id: 'C1005', applyDate: '2025/09/28', institution: '幸福幼兒園', status: STATUS.rejected, identityType: '中低收入戶', className: '中班', applicantId: 'E123456789', childName: '小強', childBirth: '2021-05-05', queueNo: null },
-  { id: 'C1006', applyDate: '2025/10/10', institution: '快樂托育中心', status: STATUS.revokeProcessing, identityType: '一般', className: '大班', applicantId: 'F123456789', childName: '小美', childBirth: '2020-11-11', queueNo: null },
-  { id: 'C1007', applyDate: '2025/10/12', institution: '幸福幼兒園', status: STATUS.revoked, identityType: '低收入戶', className: '小班', applicantId: 'G123456789', childName: '小安', childBirth: '2022-04-22', queueNo: null },
-  { id: 'C1008', applyDate: '2025/10/15', institution: '快樂托育中心', status: STATUS.withdrawn, identityType: '一般', className: '中班', applicantId: 'H123456789', childName: '小新', childBirth: '2021-09-09', queueNo: null }
-])
+// Base list - 從 API 加載
+const items = ref([])
 
 // Result list (shown in table)
-const resultItems = ref([...items.value])
+const resultItems = ref([])
 
 // Query fields
 const qAgency = ref('')
@@ -146,32 +139,88 @@ const qIdentity = ref('')
 const qStatus = ref('')
 
 // Options
-const agencyOptions = computed(() => Array.from(new Set(items.value.map(i => i.institution))))
-const classOptions = computed(() => {
-  if (!qAgency.value) return []
-  const list = items.value.filter(i => i.institution === qAgency.value).map(i => i.className)
-  return Array.from(new Set(list)).filter(Boolean)
-})
-const identityOptions = ref(['一般', '中低收入戶', '低收入戶'])
-const statusOptions = ref(Object.values(STATUS))
+const agencyList = ref([]) // 從 API 載入的機構列表
+const agencyOptions = computed(() => agencyList.value.map(a => a.institutionName))
+
+// 建立機構名稱 -> ID 的映射
+const getInstitutionIdByName = (name) => {
+  const institution = agencyList.value.find(a => a.institutionName === name)
+  return institution ? institution.institutionID : null
+}
+
+// 建立班級名稱 -> ID 的映射
+const getClassIdByName = (name) => {
+  const classItem = classList.value.find(c => c.className === name)
+  if (classItem) {
+    return classItem.classId || classItem.id
+  }
+  return null
+}
+
+// 班級列表 - 從 API 動態加載
+const classList = ref([])
+const classOptions = computed(() => classList.value.map(c => c.className))
+
+const identityOptions = ref(Object.values(IDENTITY_TYPE_MAP))
+const statusOptions = ref(Object.values(CASE_STATUS_MAP))
 
 const showBack = ref(false)
 
-watch(qAgency, () => { qClassName.value = '' })
+// 載入機構資料和初始案件列表
+onMounted(async () => {
+  try {
+    // 載入機構資料
+    agencyList.value = await getInstitutionsSimpleAll()
 
-const normalize = (v) => (v ?? '').toString().trim().toLowerCase()
+    // 載入初始案件列表
+    await loadCasesList()
+  } catch (error) {
+    console.error('載入資料失敗:', error)
+  }
+})
 
-// 計算月齡
-const ageInMonths = (dateStr) => {
-  if (!dateStr) return '-'
-  const birth = new Date(dateStr)
-  if (isNaN(birth)) return '-'
-  const now = new Date()
-  let months = (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth())
-  if (now.getDate() < birth.getDate()) months -= 1
-  if (months < 0) months = 0
-  return `${months} 月`
+// 載入案件列表
+const loadCasesList = async (options = {}) => {
+  try {
+    const response = await getApplicationsCasesList(options)
+
+    // 將後端資料對應到前端欄位
+    items.value = response.content.map(item => ({
+      id: item.caseNumber,
+      applyDate: item.applicationDate,
+      institution: item.institutionName,
+      status: item.reviewStatus,
+      identityType: IDENTITY_TYPE_MAP[item.identityType] || item.identityType,
+      className: item.className,
+      applicantName: item.applicantNationalName,
+      applicantId: item.applicantNationalId,
+      childName: item.childName,
+      childBirth: item.childBirthDate,
+      childNationalId: item.childNationalId,
+      queueNo: item.currentOrder
+    }))
+
+    resultItems.value = [...items.value]
+  } catch (error) {
+    console.error('載入案件列表失敗:', error)
+  }
 }
+
+watch(qAgency, async () => {
+  qClassName.value = ''
+  classList.value = []
+
+  if (!qAgency.value) return
+
+  try {
+    const institutionId = getInstitutionIdByName(qAgency.value)
+    if (institutionId) {
+      classList.value = await getClassNamesByInstitutionId(institutionId)
+    }
+  } catch (error) {
+    console.error('載入班級列表失敗:', error)
+  }
+})
 
 // 計算歲月齡（以 2025/10/27 為基準）
 const ageInYearsMonths = (dateStr) => {
@@ -187,36 +236,157 @@ const ageInYearsMonths = (dateStr) => {
   return `${years}歲${remainMonths}月`
 }
 
-const doQuery = () => {
-  const a = normalize(qAgency.value)
-  const c = normalize(qClassName.value)
-  const id = normalize(qCaseId.value)
-  const pid = normalize(qApplicantId.value)
-  const ident = normalize(qIdentity.value)
-  const st = normalize(qStatus.value)
+const doQuery = async () => {
+  try {
+    // 構建 API 查詢參數
+    const params = {}
 
-  resultItems.value = items.value.filter(item => {
-    if (a && normalize(item.institution) !== a) return false
-    if (ident && normalize(item.identityType) !== ident) return false
-    if (st && normalize(item.status) !== st) return false
-    if (c && normalize(item.className) !== c) return false
-    if (id && !normalize(item.id).includes(id)) return false
-    if (pid && !normalize(item.applicantId).includes(pid)) return false
-    return true
-  })
+    // 如果選擇了機構，獲取機構 ID
+    if (qAgency.value) {
+      const institutionId = getInstitutionIdByName(qAgency.value)
+      if (institutionId) {
+        params.institutionId = institutionId
+      }
+    }
 
-  showBack.value = true
+    // 如果選擇了班級，獲取班級 ID
+    if (qClassName.value) {
+      const classId = getClassIdByName(qClassName.value)
+      if (classId) {
+        params.classId = classId
+      }
+    }
+
+    // 如果輸入了案號，添加案號參數
+    if (qCaseId.value) {
+      params.caseNumber = qCaseId.value
+    }
+
+    // 如果輸入了申請人身分證，添加身分證參數
+    if (qApplicantId.value) {
+      params.applicantNationalId = qApplicantId.value
+    }
+
+    // 如果選擇了身分別，將中文轉換為代碼
+    if (qIdentity.value) {
+      // 找到身分別代碼
+      for (const [code, label] of Object.entries(IDENTITY_TYPE_MAP)) {
+        if (label === qIdentity.value) {
+          params.identityType = code
+          break
+        }
+      }
+    }
+
+    // 如果選擇了狀態，添加狀態參數
+    if (qStatus.value) {
+      params.status = qStatus.value
+    }
+
+
+    // 呼叫 API 進行搜尋
+    const response = await getApplicationsCasesList(params)
+
+    // 將後端資料對應到前端欄位
+    resultItems.value = response.content.map(item => ({
+      id: item.caseNumber,
+      applyDate: item.applicationDate,
+      institution: item.institutionName,
+      status: item.reviewStatus,
+      identityType: IDENTITY_TYPE_MAP[item.identityType] || item.identityType,
+      className: item.className,
+      applicantName: item.applicantNationalName,
+      applicantId: item.applicantNationalId,
+      childName: item.childName,
+      childBirth: item.childBirthDate,
+      childNationalId: item.childNationalId,
+      queueNo: item.currentOrder
+    }))
+
+
+    showBack.value = true
+  } catch (error) {
+    console.error('查詢失敗:', error)
+  }
 }
 
-const resetQuery = () => {
+const resetQuery = async () => {
   qAgency.value = ''
   qClassName.value = ''
   qCaseId.value = ''
   qApplicantId.value = ''
   qIdentity.value = ''
   qStatus.value = ''
-  resultItems.value = [...items.value]
   showBack.value = false
+
+  // 重新加載初始資料
+  await loadCasesList()
+}
+
+const openCaseDetail = async (item) => {
+  console.log('[openCaseDetail] Called with item:', item)
+  console.log('[openCaseDetail] Item childNationalId:', item.childNationalId)
+
+  // 首先嘗試從後端獲取完整的案件數據
+  let apiData = null
+  let useApiData = false
+
+  if (item.childNationalId) {
+    try {
+      console.log('[openCaseDetail] Fetching API data with childNationalId:', item.childNationalId)
+      apiData = await getApplicationCaseByChildrenId(item.childNationalId)
+      console.log('[openCaseDetail] API data received:', apiData)
+
+      // 檢查 API 是否返回有效的數據
+      if (apiData && (apiData.caseNumber || apiData.id)) {
+        useApiData = true
+        console.log('[openCaseDetail] API data is valid, will use API data')
+      } else {
+        console.warn('[openCaseDetail] API returned empty data, using list item instead')
+        useApiData = false
+      }
+    } catch (error) {
+      console.warn('[openCaseDetail] API call failed:', error.message || error)
+      useApiData = false
+    }
+  } else {
+    console.log('[openCaseDetail] No childNationalId available, will use list item data')
+  }
+
+  // 構建案件數據物件
+  let caseData = useApiData && apiData ? apiData : item
+
+  const payload = {
+    caseId: item.id,
+    childNationalId: item.childNationalId || '',
+    caseData: caseData,
+    fromApi: useApiData,
+    itemData: item
+  }
+
+  console.log('[openCaseDetail] Payload to save, fromApi:', useApiData)
+
+  try {
+    const payloadJson = JSON.stringify(payload)
+    sessionStorage.setItem('caseManagementSelection', payloadJson)
+    console.log('[openCaseDetail] Saved to sessionStorage')
+  } catch (e) {
+    console.error('sessionStorage set failed:', e)
+  }
+
+  try {
+    const payloadJson = JSON.stringify(payload)
+    localStorage.setItem('caseManagementSelection', payloadJson)
+    console.log('[openCaseDetail] Saved to localStorage')
+  } catch (e) {
+    console.error('localStorage set failed:', e)
+  }
+
+  // 導航到編輯頁面
+  router.push({
+    path: `/admin/case-management/${item.id}/edit`,
+    state: { caseManagementSelection: payload }
+  })
 }
 
 const goBack = () => {
@@ -256,6 +426,90 @@ const goBack = () => {
 
 .child-col { display: flex; flex-direction: column; gap: 4px; }
 .child-row { display: flex; gap: 6px; align-items: center; }
+
+.user-col { display: flex; flex-direction: column; gap: 4px; }
+.user-row { display: flex; gap: 6px; align-items: center; }
+
+/* 分頁樣式 */
+.pagination-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+  padding-bottom: 20px;
+}
+
+.pagination-info {
+  font-size: 0.95rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.pagination-btn {
+  background: #f3f4f6;
+  color: #2e6fb7;
+  border: 1px solid #d8dbe0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #e6f2ff;
+  border-color: #b3d4fc;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-numbers {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.page-btn {
+  background: #f3f4f6;
+  color: #2e6fb7;
+  border: 1px solid #d8dbe0;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  min-width: 32px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.page-btn:hover:not(:disabled) {
+  background: #e6f2ff;
+  border-color: #b3d4fc;
+}
+
+.page-btn.active {
+  background: #2e6fb7;
+  color: white;
+  border-color: #2e6fb7;
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 @media (max-width: 900px) {
   .search-area { width: 100%; }

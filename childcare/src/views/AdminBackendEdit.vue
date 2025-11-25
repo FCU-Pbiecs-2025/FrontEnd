@@ -1,6 +1,12 @@
 <template>
   <div class="backend-edit-page">
-    <div class="backend-edit-card">
+    <!-- 加載中提示 -->
+    <div v-if="isLoading" class="loading-container">
+      <div class="spinner"></div>
+      <p>正在加載帳號資料...</p>
+    </div>
+
+    <div v-else class="backend-edit-card">
       <div class="title-row">
         <img src="https://img.icons8.com/ios/48/2e6fb7/admin-settings-male.png" class="icon" alt="icon" />
         <span class="main-title">後台帳號管理</span>
@@ -33,11 +39,11 @@
           <div class="radio-group">
             <label class="radio-label">
               <input type="radio" value="super_admin" v-model="account.role" />
-              <span>最高權限</span>
+              <span>管理員</span>
             </label>
             <label class="radio-label">
               <input type="radio" value="admin" v-model="account.role" />
-              <span>管理員</span>
+              <span>機構人員</span>
             </label>
           </div>
         </div>
@@ -56,8 +62,10 @@
         </div>
       </div>
       <div class="bottom-row">
-        <button class="btn ghost" @click="cancel">返回</button>
-        <button class="btn primary" @click="save">儲存</button>
+        <button class="btn ghost" @click="cancel" :disabled="isSaving">返回</button>
+        <button class="btn primary" @click="save" :disabled="isSaving">
+          {{ isSaving ? '儲存中...' : '儲存' }}
+        </button>
       </div>
     </div>
   </div>
@@ -66,6 +74,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { getUserById, updateUser } from '@/api/account.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -78,19 +87,57 @@ const accountId = computed(() => {
   return route.params.id || ''
 })
 
-const account = ref({ id: '', password: '', org: '', role: 'admin' })
+const account = ref({ id: '', password: '', org: '', role: 'admin', right: 'enable' })
 const remoteInstitutions = ref([])
+const isLoading = ref(false)
+const isSaving = ref(false)
 
 const isNew = computed(() => route.name === 'AdminBackendNew')
 
-// load stored backend accounts from localStorage (key: backendAccounts)
-const loadAccount = (id) => {
+// 從 API 載入帳號資料
+const loadAccountFromAPI = async (userId) => {
+  try {
+    isLoading.value = true
+    const userData = await getUserById(userId)
+
+    // 映射 API 資料到表單
+    account.value = {
+      id: userData.account || '',
+      password: '', // 密碼不從 API 載入
+      org: userData.institutionName || '',
+      role: mapPermissionTypeToRole(userData.permissionType),
+      right: userData.accountStatus === 1 ? 'enable' : 'suspended',
+      // 保存完整的 API 資料以便儲存時使用
+      _apiData: userData
+    }
+
+    console.log('已載入使用者資料:', userData)
+  } catch (error) {
+    console.error('載入帳號資料失敗:', error)
+    // API 失敗時嘗試從 localStorage 載入
+    loadAccountFromLocalStorage(userId)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// 將 permissionType 映射為 role
+const mapPermissionTypeToRole = (permissionType) => {
+  // 1 = 管理員 (最高權限)
+  // 2 = 機構人員 (管理員)
+  if (permissionType === 1) return 'super_admin'
+  if (permissionType === 2) return 'admin'
+  return 'admin'
+}
+
+// load stored backend accounts from localStorage (key: backendAccounts) - fallback
+const loadAccountFromLocalStorage = (id) => {
   const stored = JSON.parse(localStorage.getItem('backendAccounts') || '{}')
   if (stored[id]) {
     account.value = { ...stored[id], password: '' }
   } else {
     // 如果找不到，初始化為新帳號
-    account.value = { id: id, password: '', org: '', role: 'admin' }
+    account.value = { id: id, password: '', org: '', role: 'admin', right: 'enable' }
   }
 }
 
@@ -117,42 +164,126 @@ const fetchRemoteInstitutions = async () => {
   }
 }
 
-onMounted(() => {
-  if (accountId.value) {
+onMounted(async () => {
+  // 先載入機構列表
+  await fetchRemoteInstitutions()
+
+  if (isNew.value) {
+    // 新增模式：初始化空白表單
     account.value.id = accountId.value
-    if (!isNew.value) {
-      loadAccount(accountId.value)
+  } else {
+    // 編輯模式：從 API 載入資料
+    if (accountId.value) {
+      await loadAccountFromAPI(accountId.value)
     }
   }
-  fetchRemoteInstitutions()
 })
 
-const save = () => {
-  if (!account.value.id) return alert('帳號 ID 缺失')
-  if (!account.value.org) return alert('請輸入機構名稱')
+// 將 role 映射回 permissionType
+const mapRoleToPermissionType = (role) => {
+  if (role === 'super_admin') return 1  // 管理員
+  if (role === 'admin') return 2        // 機構人員
+  return 2
+}
 
-  const stored = JSON.parse(localStorage.getItem('backendAccounts') || '{}')
-
-  // 準備要儲存的資料
-  const toSave = { id: account.value.id, org: account.value.org, role: account.value.role, right: account.value.right }
-
-  // 如果有輸入密碼則更新，否則保留原密碼
-  if (account.value.password) {
-    toSave.password = account.value.password
-  } else if (stored[account.value.id] && stored[account.value.id].password) {
-    // 保留原密碼
-    toSave.password = stored[account.value.id].password
-  } else if (isNew.value) {
-    // 新增時必須有密碼
-    return alert('新增帳號時必須設定密碼')
+const save = async () => {
+  // 驗證
+  if (!account.value.id) {
+    alert('帳號 ID 缺失')
+    return
   }
 
-  stored[account.value.id] = toSave
-  localStorage.setItem('backendAccounts', JSON.stringify(stored))
-  alert('儲存完成')
+  if (!account.value.org) {
+    alert('請輸入機構名稱')
+    return
+  }
 
-  // 返回列表頁
-  router.push({ name: 'AdminBackendAccount' })
+  if (isNew.value && !account.value.password) {
+    alert('新增帳號時必須設定密碼')
+    return
+  }
+
+  try {
+    isSaving.value = true
+
+    if (isNew.value) {
+      // 新增模式：目前先用 localStorage
+      const stored = JSON.parse(localStorage.getItem('backendAccounts') || '{}')
+      const toSave = {
+        id: account.value.id,
+        org: account.value.org,
+        role: account.value.role,
+        right: account.value.right,
+        password: account.value.password
+      }
+      stored[account.value.id] = toSave
+      localStorage.setItem('backendAccounts', JSON.stringify(stored))
+      alert('儲存完成')
+      router.push({ name: 'AdminBackendAccount' })
+
+    } else {
+      // 編輯模式：使用 updateUser API
+      if (!account.value._apiData) {
+        alert('缺少使用者資料，請重新載入頁面')
+        return
+      }
+
+      // 準備更新資料
+      const updateData = {
+        ...account.value._apiData,  // 保留原始資料
+        account: account.value.id,
+        accountStatus: account.value.right === 'enable' ? 1 : 0,
+        permissionType: mapRoleToPermissionType(account.value.role),
+        institutionName: account.value.org
+      }
+
+      // 密碼處理
+      if (account.value.password && account.value.password.trim() !== '') {
+        // 如果有輸入新密碼，使用新密碼（假設後端會加密）
+        updateData.password = account.value.password
+      } else {
+        // 沒有輸入新密碼，保持原密碼
+        updateData.password = account.value._apiData.password
+      }
+
+      console.log('準備更新的資料:', updateData)
+
+      // 呼叫 API 更新
+      const result = await updateUser(account.value._apiData.userID, updateData)
+
+      console.log('更新結果:', result)
+      alert('儲存成功！')
+
+      // 同時更新 localStorage（保持相容性）
+      const stored = JSON.parse(localStorage.getItem('backendAccounts') || '{}')
+      stored[account.value.id] = {
+        id: account.value.id,
+        org: account.value.org,
+        role: account.value.role,
+        right: account.value.right,
+        password: updateData.password
+      }
+      localStorage.setItem('backendAccounts', JSON.stringify(stored))
+
+      // 返回列表頁
+      router.push({ name: 'AdminBackendAccount' })
+    }
+
+  } catch (error) {
+    console.error('儲存失敗:', error)
+
+    if (error.response?.status === 404) {
+      alert('找不到該使用者，請確認帳號是否存在')
+    } else if (error.response?.status === 403) {
+      alert('沒有權限修改此使用者資料')
+    } else if (error.response?.status === 400) {
+      alert('資料格式錯誤，請檢查輸入內容')
+    } else {
+      alert('儲存失敗，請稍後再試')
+    }
+  } finally {
+    isSaving.value = false
+  }
 }
 
 const cancel = () => {
@@ -163,6 +294,10 @@ const cancel = () => {
 </script>
 
 <style scoped>
+.loading-container { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; min-height: 400px; }
+.spinner { width: 40px; height: 40px; border: 4px solid #e6f2ff; border-top-color: #2563eb; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 20px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 .backend-edit-page {  width: 100% ;}
 .backend-edit-card {max-width: 85%; display: flex; flex-direction: column; margin: 0 auto;}
 .title-row { display:flex; align-items:center; gap:12px; margin-bottom:10px;margin-top: 60px}

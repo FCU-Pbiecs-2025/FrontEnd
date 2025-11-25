@@ -1,12 +1,16 @@
 <template>
   <div class="account-page">
-    <div v-if="!isEditPage" class="account-card">
+    <!-- 加載中提示 -->
+    <div v-if="isLoading && !isEditPage" class="loading-container">
+      <div class="spinner"></div>
+      <p>正在加載帳號資料...</p>
+    </div>
+
+    <div v-else-if="!isEditPage" class="account-card">
       <div class="title-row">
         <span class="icon">🛡️</span>
         <span class="main-title">後台帳號管理</span>
       </div>
-
-
 
       <div class="query-card">
         <div class="query-row">
@@ -33,25 +37,32 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in resultAdmins" :key="item.id">
-              <td class="id-cell">{{ item.id }}</td>
-              <td class="name-cell">{{ item.org }}</td>
-              <td class="role-cell">{{ item.role === 'super_admin' ? '最高權限' : item.role === 'admin' ? '管理員' : item.role }}</td>
-              <td class="status-cell">{{ item.right === 'suspended' ? '停權' : '啟用' }}</td>
+            <tr v-for="item in displayAdmins" :key="item.userID">
+              <td class="id-cell">{{ item.account }}</td>
+              <td class="name-cell">{{ item.institutionName || '—' }}</td>
+              <td class="role-cell">{{ item.roleText }}</td>
+              <td class="status-cell">{{ item.statusText }}</td>
               <td class="action-cell">
-                <button class="btn small" @click="manageAdmin(item.id)">編輯</button>
-                <button class="btn small danger" @click="removeAdmin(item.id)">刪除</button>
+                <button class="btn small" @click="manageAdmin(item.userID)">編輯</button>
+                <button class="btn small danger" @click="removeAdmin(item.userID)">刪除</button>
               </td>
             </tr>
-            <tr v-if="resultAdmins.length === 0">
+            <tr v-if="displayAdmins.length === 0">
               <td colspan="5" class="empty-tip">查無資料</td>
             </tr>
           </tbody>
         </table>
       </div>
 
+      <!-- 分頁控制 -->
+      <div class="pagination-row" v-if="totalPages > 1">
+        <button class="btn page-btn" :disabled="currentPage === 0" @click="goToPage(currentPage - 1)">上一頁</button>
+        <span class="page-info">第 {{ currentPage + 1 }} / {{ totalPages }} 頁（共 {{ totalElements }} 筆）</span>
+        <button class="btn page-btn" :disabled="!hasNext" @click="goToPage(currentPage + 1)">下一頁</button>
+      </div>
+
       <div class="bottom-row">
-        <button class="btn primary" v-show="showBack" @click="goBack">返回</button>
+        <button class="btn primary" v-if="hasQueried" @click="goBack">返回</button>
       </div>
     </div>
     <router-view v-if="isEditPage" />
@@ -61,14 +72,33 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { getUsersWithOffset, getPermissionTypeName, getAccountStatusName } from '@/api/account.js'
 
 const router = useRouter()
 const route = useRoute()
 const STORAGE_KEY = 'backendAccounts'
 const query = ref('')
+const searchQuery = ref('') // 實際執行搜尋的關鍵字
 const admins = ref({})
-const resultAdmins = ref([])
-const showBack = ref(false)
+const allAdmins = ref([]) // 從 API 載入的管理員帳號
+const isLoading = ref(false)
+const hasQueried = ref(false) // 是否已執行過查詢
+const currentPage = ref(0)
+const pageSize = ref(10)
+const totalPages = ref(0)
+const totalElements = ref(0)
+const hasNext = ref(false)
+
+// 顯示的帳號列表（考慮搜尋過濾）
+const displayAdmins = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return allAdmins.value
+  }
+  return allAdmins.value.filter(a =>
+    a.account.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    (a.institutionName && a.institutionName.toLowerCase().includes(searchQuery.value.toLowerCase()))
+  )
+})
 
 // 兼容舊資料，補齊 right 欄位
 const loadList = () => {
@@ -114,63 +144,89 @@ const convertToArray = (obj) => {
   return Object.values(obj)
 }
 
+// 載入後台帳號資料（從 API）
+const loadBackendAccounts = async (offset = 0) => {
+  try {
+    isLoading.value = true
+    const response = await getUsersWithOffset(offset, pageSize.value)
+
+    // 過濾只顯示 permissionType=1 或 2 的管理員和機構人員
+    const backendAccounts = response.content.filter(user =>
+      user.permissionType === 1 || user.permissionType === 2
+    )
+
+    // 轉換資料格式並添加文字
+    allAdmins.value = backendAccounts.map(user => ({
+      ...user,
+      roleText: getPermissionTypeName(user.permissionType),
+      statusText: getAccountStatusName(user.accountStatus)
+    }))
+
+    // 更新分頁資訊
+    currentPage.value = Math.floor(offset / pageSize.value)
+    totalPages.value = response.totalPages
+    totalElements.value = response.totalElements
+    hasNext.value = response.hasNext
+  } catch (error) {
+    console.error('載入後台帳號資料失敗:', error)
+    alert('載入後台帳號資料失敗，請稍後再試')
+  } finally {
+    isLoading.value = false
+  }
+}
+
 onMounted(() => {
   loadList()
-  resultAdmins.value = convertToArray(admins.value)
+  loadBackendAccounts(0)
 })
 
 // 監聽路由變化，從編輯頁面返回時重新載入資料
 watch(() => route.name, (newName, oldName) => {
   if (newName === 'AdminBackendAccount' && (oldName === 'AdminBackendNew' || oldName === 'AdminBackendEdit')) {
     loadList()
-    resultAdmins.value = convertToArray(admins.value)
+    loadBackendAccounts(0)
     // 重置查詢條件
     query.value = ''
-    showBack.value = false
+    searchQuery.value = ''
+    hasQueried.value = false
   }
 })
 
 const handleQuery = () => {
-  loadList()
-  const keyword = (query.value || '').toLowerCase().trim()
-  const allAdmins = convertToArray(admins.value)
-
-  resultAdmins.value = allAdmins.filter(item => {
-    if (!keyword) return true
-    return (
-      (item.id || '').toLowerCase().includes(keyword) ||
-      (item.org || '').toLowerCase().includes(keyword) ||
-      (item.role || '').toLowerCase().includes(keyword)
-    )
-  })
-  showBack.value = true
+  // 更新搜尋關鍵字，觸發 displayAdmins 重新計算
+  searchQuery.value = query.value
+  hasQueried.value = true
 }
 
-const manageAdmin = (id) => {
+// 分頁切換
+const goToPage = async (page) => {
+  if (page < 0 || page >= totalPages.value) return
+  const offset = page * pageSize.value
+  await loadBackendAccounts(offset)
+}
+
+const manageAdmin = (userID) => {
   // 使用新的路由跳轉到編輯頁面
-  router.push({ name: 'AdminBackendEdit', params: { id: id } })
+  router.push({ name: 'AdminBackendEdit', params: { id: userID } })
 }
 
-const removeAdmin = (id) => {
+const removeAdmin = async (userID) => {
   if (!confirm('確定要刪除這個後台帳號嗎？')) return
 
+  // TODO: 這裡應該呼叫刪除 API
+  // 目前先從 localStorage 刪除（兼容舊邏輯）
   loadList()
-  delete admins.value[id]
+  delete admins.value[userID]
   saveList()
 
-  // 重新執行查詢以更新顯示列表
-  if (showBack.value) {
-    handleQuery()
-  } else {
-    resultAdmins.value = convertToArray(admins.value)
-  }
+  // 重新載入 API 資料
+  await loadBackendAccounts(currentPage.value * pageSize.value)
 }
 
 const goBack = () => {
   query.value = ''
-  loadList()
-  resultAdmins.value = convertToArray(admins.value)
-  showBack.value = false
+  searchQuery.value = ''
+  hasQueried.value = false
 }
 
 const addNew = () => {
@@ -185,6 +241,10 @@ const isEditPage = computed(() => {
 </script>
 
 <style scoped>
+.loading-container { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; min-height: 400px; }
+.spinner { width: 40px; height: 40px; border: 4px solid #e6f2ff; border-top-color: #2563eb; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 20px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 .btn-query { display: flex; justify-content: center; margin-top: 30px; }
 
 .account-page{display: flex ; justify-content: center; }
@@ -199,11 +259,14 @@ const isEditPage = computed(() => {
 .search-area{gap: 30px; display: flex; align-items: center; margin-bottom: 8px;}
 .search-label { font-weight:600; color:#2e6fb7 }
 .search-input { padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; width:300px }
-.btn { padding:7px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:600 }
+.btn { padding:7px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:600; transition: all 0.2s; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff ;margin-right: 12px;}
 .btn.query { background:#e6f2ff; color:#2e6fb7; border:1px solid #b3d4fc }
 .btn.small { padding:6px 12px; font-size:0.95rem; background:#f3f4f6; margin-right:6px; }
 .btn.danger { background:#ff7b8a; color:#fff }
+.btn.page-btn { background:#f3f4f6; color:#334e5c; padding:6px 14px; }
+.btn.page-btn:hover:not(:disabled) { background:#e6f2ff; color:#2e6fb7; }
 .table-section {  }
 .account-table { width:100%; border-collapse:collapse }
 .account-table thead th { background: #cfe8ff; color: #2e6fb7; padding: 10px; text-align: left; font-weight: 700; }
@@ -214,6 +277,8 @@ const isEditPage = computed(() => {
 .status-cell { color:#6b6f76 }
 .action-cell { text-align:left }
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
+.pagination-row { display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: 20px; padding: 16px; }
+.page-info { color: #6b6f76; font-size: 0.95rem; font-weight: 600; }
 .bottom-row { display: flex; justify-content:center; margin-top: 10vh; gap: 12px; margin-bottom: 20px}
 @media (max-width:900px){ .account-card{ width:100%; padding:16px } .search-input{ width:100% } }
 </style>

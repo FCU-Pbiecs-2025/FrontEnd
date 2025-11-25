@@ -1,11 +1,24 @@
 <template>
   <div class="case-page">
-    <div class="case-card">
+    <!-- 加載中提示 -->
+    <div v-if="isLoading" class="loading-container">
+      <div class="spinner"></div>
+      <p>正在加載案件數據...</p>
+    </div>
+
+    <!-- 錯誤提示 -->
+    <div v-else-if="loadError" class="error-container">
+      <p class="error-message">{{ loadError }}</p>
+      <button class="btn ghost" @click="goBack">返回</button>
+    </div>
+
+    <!-- 案件數據 -->
+    <div v-else class="case-card">
       <!-- Title -->
       <div class="title-row">
         <div class="title-left">
           <img src="https://img.icons8.com/ios/48/2e6fb7/treatment-plan.png" class="icon" alt="icon" />
-          <span class="main-title">個案管理編輯 - {{ caseId }}</span>
+          <span class="main-title">個案管理編輯 - {{ childNationalId }}</span>
         </div>
         <!-- Always show title-right so we can display identity for all statuses; queue number remains WAITING-only -->
         <div class="title-right">
@@ -60,16 +73,6 @@
         </div>
       </div>
 
-      <!-- ADMITTED extra info -->
-      <div v-if="caseData.status === ADMITTED" class="wait-extra">
-        <div class="admit-setup">
-          <div class="form-row">
-            <label class="info-label">退托原因說明：</label>
-            <textarea v-model="withdrawNote" class="text-input" rows="3" placeholder="請填寫退托原因說明（必填）"></textarea>
-          </div>
-        </div>
-      </div>
-      <!--      textarea去寫退托原因-->
 
 
 
@@ -254,6 +257,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { getApplicationCaseByChildrenId } from '@/api/applicationCase.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -269,7 +273,10 @@ const ADMITTED = '已錄取'
 const WITHDRAWN = '已退托'
 
 const caseId = ref(route.params.id)
+const childNationalId = ref(route.params.childNationalId || '')
 const caseData = ref({})
+const isLoading = ref(false)
+const loadError = ref('')
 
 // Collapsible sections state - default collapsed
 const openSections = ref({ applicant: false, parents: false, child: false, files: false })
@@ -442,90 +449,254 @@ const mockCases = {
   }
 }
 
-onMounted(() => {
-  // Load mock data or redirect back if not found
-  const data = mockCases[caseId.value]
-  if (data) {
-    caseData.value = JSON.parse(JSON.stringify(data))
-    // initialize admit selections for waiting cases
-    if (caseData.value.status === WAITING) {
-      admitAgency.value = appliedAgency.value || ''
-      admitClass.value = caseData.value.selectedClass || ''
+// 轉換 API 數據為前端格式
+const transformApiData = (apiData) => {
+  if (!apiData) return {}
+
+  // 轉換狀態代碼為文字
+  const STATUS_MAP = {
+    '審核中': '審核中',
+    '需要補件': '需要補件',
+    '已退件': '已退件',
+    '錄取候補中': '錄取候補中',
+    '撤銷申請審核中': '撤銷申請審核中',
+    '撤銷申請通過': '撤銷申請通過',
+    '已退托': '已退托',
+    '已錄取': '已錄取'
+  }
+
+  const IDENTITY_TYPE_MAP = {
+    0: '一般民眾',
+    1: '低收入戶',
+    2: '中低收入戶'
+  }
+
+  // 提取申請人信息 (來自 user 欄位)
+  const userData = apiData.user || {}
+  const applicant = {
+    name: userData.name || '',
+    birth: userData.birthDate || '',
+    id: userData.nationalID || '',
+    homeAddress: userData.mailingAddress || '',
+    mailAddress: userData.mailingAddress || '',
+    mobile: userData.phoneNumber || '',
+    email: userData.email || ''
+  }
+
+  // 提取家長信息
+  const parentsArray = apiData.parents || []
+  const parent1Data = parentsArray[0] || {}
+  const parent2Data = parentsArray[1] || {}
+
+  const parent1 = parent1Data.name ? {
+    name: parent1Data.name || '',
+    birth: parent1Data.birthDate || '',
+    id: parent1Data.nationalID || '',
+    parentType: parent1Data.relationShip || '',
+    homeAddress: parent1Data.householdAddress || '',
+    contactAddress: parent1Data.mailingAddress || '',
+    mobile: parent1Data.phoneNumber || '',
+    email: parent1Data.email || '',
+    company: parent1Data.occupation || '',
+    gender: parent1Data.gender || '',
+    isLeave: parent1Data.isSuspended || false,
+    leaveStart: parent1Data.isSuspended ? (parent1Data.suspendEnd ? '' : '') : '',
+    leaveEnd: parent1Data.suspendEnd || ''
+  } : null
+
+  const parent2 = parent2Data.name ? {
+    name: parent2Data.name || '',
+    birth: parent2Data.birthDate || '',
+    id: parent2Data.nationalID || '',
+    parentType: parent2Data.relationShip || '',
+    homeAddress: parent2Data.householdAddress || '',
+    contactAddress: parent2Data.mailingAddress || '',
+    mobile: parent2Data.phoneNumber || '',
+    email: parent2Data.email || '',
+    company: parent2Data.occupation || '',
+    gender: parent2Data.gender || '',
+    isLeave: parent2Data.isSuspended || false,
+    leaveStart: parent2Data.isSuspended ? (parent2Data.suspendEnd ? '' : '') : '',
+    leaveEnd: parent2Data.suspendEnd || ''
+  } : null
+
+  // 提取幼兒信息
+  const childrenArray = apiData.children || []
+  const children = childrenArray.map(child => ({
+    name: child.name || '',
+    gender: child.gender || '',
+    birth: child.birthDate || '',
+    age: '',
+    id: child.nationalID || ''
+  }))
+
+  // 提取附件信息
+  const files = (apiData.files || []).map((file, idx) => ({
+    name: typeof file === 'string' ? file : (file.name || `attachment_${idx}`),
+    url: typeof file === 'string' ? `/applications/case-files/${apiData.applicationID}/${file}` : (file.url || ''),
+    type: 'application/octet-stream'
+  }))
+
+  // 取得狀態 (從幼兒的 status 欄位)
+  const childStatus = childrenArray.length > 0 ? (childrenArray[0].status || '') : ''
+  const mappedStatus = STATUS_MAP[childStatus] || childStatus || '審核中'
+
+  return {
+    id: apiData.caseNumber || '',
+    applyDate: apiData.applyDate || '',
+    status: mappedStatus,
+    institution: apiData.institutionName || '',
+    identityType: IDENTITY_TYPE_MAP[apiData.identityType] || '',
+    queueNo: apiData.currentOrder || null,
+    applicant,
+    parent1,
+    parent2,
+    children,
+    selectedAgency: apiData.institutionName || '',
+    selectedClass: apiData.selectedClass || '',
+    withdrawNote: childrenArray.length > 0 ? (childrenArray[0].reason || '') : '',
+    files
+  }
+}
+
+onMounted(async () => {
+  try {
+    isLoading.value = true
+    loadError.value = ''
+    // 1. 優先呼叫 API 取得資料
+    try {
+      const apiData = await getApplicationCaseByChildrenId(childNationalId.value)
+      if (apiData) {
+        caseData.value = transformApiData(apiData)
+        if (caseData.value.status === WAITING) {
+          admitAgency.value = appliedAgency.value || ''
+          admitClass.value = caseData.value.selectedClass || ''
+        }
+        withdrawNote.value = caseData.value.withdrawNote ?? ''
+        isLoading.value = false
+        return
+      }
+    } catch (apiError) {
+      // API 404 或失敗才 fallback
+      console.warn('[onMounted] API 查詢失敗，fallback localStorage/mock', apiError)
     }
-    // Prefill withdrawNote ref from case data if present (allows null)
-    withdrawNote.value = caseData.value.withdrawNote ?? ''
-  } else {
+    // 2. localStorage/sessionStorage fallback
+    let payload = null
+    const sessionData = sessionStorage.getItem('caseManagementSelection')
+    if (sessionData) {
+      payload = JSON.parse(sessionData)
+    } else {
+      const localData = localStorage.getItem('caseManagementSelection')
+      if (localData) {
+        payload = JSON.parse(localData)
+      }
+    }
+    if (payload && payload.caseData && (payload.caseData.childNationalId === childNationalId.value || payload.childNationalId === childNationalId.value)) {
+      caseData.value = JSON.parse(JSON.stringify(payload.caseData))
+      if (caseData.value.status === WAITING) {
+        admitAgency.value = appliedAgency.value || ''
+        admitClass.value = caseData.value.selectedClass || ''
+      }
+      withdrawNote.value = caseData.value.withdrawNote ?? ''
+      try { sessionStorage.removeItem('caseManagementSelection') } catch (e) {}
+      try { localStorage.removeItem('caseManagementSelection') } catch (e) {}
+      isLoading.value = false
+      return
+    }
+    // 3. mock fallback
+    const mockData = Object.values(mockCases).find(c => c.children && c.children.some(child => child.id === childNationalId.value))
+    if (mockData) {
+      caseData.value = JSON.parse(JSON.stringify(mockData))
+      if (caseData.value.status === WAITING) {
+        admitAgency.value = appliedAgency.value || ''
+        admitClass.value = caseData.value.selectedClass || ''
+      }
+      withdrawNote.value = caseData.value.withdrawNote ?? ''
+    } else {
+      loadError.value = '無法加載案件數據'
+    }
+  } catch (error) {
+    console.error('[onMounted] 加載數據失敗:', error)
     router.push('/admin/case-management')
+  } finally {
+    isLoading.value = false
   }
 })
 
-function admit() {
-  if (caseData.value.status === WAITING) {
-    if (!admitAgency.value || !admitClass.value) {
-      alert('請先選擇申請單位與就讀班級')
-      return
+
+  function admit() {
+    if (caseData.value.status === WAITING) {
+      if (!admitAgency.value || !admitClass.value) {
+        alert('請先選擇申請單位與就讀班級')
+        return
+      }
+      // Assign chosen agency and class
+      caseData.value.institution = admitAgency.value
+      caseData.value.selectedAgency = admitAgency.value
+      caseData.value.selectedClass = admitClass.value
     }
-    // Assign chosen agency and class
-    caseData.value.institution = admitAgency.value
-    caseData.value.selectedAgency = admitAgency.value
-    caseData.value.selectedClass = admitClass.value
+    if (!confirm('確定要執行錄取嗎？')) return
+    caseData.value.status = ADMITTED
+    alert('已錄取')
+    // 停留於本頁
   }
-  if (!confirm('確定要執行錄取嗎？')) return
-  caseData.value.status = ADMITTED
-  alert('已錄取')
-  // 停留於本頁
-}
 
-function revoke() {
-  // If currently admitted, require a withdraw note
-  if (caseData.value.status === ADMITTED) {
-    if (!withdrawNote.value || !withdrawNote.value.trim()) {
-      alert('請填寫退托原因說明後再執行退托')
-      return
+  function revoke() {
+    // If currently admitted, require a withdraw note
+    if (caseData.value.status === ADMITTED) {
+      if (!withdrawNote.value || !withdrawNote.value.trim()) {
+        alert('請填寫退托原因說明後再執行退托')
+        return
+      }
+      // attach note to case data for record
+      caseData.value.withdrawNote = withdrawNote.value.trim()
     }
-    // attach note to case data for record
-    caseData.value.withdrawNote = withdrawNote.value.trim()
+    if (!confirm('確定要執行退托嗎？')) return
+    // mark as withdrawn (已退托)
+    caseData.value.status = WITHDRAWN
+    alert('已退托')
+    // 停留於本頁（不自動返回）
   }
-  if (!confirm('確定要執行退托嗎？')) return
-  // mark as withdrawn (已退托)
-  caseData.value.status = WITHDRAWN
-  alert('已退托')
-  // 停留於本頁（不自動返回）
-}
 
-function goBack() {
-  router.push('/admin/case-management')
-}
-function computeChildAge(birth) {
-  if (!birth) return ''
-  const bd = new Date(birth)
-  if (isNaN(bd)) return ''
-  const now = new Date('2025-10-27')
+  function goBack() {
+    router.push('/admin/case-management')
+  }
 
-  if (bd > now) return '0歲0月0周'
+  function computeChildAge(birth) {
+    if (!birth) return ''
+    const bd = new Date(birth)
+    if (isNaN(bd)) return ''
+    const now = new Date('2025-10-27')
 
-  // 計算總月數
-  let months = (now.getFullYear() - bd.getFullYear()) * 12 + (now.getMonth() - bd.getMonth())
-  if (now.getDate() < bd.getDate()) months -= 1
+    if (bd > now) return '0歲0月0周'
 
-  // 計算年、月
-  const years = Math.floor(months / 12)
-  const remainMonths = months % 12
+    // 計算總月數
+    let months = (now.getFullYear() - bd.getFullYear()) * 12 + (now.getMonth() - bd.getMonth())
+    if (now.getDate() < bd.getDate()) months -= 1
 
-  // 計算剩餘天數
-  const tmp = new Date(bd.getTime())
-  tmp.setMonth(tmp.getMonth() + months)
-  let daysDiff = Math.floor((now - tmp) / (1000 * 60 * 60 * 24))
-  if (isNaN(daysDiff) || daysDiff < 0) daysDiff = 0
+    // 計算年、月
+    const years = Math.floor(months / 12)
+    const remainMonths = months % 12
 
-  const weeks = Math.floor(daysDiff / 7)
+    // 計算剩餘天數
+    const tmp = new Date(bd.getTime())
+    tmp.setMonth(tmp.getMonth() + months)
+    let daysDiff = Math.floor((now - tmp) / (1000 * 60 * 60 * 24))
+    if (isNaN(daysDiff) || daysDiff < 0) daysDiff = 0
 
-  return `${years}歲${remainMonths}月${weeks}周`
-}
+    const weeks = Math.floor(daysDiff / 7)
 
+    return `${years}歲${remainMonths}月${weeks}周`
+  }
 </script>
 
 <style scoped>
+.loading-container, .error-container { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; min-height: 400px; }
+.spinner { width: 40px; height: 40px; border: 4px solid #e6f2ff; border-top-color: #2563eb; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 20px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.error-container { background: #fff; border-radius: 12px; margin: 60px auto; width: min(500px, 90%); padding: 40px; }
+.error-message { color: #dc2626; font-size: 1rem; margin-bottom: 20px; text-align: center; }
+
 .case-page { display: flex; justify-content: center; width: 85%;}
 .case-card{width: 100%;}
 .title-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; margin-top: 60px; }

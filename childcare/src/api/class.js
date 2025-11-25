@@ -46,4 +46,17 @@ export const deleteClassById = async (classId) => {
         throw error
     }
 }
+// 根據機構ID獲取班級名稱列表
+export const getClassNamesByInstitutionId = async (id) => {
+    try {
+        const url = `/classes/institution/${id}/names`
+        console.log('[API] getClassNamesByInstitutionId request url:', url)
+        const response = await http.get(url)
+        console.log('[API] getClassNamesByInstitutionId response.data:', response.data)
+        return response.data
+    } catch (error) {
+        console.error('獲取班級名稱列表失敗:', error)
+        throw error
+    }
+}
 

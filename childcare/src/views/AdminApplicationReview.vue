@@ -53,11 +53,14 @@
               <td class="date-cell">{{ item.id }}</td>
               <td class="date-cell">{{ item.Date }}</td>
               <td class="title-cell">{{ item.applicant }}</td>
-              <td class="title-cell">{{ item.childName }}</td>
+              <td class="title-cell">
+                <!-- 讓幼兒姓名可點擊，並且會帶入 nationalID 作為 query 去 edit 頁面 -->
+                <a href="#" @click.prevent="openDetailWithChild(item)">{{ item.childName }}</a>
+              </td>
               <td class="title-cell">{{ item.institution }}</td>
               <td class="title-cell">{{ item.status }}</td>
               <td class="action-cell">
-                <button class="btn small" @click="openDetail(item)">審核</button>
+                <button class="btn small" @click="openDetailWithChild(item)">審核</button>
               </td>
             </tr>
             <tr v-if="items.length === 0">
@@ -125,6 +128,7 @@ async function fetchApplications() {
         Date: item.applicationDate,
         applicant: item.name || '未提供',
         childName: item.pname || '未提供',
+        nationalID: item.nationalID || item.NationalID || null,
         institution: item.institutionName || '未提供',
         status: item.status || '未提供'
       }));
@@ -161,6 +165,7 @@ async function searchApplicationsByFilters() {
         Date: item.applicationDate,
         applicant: item.name || '未提供',
         childName: item.pname || '未提供',
+        nationalID: item.nationalID || item.NationalID || null,
         institution: item.institutionName || '未提供',
         status: item.status || '未提供'
       }));
@@ -214,7 +219,8 @@ async function searchByApplicationId() {
         id: data.applicationId || data.applicationID,
         Date: data.applicationDate,
         applicant: data.name || '未提供',
-        childName: child.pname || '未提供',
+        childName: child.pname || child.name || '未提供',
+        nationalID: child.nationalID || child.NationalID || null,
         institution: data.institutionName || '未提供',
         status: child.status || data.status || '未提供'
       }));
@@ -228,6 +234,99 @@ async function searchByApplicationId() {
   } catch (e) {
     console.error('Failed to fetch application by ID:', e);
     alert('查詢失敗，請確認申請編號是否正確');
+  }
+}
+
+async function openDetailWithChild(item) {
+  // minimal logging only on unexpected conditions
+
+  const appId = item && item.id
+  const nid = item && (item.nationalID || item.NationalID)
+  const childNameFromList = item && (item.childName || item.name || '')
+
+  if (!appId) {
+    console.warn('openDetailWithChild: missing application id on item', item)
+    return
+  }
+
+  // If we already have nationalID on the list item, save and navigate immediately
+  if (nid) {
+    const payload = { applicationId: appId, nationalID: nid, childName: childNameFromList }
+    try { sessionStorage.setItem('applicationReviewSelection', JSON.stringify(payload)) } catch (e) { console.warn('sessionStorage set failed', e) }
+    try { localStorage.setItem('applicationReviewSelection', JSON.stringify(payload)) } catch (e) { console.warn('localStorage set failed', e) }
+    router.push({ path: `/admin/application-review/${appId}/edit`, state: { applicationReviewSelection: payload } })
+    return
+  }
+
+  // Otherwise fetch full application, build payload, then navigate (single push)
+  try {
+    const data = await getApplicationById(appId)
+
+    // prepare payload with full applicationData
+    const payload = { applicationId: appId, nationalID: null, childName: childNameFromList || '', applicationData: data }
+
+    // merge candidates
+    let candidates = []
+    if (Array.isArray(data.children)) candidates = candidates.concat(data.children)
+    if (Array.isArray(data.participants)) candidates = candidates.concat(data.participants)
+
+    const normalize = s => (s || '').toString().replace(/\s+/g, '').trim().toUpperCase()
+    const tn = normalize(payload.childName)
+
+    let found = null
+    if (tn) {
+      // exact match
+      found = candidates.find(c => [c.pname, c.name, c.childName, c.cname].some(n => normalize(n) === tn)) || null
+      // partial match
+      if (!found) {
+        found = candidates.find(c => [c.pname, c.name, c.childName, c.cname].some(n => {
+          const nn = normalize(n)
+          return nn && (nn.includes(tn) || tn.includes(nn))
+        })) || null
+      }
+    }
+
+    // fallback: prefer participantType indicating child or single candidate
+    if (!found && candidates.length > 0) {
+      found = candidates.find(c => (c.participantType && c.participantType.toString().includes('幼')) || c.participantType === '0' || c.participantType === 0) || null
+    }
+    if (!found && candidates.length === 1) found = candidates[0]
+
+    if (found && (found.nationalID || found.NationalID)) {
+      payload.nationalID = found.nationalID || found.NationalID
+    }
+
+    // persist payload and then navigate once
+    try { sessionStorage.setItem('applicationReviewSelection', JSON.stringify(payload)) } catch (e) { console.warn('sessionStorage set failed', e) }
+    try { localStorage.setItem('applicationReviewSelection', JSON.stringify(payload)) } catch (e) { console.warn('localStorage set failed', e) }
+    router.push({ path: `/admin/application-review/${appId}/edit`, state: { applicationReviewSelection: payload } })
+    return
+  } catch (err) {
+    console.error('[openDetailWithChild] failed to fetch application details:', err)
+    try { sessionStorage.removeItem('applicationReviewSelection') } catch (e) {}
+    try { localStorage.removeItem('applicationReviewSelection') } catch (e) {}
+    router.push({ path: `/admin/application-review/${appId}/edit` })
+    return
+  }
+}
+
+async function openDetail(item) {
+  // 先嘗試呼叫後端取得 application 詳細資料並存到 sessionStorage，讓 edit 頁可以直接使用
+  try {
+    const data = await getApplicationById(item.id)
+    const payload = { applicationId: item.id, nationalID: null, childName: '', applicationData: data }
+    try { sessionStorage.setItem('applicationReviewSelection', JSON.stringify(payload)) } catch (e) { console.warn('sessionStorage set failed', e) }
+    try { localStorage.setItem('applicationReviewSelection', JSON.stringify(payload)) } catch (e) { console.warn('localStorage set failed', e) }
+    // navigate with state
+    router.push({ path: `/admin/application-review/${item.id}/edit`, state: { applicationReviewSelection: payload } })
+    return
+  } catch (err) {
+    console.warn('[openDetail] failed to fetch application data, navigating without session payload', err)
+    // ensure no stale selection
+    try { sessionStorage.removeItem('applicationReviewSelection') } catch (e) {}
+    try { localStorage.removeItem('applicationReviewSelection') } catch (e) {}
+    router.push({ path: `/admin/application-review/${item.id}/edit` })
+    return
   }
 }
 
@@ -266,11 +365,6 @@ function search() {
   } else {
     searchApplicationsByFilters();
   }
-}
-
-function openDetail(item) {
-  // 導航到編輯頁面
-  router.push(`/admin/application-review/${item.id}/edit`)
 }
 
 function goBack() {
