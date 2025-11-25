@@ -255,7 +255,7 @@ const routes = [
                         meta: { breadcrumb: '新增機構' }
                     },
                     {
-                        path: ':id/edit',
+                        path: ':institutionID/edit',
                         name: 'AdminInstitutionEdit',
                         component: () => import('../views/AdminInstitutionEdit.vue'),
                         meta: { breadcrumb: '編輯機構' }

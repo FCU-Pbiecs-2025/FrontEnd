@@ -142,6 +142,52 @@ export const updateUser = async (id, user) => {
 };
 
 /**
+ * POST /users/new-member
+ * 註冊新使用者
+ *
+ * @param user 使用者資料
+ * @return 註冊結果
+ *
+ * body 範例:
+ * {
+ *   "account": "inst001",
+ *   "password": "$2a$10$xYzHashedPasswordExample2234567890",
+ *   "accountStatus": 1,
+ *   "permissionType": 1,
+ *   "name": "王小明",
+ *   "gender": true,
+ *   "phoneNumber": "0923456789",
+ *   "mailingAddress": "台北市中正區重慶南路一段100號",
+ *   "email": "wang@institution.com",
+ *   "birthDate": "1985-03-20",
+ *   "familyInfoID": "6659e1bc-a2ea-4bd2-854f-4141ba6ad924",
+ *   "institutionID": "e09f1689-17a4-46f7-ae95-160a368147af",
+ *   "nationalID": "B234567890"
+ * }
+ */
+export const createUser = async (user) => {
+  if (!user) {
+    throw new Error('缺少使用者資料');
+  }
+
+  if (!user.account) {
+    throw new Error('缺少帳號');
+  }
+
+  if (!user.password) {
+    throw new Error('缺少密碼');
+  }
+
+  try {
+    const response = await http.post('/users/new-member', user);
+    return response.data;
+  } catch (error) {
+    console.error('註冊使用者失敗:', error);
+    throw error;
+  }
+};
+
+/**
  * 輔助函數：取得權限類型的中文名稱
  * @param permissionType 權限類型代碼
  * @return 權限類型中文名稱

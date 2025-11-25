@@ -74,7 +74,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getUserById, updateUser } from '@/api/account.js'
+import { getUserById, updateUser, createUser } from '@/api/account.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -100,18 +100,48 @@ const loadAccountFromAPI = async (userId) => {
     isLoading.value = true
     const userData = await getUserById(userId)
 
+    console.log('========== 載入使用者資料 ==========')
+    console.log('API 回傳完整資料:', userData)
+    console.log('institutionID:', userData.institutionID)
+    console.log('密碼:', userData.password)
+
+    // 根據 institutionID 從機構列表查找機構名稱
+    let orgName = ''
+    if (userData.institutionID && remoteInstitutions.value.length > 0) {
+      console.log('開始從機構列表查找機構名稱...')
+
+      const matchedInst = remoteInstitutions.value.find(
+        inst => inst.institutionID === userData.institutionID || inst.id === userData.institutionID
+      )
+
+      if (matchedInst) {
+        orgName = matchedInst.institutionName
+        console.log('✓ 找到匹配的機構:', matchedInst)
+        console.log('✓ 機構名稱:', orgName)
+      } else {
+        console.warn('✗ 在機構列表中找不到匹配的機構')
+        console.warn('查找的 institutionID:', userData.institutionID)
+      }
+    } else if (userData.institutionName) {
+      // 如果 API 直接回傳 institutionName（備用）
+      orgName = userData.institutionName
+      console.log('使用 API 回傳的 institutionName:', orgName)
+    }
+
     // 映射 API 資料到表單
     account.value = {
       id: userData.account || '',
-      password: '', // 密碼不從 API 載入
-      org: userData.institutionName || '',
+      password: userData.password || '', // 顯示密碼（加密後的）
+      org: orgName,
       role: mapPermissionTypeToRole(userData.permissionType),
       right: userData.accountStatus === 1 ? 'enable' : 'suspended',
       // 保存完整的 API 資料以便儲存時使用
       _apiData: userData
     }
 
-    console.log('已載入使用者資料:', userData)
+    console.log('映射後的表單資料:', account.value)
+    console.log('表單機構名稱:', account.value.org)
+    console.log('========== 載入完成 ==========')
   } catch (error) {
     console.error('載入帳號資料失敗:', error)
     // API 失敗時嘗試從 localStorage 載入
@@ -207,18 +237,65 @@ const save = async () => {
     isSaving.value = true
 
     if (isNew.value) {
-      // 新增模式：目前先用 localStorage
+      // 新增模式：使用 createUser API
+
+      // 根據機構名稱找到對應的 institutionID
+      let institutionID = null
+      if (account.value.org) {
+        const matchedInst = remoteInstitutions.value.find(
+          inst => inst.institutionName === account.value.org
+        )
+        if (matchedInst) {
+          institutionID = matchedInst.institutionID || matchedInst.id
+          console.log('找到匹配的機構 ID:', institutionID)
+        } else {
+          console.warn('找不到對應的機構 ID')
+          alert('找不到對應的機構，請重新選擇')
+          return
+        }
+      }
+
+      // 準備新增資料
+      const newUserData = {
+        account: account.value.id,
+        password: account.value.password, // 後端會進行加密
+        accountStatus: account.value.right === 'enable' ? 1 : 0,
+        permissionType: mapRoleToPermissionType(account.value.role),
+        institutionID: institutionID,
+        // 以下欄位使用預設值，後續可根據需求調整
+        name: account.value.id, // 預設使用帳號作為名稱
+        gender: true,
+        phoneNumber: '',
+        mailingAddress: '',
+        email: '',
+        birthDate: '1990-01-01',
+        nationalID: ''
+      }
+
+      console.log('========== 準備新增資料 ==========')
+      console.log('新增資料:', newUserData)
+      console.log('機構名稱:', account.value.org)
+      console.log('機構ID:', institutionID)
+
+      // 呼叫 POST API 新增使用者
+      const result = await createUser(newUserData)
+
+      console.log('========== 新增成功 ==========')
+      console.log('新增結果:', result)
+      alert('新增成功！')
+
+      // 同時更新 localStorage（保持相容性）
       const stored = JSON.parse(localStorage.getItem('backendAccounts') || '{}')
-      const toSave = {
+      stored[account.value.id] = {
         id: account.value.id,
         org: account.value.org,
         role: account.value.role,
         right: account.value.right,
         password: account.value.password
       }
-      stored[account.value.id] = toSave
       localStorage.setItem('backendAccounts', JSON.stringify(stored))
-      alert('儲存完成')
+
+      // 返回列表頁
       router.push({ name: 'AdminBackendAccount' })
 
     } else {
@@ -228,29 +305,50 @@ const save = async () => {
         return
       }
 
+      // 根據機構名稱找到對應的 institutionID
+      let institutionID = account.value._apiData.institutionID // 預設使用原本的
+      if (account.value.org) {
+        const matchedInst = remoteInstitutions.value.find(
+          inst => inst.institutionName === account.value.org
+        )
+        if (matchedInst) {
+          institutionID = matchedInst.institutionID || matchedInst.id
+          console.log('找到匹配的機構 ID:', institutionID)
+        } else {
+          console.warn('找不到對應的機構 ID，使用原本的:', institutionID)
+        }
+      }
+
       // 準備更新資料
       const updateData = {
         ...account.value._apiData,  // 保留原始資料
         account: account.value.id,
         accountStatus: account.value.right === 'enable' ? 1 : 0,
         permissionType: mapRoleToPermissionType(account.value.role),
-        institutionName: account.value.org
+        institutionID: institutionID  // 使用 institutionID 而非 institutionName
       }
 
       // 密碼處理
-      if (account.value.password && account.value.password.trim() !== '') {
-        // 如果有輸入新密碼，使用新密碼（假設後端會加密）
+      if (account.value.password && account.value.password.trim() !== '' && account.value.password !== account.value._apiData.password) {
+        // 如果有輸入新密碼且與原密碼不同，使用新密碼
         updateData.password = account.value.password
+        console.log('使用新密碼')
       } else {
-        // 沒有輸入新密碼，保持原密碼
+        // 沒有輸入新密碼或密碼未改變，保持原密碼
         updateData.password = account.value._apiData.password
+        console.log('保持原密碼')
       }
 
-      console.log('準備更新的資料:', updateData)
+      console.log('========== 準備更新資料 ==========')
+      console.log('userID:', account.value._apiData.userID)
+      console.log('更新資料:', updateData)
+      console.log('機構名稱:', account.value.org)
+      console.log('機構ID:', institutionID)
 
       // 呼叫 API 更新
       const result = await updateUser(account.value._apiData.userID, updateData)
 
+      console.log('========== 更新成功 ==========')
       console.log('更新結果:', result)
       alert('儲存成功！')
 
