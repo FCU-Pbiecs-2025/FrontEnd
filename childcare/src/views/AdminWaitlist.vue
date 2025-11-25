@@ -23,8 +23,8 @@
             </div>
           </div>
           <div class="actions-wrapper">
-            <button class="btn query" @click="doFilter">查詢</button>
-            <button class="btn pdf" @click="generatePdf">產出PDF</button>
+            <button class="btn query" @click="doFilter" :disabled="loading">{{ loading ? '查詢中...' : '查詢' }}</button>
+            <button class="btn pdf" @click="generateExcel" :disabled="loadingExport">{{ loadingExport ? '匯出中...' : '匯出Excel' }}</button>
           </div>
         </div>
       </div>
@@ -38,26 +38,27 @@
               <th>幼兒姓名</th>
               <th>幼兒年紀</th>
               <th>序位</th>
-              <th>班級名稱</th>
               <th>排序</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in displayedList" :key="row.id">
-              <td data-label="案號">{{ row.id }}</td>
-              <td data-label="幼兒姓名">{{ row.childName }}</td>
-              <td data-label="幼兒年紀(月)">{{ row.ageInMonths }}</td>
-              <td data-label="序位">{{ row.priority }}</td>
-              <td data-label="班級名稱">{{ row.className }}</td>
-              <td data-label="排序">{{ row.rank }}</td>
+            <tr v-for="row in waitlist" :key="row.ApplicationID">
+              <td data-label="案號">{{ row.ApplicationID }}</td>
+              <td data-label="幼兒姓名">{{ row.Name }}</td>
+              <td data-label="幼兒年紀">{{ row.Age || formatBirthToAge(row.BirthDate) }}</td>
+              <td data-label="序位">{{ row.IdentityType }}</td>
+              <td data-label="排序">{{ row.CurrentOrder }}</td>
             </tr>
-            <tr v-if="displayedList.length === 0">
-              <td colspan="6" class="empty-tip">
+            <tr v-if="!loading && waitlist.length === 0">
+              <td colspan="5" class="empty-tip">
                 <div class="empty-box">
-                  <img src="https://img.icons8.com/ios-glyphs/30/cfcfcf/opened-folder.png" alt="empty"/>
+                  <img src="https://img.icons8.com/ios-glyphs/30/cfcfcf/opened-folder.png" alt="empty" />
                   <div>目前沒有候補資料</div>
                 </div>
               </td>
+            </tr>
+            <tr v-if="loading">
+              <td colspan="5" class="empty-tip">載入中...</td>
             </tr>
           </tbody>
         </table>
@@ -67,106 +68,164 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import '@/styles/admin-responsive.css'
+import * as XLSX from 'xlsx'
 
-// 機構清單（可之後改為 API 取得）
-const institutions = ref([
-  { id: 1, name: '快樂幼兒園' },
-  { id: 2, name: '幸福幼兒園' },
-  { id: 3, name: '希望幼兒園' }
-])
+// 機構清單（API 取得）
+const institutions = ref([])
+const loading = ref(false)
+const loadingExport = ref(false)
 
-// 候補清冊假資料（之後可接 API）
-const waitlist = ref([
-  // 快樂幼兒園
-  { id: 101, institutionId: 1, childName: '小米', dob: '2021-05-03', priority: 2, appliedAt: '2025-07-01', notes: '' },
-  { id: 102, institutionId: 1, childName: '小芳', dob: '2020-11-22', priority: 1, appliedAt: '2025-06-28', notes: '低收入戶' },
-  { id: 103, institutionId: 1, childName: '小偉', dob: '2021-02-10', priority: 3, appliedAt: '2025-07-05', notes: '' },
-  // 幸福幼兒園
-  { id: 201, institutionId: 2, childName: '小進', dob: '2020-08-12', priority: 1, appliedAt: '2025-06-20', notes: '' },
-  { id: 202, institutionId: 2, childName: '小芸', dob: '2021-03-09', priority: 2, appliedAt: '2025-07-02', notes: '雙胞胎' },
-  // 希望幼兒園
-  { id: 301, institutionId: 3, childName: '小恩', dob: '2020-12-30', priority: 1, appliedAt: '2025-06-18', notes: '' },
-  { id: 302, institutionId: 3, childName: '小安', dob: '2021-01-15', priority: 2, appliedAt: '2025-06-25', notes: '' }
-])
+// 取得機構清單
+const fetchInstitutions = async () => {
+  try {
+    const res = await fetch('http://localhost:8080/institutions')
+    if (!res.ok) {
+      console.warn('載入機構清單失敗，狀態：', res.status)
+      institutions.value = []
+      return
+    }
+    const data = await res.json()
+    if (Array.isArray(data)) {
+      institutions.value = data.map(item => ({ id: item.id || item.institutionID || item.institutionId || '', name: item.name || item.institutionName || item.InstitutionName || '' }))
+    } else if (data && Array.isArray(data.content)) {
+      institutions.value = data.content.map(item => ({ id: item.id || item.institutionID || item.institutionId || '', name: item.name || item.institutionName || item.InstitutionName || '' }))
+    } else {
+      institutions.value = []
+    }
+  } catch (err) {
+    console.error('fetchInstitutions error:', err)
+    institutions.value = []
+  }
+}
 
+// 後端候補資料
+const waitlist = ref([])
 const selectedInstitutionId = ref('0')
 const keyword = ref('')
 
-// 根據優先序與申請日期計算每個機構的排序序號
-function computeRanks() {
-  // 分機構分組
-  const grouped = new Map()
-  for (const w of waitlist.value) {
-    const list = grouped.get(w.institutionId) || []
-    list.push(w)
-    grouped.set(w.institutionId, list)
-  }
-  // 依規則排序後賦 rank
-  for (const [, list] of grouped) {
-    list.sort((a, b) => {
-      // 優先序小者在前；若相同，申請日期早者在前
-      if (a.priority !== b.priority) return a.priority - b.priority
-      return new Date(a.appliedAt) - new Date(b.appliedAt)
-    })
-    list.forEach((item, idx) => {
-      item.rank = idx + 1
-    })
-  }
-}
-
-// 幼兒年齡 x歲x月（以 2025/10/27 為基準）
-function ageInYearsMonths(dob) {
-  if (!dob) return '-';
-  const birthDate = new Date(dob);
-  if (isNaN(birthDate)) return '-';
-  const today = new Date('2025-10-27');
-  let months = (today.getFullYear() - birthDate.getFullYear()) * 12 + (today.getMonth() - birthDate.getMonth());
-  if (today.getDate() < birthDate.getDate()) months -= 1;
-  if (months < 0) months = 0;
-  const years = Math.floor(months / 12);
-  const remainMonths = months % 12;
-  return `${years}歲${remainMonths}月`;
-}
-
-const displayedList = computed(() => {
-  const selectedId = Number(selectedInstitutionId.value)
-  const kw = keyword.value.trim().toLowerCase()
-  const nameById = new Map(institutions.value.map(i => [i.id, i.name]))
-
-  return waitlist.value
-    .filter(w => selectedId === 0 || w.institutionId === selectedId)
-    .filter(w => {
-      if (!kw) return true
-      return (
-        (w.childName || '').toLowerCase().includes(kw) ||
-        (w.notes || '').toLowerCase().includes(kw)
-      )
-    })
-    .map(w => ({
-      ...w,
-      institutionName: nameById.get(w.institutionId) || '-',
-      ageInMonths: ageInYearsMonths(w.dob),
-      className: '混齡班'
-    }))
-    .sort((a, b) => {
-      // 先依機構，再依 rank 排序
-      if (a.institutionId !== b.institutionId) return a.institutionId - b.institutionId
-      return (a.rank || 9999) - (b.rank || 9999)
-    })
+// 依選取機構取得名稱（供標題/檔名）
+const selectedInstitutionName = computed(() => {
+  if (selectedInstitutionId.value === '0') return '全部'
+  const found = institutions.value.find(i => String(i.id) === String(selectedInstitutionId.value))
+  return (found && found.name) ? found.name : '全部'
 })
 
-function doFilter() {
-  // 設計上 computed 已自動反應；此處保留以符合使用者操作體驗
+// 依後端回傳格式計算年齡（若後端未提供 Age 欄位時備援）
+const formatBirthToAge = (birthDateStr) => {
+  if (!birthDateStr) return ''
+  const birth = new Date(birthDateStr)
+  if (isNaN(birth)) return ''
+  const now = new Date()
+  let years = now.getFullYear() - birth.getFullYear()
+  let months = now.getMonth() - birth.getMonth()
+  if (now.getDate() < birth.getDate()) {
+    months -= 1
+  }
+  if (months < 0) {
+    years -= 1
+    months += 12
+  }
+  if (years < 0) return ''
+  return years + '歲' + months + '個月'
 }
 
-function generatePdf() {
-  alert('產出PDF功能尚未實作');
+// 串接候補名單 API（畫面列表用，會帶姓名參數）
+const fetchWaitlist = async () => {
+  loading.value = true
+  try {
+    const params = new URLSearchParams()
+    if (selectedInstitutionId.value !== '0') params.append('institutionId', selectedInstitutionId.value)
+    if (keyword.value.trim()) params.append('name', keyword.value.trim())
+    const url = 'http://localhost:8080/waitlist/by-institution' + (params.toString() ? ('?' + params.toString()) : '')
+    const res = await fetch(url)
+    if (!res.ok) {
+      console.warn('載入候補資料失敗，狀態：', res.status)
+      waitlist.value = []
+      return
+    }
+    const data = await res.json()
+    waitlist.value = Array.isArray(data) ? data : []
+  } catch (e) {
+    console.error('fetchWaitlist error:', e)
+    waitlist.value = []
+  } finally {
+    loading.value = false
+  }
 }
+
+function doFilter() {
+  fetchWaitlist()
+}
+
+// 匯出 Excel：只依機構查全部資料（不帶姓名）
+async function generateExcel() {
+  if (loadingExport.value) return
+  loadingExport.value = true
+  try {
+    const params = new URLSearchParams()
+    if (selectedInstitutionId.value !== '0') params.append('institutionId', selectedInstitutionId.value)
+    const url = 'http://localhost:8080/waitlist/by-institution' + (params.toString() ? ('?' + params.toString()) : '')
+
+    const res = await fetch(url)
+    if (!res.ok) {
+      console.warn('匯出前查詢失敗，HTTP', res.status)
+      alert('匯出失敗：查詢資料失敗')
+      return
+    }
+    const data = await res.json()
+    const list = Array.isArray(data) ? data : []
+    if (list.length === 0) {
+      alert('無資料可匯出')
+      return
+    }
+
+    const rows = list.map(item => ({
+      '案號': item.ApplicationID,
+      '幼兒姓名': item.Name,
+      '幼兒年紀': item.Age || formatBirthToAge(item.BirthDate),
+      '序位': item.IdentityType,
+      '排序': item.CurrentOrder
+    }))
+
+    const wb = XLSX.utils.book_new()
+    // 先建立第一列為大標題，並合併 A1~E1
+    const bigTitle = `${selectedInstitutionName.value}機構候補清冊`
+    const ws = XLSX.utils.aoa_to_sheet([[bigTitle]])
+    ws['!merges'] = ws['!merges'] || []
+    ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } })
+
+    // 從 A2 開始放表頭與資料
+    XLSX.utils.sheet_add_json(ws, rows, { header: ['案號', '幼兒姓名', '幼兒年紀', '序位', '排序'], origin: 'A2' })
+
+    // 自動欄寬（粗略）
+    ws['!cols'] = [
+      { wch: 40 }, // 案號
+      { wch: 16 }, // 姓名
+      { wch: 14 }, // 年紀
+      { wch: 8 },  // 序位
+      { wch: 10 }  // 排序
+    ]
+
+    XLSX.utils.book_append_sheet(wb, ws, '候補清冊')
+
+    const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'')
+    const safe = (s) => String(s || '').replace(/[\\/:*?"<>|\s]+/g, '_')
+    const fileName = `waitlist_${safe(selectedInstitutionName.value)}_${ts}.xlsx`
+    XLSX.writeFile(wb, fileName)
+  } catch (err) {
+    console.error('generateExcel error:', err)
+    alert('匯出Excel失敗')
+  } finally {
+    loadingExport.value = false
+  }
+}
+
 
 onMounted(() => {
-  computeRanks()
+  fetchInstitutions()
+  fetchWaitlist() // 初始載入
 })
 </script>
 
@@ -205,13 +264,15 @@ onMounted(() => {
 
 .btn { padding:7px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:700 }
 .btn.query { background:#e6f2ff; color:#2e6fb7; border:1px solid #b3d4fc }
-.btn.query:hover { filter: brightness(0.98); }
+.btn.query:disabled { opacity:.6; cursor:not-allowed }
+.btn.query:hover:not(:disabled) { filter: brightness(0.98); }
 
 .btn.pdf {
   background: #e8f5e9;
   color: #388e3c;
   border: 1px solid #a5d6a7;
 }
+.btn.pdf:disabled { opacity:.6; cursor:not-allowed }
 .btn.pdf:hover { filter: brightness(0.98); }
 
 .actions-wrapper {

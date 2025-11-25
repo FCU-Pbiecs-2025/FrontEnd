@@ -29,6 +29,10 @@
             <label class="info-label">撤銷原因：</label>
             <span class="info-value">{{ revokeData.reason }}</span>
           </div>
+          <div class="info-row">
+            <label class="info-label">申請人身分證：</label>
+            <span class="info-value">{{ revokeData.nationalID }}</span>
+          </div>
         </div>
       </div>
 
@@ -54,6 +58,7 @@
               <div class="info-row"><label class="info-label">出生年月日：</label><span class="info-value">{{ parent.birth }}</span></div>
               <div class="info-row"><label class="info-label">是否留停：</label><span class="info-value">{{ parent.suspend }}</span></div>
               <div class="info-row"><label class="info-label">留停訖：</label><span class="info-value">{{ parent.suspendEnd }}</span></div>
+              <div class="info-row"><label class="info-label">參與身分類型：</label><span class="info-value">{{ parent.participantType }}</span></div>
               <hr v-if="idx !== parentList.length - 1" />
             </template>
           </div>
@@ -74,28 +79,18 @@
             <div class="info-row"><label class="info-label">出生年月日：</label><span class="info-value">{{ childData.birth }}</span></div>
             <div class="info-row"><label class="info-label">年齡：</label><span class="info-value">{{ childData.age }}</span></div>
             <div class="info-row"><label class="info-label">戶籍地址：</label><span class="info-value">{{ childData.householdAddr }}</span></div>
+            <div class="info-row"><label class="info-label">通訊地址：</label><span class="info-value">{{ childData.contactAddr }}</span></div>
           </div>
         </transition>
-      </div>
-
-      <div class="revoke-card">
-        <h3>撤銷確認</h3>
-        <div class="revoke-form">
-          <div class="form-row">
-            <label class="form-label">確認日期：</label>
-            <input type="date" v-model="revokeDate" class="form-input" />
-          </div>
-          <div class="form-row">
-            <label class="form-label">備註說明：</label>
-            <textarea v-model="revokeNote" class="form-input" rows="5" placeholder="請輸入撤銷備註..."></textarea>
-          </div>
-        </div>
       </div>
 
       <div class="bottom-row">
         <button class="btn danger" @click="confirmRevoke">確認撤銷</button>
         <button class="btn query" @click="goBack">返回列表</button>
       </div>
+
+      <div v-if="isLoading" class="loading">資料載入中...</div>
+      <div v-else-if="notFound" class="not-found">未找到此撤銷申請資料（ID: {{ revokeId }}）</div>
     </div>
   </div>
 </template>
@@ -103,145 +98,164 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { fetchRevokeDetails } from '@/api/revokes'
+import http from '@/api/http'
 
+// 取得路由參數與查詢
 const router = useRouter()
 const route = useRoute()
 
+// 從路由參數取得 cancellationID，nationalID 可以從 query 或 params 傳入
 const revokeId = ref(route.params.id)
+const nationalIDParam = ref(route.query.nationalID || route.params.nationalID || '')
+
+// 基本資料
 const revokeData = ref({})
-const revokeDate = ref(new Date().toISOString().slice(0, 10))
-const revokeNote = ref('')
+const parentList = ref([])
+const childData = ref({})
 const parentOpen = ref(false)
 const childOpen = ref(false)
+const isLoading = ref(false)
+const notFound = ref(false)
 
-// 計算幼兒年齡
+// 計算幼兒年齡函式保留
 function getChildAge(birthDate) {
-  let birthArr = birthDate.includes('/') ? birthDate.split('/') : birthDate.split('-');
-  let birthYear = parseInt(birthArr[0]);
-  let birthMonth = parseInt(birthArr[1]);
-  let birthDay = parseInt(birthArr[2]);
-  let nowYear = 2025;
-  let nowMonth = 10;
-  let nowDay = 27;
-  let totalMonths = (nowYear - birthYear) * 12 + (nowMonth - birthMonth);
-  let days = nowDay - birthDay;
-  if (days < 0) {
-    totalMonths--;
-    let prevMonth = nowMonth - 1;
-    let prevYear = nowYear;
-    if (prevMonth === 0) {
-      prevMonth = 12;
-      prevYear--;
-    }
-    let daysInPrevMonth = new Date(prevYear, prevMonth, 0).getDate();
-    days = daysInPrevMonth + days;
+  if (!birthDate) {
+    console.log('No birthDate provided')
+    return ''
   }
-  let years = Math.floor(totalMonths / 12);
-  let months = totalMonths % 12;
-  let weeks = Math.floor(days / 7);
-  return `${years}歲${months}月${weeks}周`;
+
+  console.log('Calculating age for birthDate:', birthDate)
+
+  try {
+    let birthArr
+    if (birthDate.includes('/')) {
+      birthArr = birthDate.split('/')
+    } else if (birthDate.includes('-')) {
+      birthArr = birthDate.split('-')
+    } else {
+      console.log('Invalid date format:', birthDate)
+      return ''
+    }
+
+    let birthYear = parseInt(birthArr[0])
+    let birthMonth = parseInt(birthArr[1])
+    let birthDay = parseInt(birthArr[2])
+
+    console.log('Parsed birth date:', { birthYear, birthMonth, birthDay })
+
+    if (isNaN(birthYear) || isNaN(birthMonth) || isNaN(birthDay)) {
+      console.log('Invalid date components')
+      return ''
+    }
+
+    let now = new Date()
+    let nowYear = now.getFullYear()
+    let nowMonth = now.getMonth() + 1
+    let nowDay = now.getDate()
+
+    console.log('Current date:', { nowYear, nowMonth, nowDay })
+
+    let totalMonths = (nowYear - birthYear) * 12 + (nowMonth - birthMonth)
+    let days = nowDay - birthDay
+
+    if (days < 0) {
+      totalMonths--
+      let prevMonth = nowMonth - 1
+      let prevYear = nowYear
+      if (prevMonth === 0) {
+        prevMonth = 12
+        prevYear--
+      }
+      let daysInPrevMonth = new Date(prevYear, prevMonth, 0).getDate()
+      days = daysInPrevMonth + days
+    }
+
+    let years = Math.floor(totalMonths / 12)
+    let months = totalMonths % 12
+    let weeks = Math.floor(days / 7)
+
+    const result = `${years}歲${months}月${weeks}周`
+    console.log('Calculated age:', result)
+    return result
+  } catch (error) {
+    console.error('Error calculating age:', error)
+    return ''
+  }
 }
 
-// 模擬資料 - 實際應用中這裡會從 API 獲取資料
-const mockData = {
-  'R2001': {
-    id: 'R2001', Date: '2025/01/01', applicant: '張麗麗', institution: '快樂托育', reason: '資格不符', type: 'qualification',
-    child: { id: 'B2001', name: '張小寶', gender: '女', birth: '2021/03/15', householdAddr: '台中市西屯區幸福路2號', age: getChildAge('2021/03/15') }
-  },
-  'R2002': {
-    id: 'R2002', Date: '2025/01/01', applicant: '王小明', institution: '幸福幼兒園', reason: '文件不全', type: 'document',
-    child: { id: 'B2002', name: '王小明', gender: '男', birth: '2020/05/10', householdAddr: '台北市中正區仁愛路1號', age: getChildAge('2020/05/10') }
-  },
-  'R2003': {
-    id: 'R2003', Date: '2025/01/01', applicant: '李小華', institution: '陽光托育所', reason: '其他原因', type: 'other',
-    child: { id: 'B2003', name: '李小華', gender: '男', birth: '2019/12/01', householdAddr: '高雄市鼓山區明誠路3號', age: getChildAge('2019/12/01') }
-  },
-  'R2004': {
-    id: 'R2004', Date: '2025/01/01', applicant: '陳大同', institution: '愛心幼兒園', reason: '資格不符', type: 'qualification',
-    child: { id: 'B2004', name: '陳大同', gender: '男', birth: '2022/08/20', householdAddr: '新竹市東區光復路4號', age: getChildAge('2022/08/20') }
-  }
-}
+// 載入撤銷申請詳細資料（必須有 cancellationID 與 nationalID 才能撈完整詳細）
+onMounted(async () => {
+  console.log('Component mounted, revokeId:', revokeId.value, 'nationalID:', nationalIDParam.value)
+  isLoading.value = true
+  notFound.value = false
 
-const parentList = ref([
-  {
-    id: 'A123456789',
-    name: '王媽媽',
-    gender: '女',
-    relation: '母',
-    job: '教師',
-    phone: '0912-345678',
-    householdAddr: '台北市中正區仁愛路1號',
-    contactAddr: '台北市中正區信義路2號',
-    email: 'parent1@example.com',
-    birth: '1985/03/21',
-    suspend: '否',
-    suspendEnd: ''
-  },
-  {
-    id: 'A987654321',
-    name: '王爸爸',
-    gender: '男',
-    relation: '父',
-    job: '工程師',
-    phone: '0922-876543',
-    householdAddr: '台北市中正區仁愛路1號',
-    contactAddr: '台北市中正區信義路2號',
-    email: 'parent2@example.com',
-    birth: '1982/07/15',
-    suspend: '否',
-    suspendEnd: ''
-  }
-])
-
-const childData = ref({
-  id: 'B987654321',
-  name: '王小明',
-  gender: '男',
-  birth: '2020/05/10',
-  householdAddr: '台北市中正區仁愛路1號',
-  age: ''
-})
-
-onMounted(() => {
-  // 載入撤銷資料
-  if (mockData[revokeId.value]) {
-    revokeData.value = { ...mockData[revokeId.value] }
-    childData.value = { ...mockData[revokeId.value].child }
-    // 如果已有撤銷記錄，載入之前的撤銷資料
-    if (revokeData.value.revokeDate) {
-      revokeDate.value = revokeData.value.revokeDate
+  try {
+    if (!revokeId.value) {
+      console.warn('No cancellationID provided')
+      notFound.value = true
+      revokeData.value = { id: '' }
+      return
     }
-    if (revokeData.value.revokeNote) {
-      revokeNote.value = revokeData.value.revokeNote
+
+    const data = await fetchRevokeDetails(revokeId.value, nationalIDParam.value)
+    console.log('Received data from API (mapped):', data)
+
+    if (data && data.revokeInfo) {
+      revokeData.value = data.revokeInfo
+      parentList.value = data.parents || []
+      childData.value = data.child || {}
+
+      // 若 child 有出生日期則計算年齡
+      if (childData.value.birth) {
+        childData.value.age = getChildAge(childData.value.birth)
+      }
+    } else {
+      console.log('No mapped data received, setting notFound to true')
+      notFound.value = true
+      revokeData.value = { id: revokeId.value }
     }
-  } else {
-    // 如果找不到資料，返回列表頁
-    router.push('/admin/application-revoke')
-  }
-  if (!childData.value.age) {
-    childData.value.age = getChildAge(childData.value.birth)
+  } catch (e) {
+    console.error('載入撤銷申請失敗:', e)
+    notFound.value = true
+    revokeData.value = { id: revokeId.value }
+  } finally {
+    isLoading.value = false
+    console.log('Loading finished. Final state:', {
+      revokeData: revokeData.value,
+      parentList: parentList.value,
+      childData: childData.value,
+      isLoading: isLoading.value,
+      notFound: notFound.value
+    })
   }
 })
 
-function confirmRevoke() {
-  if (!revokeNote.value.trim()) {
-    alert('請輸入立案資料')
-    return
+async function confirmRevoke() {
+  // 取得撤銷ID
+  const cancellationID = revokeId.value
+  // 取得今天日期 yyyy-MM-dd
+  const today = new Date()
+  const yyyy = today.getFullYear()
+  const mm = String(today.getMonth() + 1).padStart(2, '0')
+  const dd = String(today.getDate()).padStart(2, '0')
+  const confirmDate = `${yyyy}-${mm}-${dd}`
+
+  try {
+    await http.put('/revoke/confirm-date', {
+      cancellationID,
+      confirmDate
+    })
+    // 成功後返回列表
+    goBack()
+  } catch (e) {
+    alert('確認撤銷失敗，請稍後再試')
+    console.error(e)
   }
-
-  // 這裡應該發送 API 請求保存撤銷結果
-  console.log('撤銷資料:', {
-    revokeId: revokeId.value,
-    revokeDate: revokeDate.value,
-    revokeNote: revokeNote.value
-  })
-
-  alert('撤銷完成！')
-  goBack()
 }
 
 function goBack() {
-  router.push('/admin/application-revoke')
+  router.push({ name: 'AdminApplicationRevoke' })
 }
 </script>
 
@@ -275,7 +289,7 @@ function goBack() {
   font-weight: 700;
 }
 
-.detail-card, .revoke-card {
+.detail-card {
   background: #fff;
   border: 1px solid #e6e6ea;
   border-radius: 12px;
@@ -284,7 +298,7 @@ function goBack() {
   box-shadow: 0 2px 8px rgba(16, 24, 40, 0.04);
 }
 
-.detail-card h3, .revoke-card h3 {
+.detail-card h3 {
   color: #2e6fb7;
   font-size: 1.2rem;
   margin-bottom: 20px;
@@ -311,52 +325,6 @@ function goBack() {
 .info-value {
   color: #334e5c;
   font-weight: 500;
-}
-
-.revoke-form {
-  display: grid;
-  gap: 20px;
-}
-
-.form-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.form-label {
-  width: 120px;
-  font-weight: 600;
-  color: #2e6fb7;
-  margin-top: 8px;
-}
-
-.form-input {
-  flex: 1;
-  padding: 12px 16px;
-  border-radius: 8px;
-  border: 1px solid #d8dbe0;
-  font-size: 1rem;
-  transition: border-color 0.2s;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #2e6fb7;
-  box-shadow: 0 0 0 2px rgba(46, 111, 183, 0.1);
-}
-
-.form-input[type="date"] {
-  width: 200px;
-}
-
-select.form-input {
-  width: 200px;
-}
-
-textarea.form-input {
-  resize: vertical;
-  min-height: 120px;
 }
 
 .bottom-row {
@@ -423,17 +391,6 @@ textarea.form-input {
   padding: 18px 24px;
   animation: fadeIn 0.3s;
 }
-.collapse-enter-active, .collapse-leave-active {
-  transition: max-height 0.3s cubic-bezier(.4,0,.2,1);
-}
-.collapse-enter-from, .collapse-leave-to {
-  max-height: 0;
-  overflow: hidden;
-}
-.collapse-enter-to, .collapse-leave-from {
-  max-height: 300px;
-  overflow: hidden;
-}
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -451,29 +408,17 @@ hr {
   margin: 16px 0;
 }
 
+.loading { padding: 24px; text-align:center; color:#2e6fb7; font-weight:600 }
+.not-found { padding: 24px; text-align:center; color:#dc2626; font-weight:600 }
+
 @media (max-width: 900px) {
   .announcement-card {
     width: 100%;
     padding: 16px;
   }
 
-  .detail-card, .revoke-card {
+  .detail-card {
     padding: 16px;
-  }
-
-  .form-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .form-label {
-    width: auto;
-    margin-top: 0;
-    margin-bottom: 8px;
-  }
-
-  .form-input[type="date"], select.form-input {
-    width: 100%;
   }
 }
 </style>
