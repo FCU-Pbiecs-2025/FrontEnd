@@ -7,9 +7,11 @@
       <div class="title-decoration"></div>
     </div>
 
-      <div v-if="applications.length === 0" class="no-applications">目前沒有申請紀錄</div>
+      <div v-if="loading" class="loading-message">載入中...</div>
+      <div v-else-if="error" class="error-message">{{ error }}</div>
+      <div v-else-if="applications.length === 0" class="no-applications">目前沒有申請紀錄</div>
 
-      <div class="applications-list">
+      <div v-else class="applications-list">
         <div
           v-for="item in applications"
           :key="item.caseNo"
@@ -57,23 +59,32 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useAuthStore } from '@/store/auth.js'
+import { getUserApplicationDetails } from '@/api/application.js'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 
 const childActive = computed(() => {
   return route.name === 'ApplicationProgressDetail' || route.name === 'ApplicationProgressSupplement' || route.name === 'ApplicationProgressRevoke'
 })
 
 function getStatusLabel(statusClass, rawStatus) {
+  // 如果後端直接提供中文狀態，優先使用
+  if (rawStatus && typeof rawStatus === 'string' && /[\u4e00-\u9fa5]/.test(rawStatus)) {
+    return rawStatus
+  }
+
+  // 否則根據 statusClass 轉換
   const map = {
     processing: '審核中',
     pending: '審核中',
     supplement: '需要補件',
     rejected: '已退件',
-    waitingForAdmission: '錄取候補中',
+    waitingForAdmission: '候補中',
     revokeProcessing: '撤銷申請審核中',
     revoked: '撤銷申請通過',
     admitted: '已錄取',
@@ -82,22 +93,144 @@ function getStatusLabel(statusClass, rawStatus) {
   return map[statusClass] || rawStatus || '未知狀態'
 }
 
-// sample data with multiple statuses + some non-empty details
-const applications = ref([
-  { caseNo: 'A20251018001', applyDate: '2025-10-18', status: 'processing', statusClass: 'processing', details: '', submittedAt: '2025-10-18T09:12:00' },
-  { caseNo: 'A20251018002', applyDate: '2025-10-17', status: 'pending', statusClass: 'pending', details: '等候資料審核', submittedAt: '2025-10-17T14:03:00' },
-  { caseNo: 'A20250820003', applyDate: '2025-08-20', status: 'supplement', statusClass: 'supplement', details: '照片解析度不足，請上傳清晰頭像照片。', supplementItems: [ { key: 'photo', label: '孩子頭像照片', required: true } ], supplementDeadline: '2025-09-03' , submittedAt: '2025-08-20T10:00:00'},
-  { caseNo: 'A20250711004', applyDate: '2025-07-11', status: 'rejected', statusClass: 'rejected', details: '資料不完整：請補上父母身分證明文件。', rejectionReason: '缺少父母身分證影本', rejectionContact: 'service@example.gov.tw', submittedAt: '2025-07-11T11:22:00' },
-  { caseNo: 'A20250425006', applyDate: '2025-04-25', status: 'waitingForAdmission', statusClass: 'waitingForAdmission', details: '', queueNumber: 12, queueTotal: 50, estimatedWaitWeeks: 8, submittedAt: '2025-04-25T08:30:00' },
-  { caseNo: 'A20250601005', applyDate: '2025-06-01', status: 'revokeProcessing', statusClass: 'revokeProcessing', details: '已送出撤銷申請，等待處理。', revokeRequestedAt: '2025-06-01T15:20:00', revokeReason: '家庭因素' , submittedAt: '2025-05-20T09:00:00'},
-  { caseNo: 'A20250601006', applyDate: '2025-06-02', status: 'revoked', statusClass: 'revoked', details: '撤銷申請已通過。', revokeRequestedAt: '2025-06-01T13:00:00', revokeProcessedAt: '2025-06-02T10:15:00', submittedAt: '2025-05-15T12:00:00' },
-  { caseNo: 'A20250130008', applyDate: '2025-01-30', status: 'withdrawn', statusClass: 'withdrawn', details: '已於 2025-02-15 正式退託。', withdrawnAt: '2025-02-15', withdrawnReason: '已找到其他托育安排', submittedAt: '2025-01-30T09:45:00' },
-  { caseNo: 'A20250212007', applyDate: '2025-02-12', status: 'admitted', statusClass: 'admitted', details: '恭喜，您已錄取。', admittedAt: '2025-03-01', assignedInstitution: { id: 'I-1001', name: '幸福托育中心' }, submittedAt: '2025-02-12T10:00:00' }
-])
+// 申請資料
+const applications = ref([])
+const loading = ref(false)
+const error = ref(null)
+
+// 從後端獲取使用者申請詳細資訊
+const fetchUserApplications = async () => {
+  try {
+    loading.value = true
+    error.value = null
+
+    // 從 Pinia authStore 獲取使用者 ID
+    const userID = authStore.user?.UserID
+
+    if (!userID) {
+      console.warn('未找到使用者 ID，無法獲取申請資料')
+      applications.value = []
+      return
+    }
+
+    console.log('[ApplicationStatus] 正在獲取使用者申請資料，UserID:', userID)
+    const response = await getUserApplicationDetails(userID)
+
+    console.log('[ApplicationStatus] API回應:', response)
+    console.log('[ApplicationStatus] API回應類型:', typeof response)
+    console.log('[ApplicationStatus] 是否為陣列:', Array.isArray(response))
+
+    // 將後端資料轉換為前端格式
+    if (response && Array.isArray(response)) {
+      applications.value = response.map((item, index) => {
+        // 優先使用後端 DTO 的 applicationID
+        const rawCase = item.applicationID || item.applicationId || item.applicationId || item.caseNo || item.id || item.applicationNo || item.case_number || item.caseId || item.applicationID
+        const caseNo = rawCase ? String(rawCase) : `CASE-${Date.now()}-${index}`
+
+        console.log('處理案件資料:', {
+          originalData: item,
+          mappedCaseNo: caseNo
+        })
+
+        return {
+          caseNo: caseNo,
+          applicationID: item.applicationID || item.applicationId || null,
+          applyDate: item.applicationDate || item.applyDate || item.submittedAt,
+          status: item.status,
+          statusClass: mapStatusToClass(item.status),
+          details: item.details || item.reason || '',
+          queueNumber: item.queueNumber,
+          queueTotal: item.queueTotal,
+          estimatedWaitWeeks: item.estimatedWaitWeeks,
+          supplementItems: item.supplementItems,
+          supplementDeadline: item.supplementDeadline,
+          rejectionReason: item.rejectionReason || item.reason,
+          assignedInstitution: item.assignedInstitution
+        }
+      })
+
+      console.log('映射後的applications:', applications.value)
+    } else if (response) {
+      // 如果回傳的不是陣列，但有資料
+      console.log('API回傳非陣列格式:', response)
+      applications.value = []
+    } else {
+      console.log('API沒有回傳有效的陣列資料，使用測試資料')
+      // 臨時測試資料 - 在實際API正常回應後可以移除
+      applications.value = [
+        {
+          caseNo: 'TEST-001',
+          applyDate: '2024-11-20',
+          status: '審核中',
+          statusClass: 'processing',
+          details: '您的申請正在審核中，請耐心等候',
+        },
+        {
+          caseNo: 'TEST-002',
+          applyDate: '2024-11-15',
+          status: '需要補件',
+          statusClass: 'supplement',
+          details: '請補充戶口名簿影本',
+        }
+      ]
+    }
+  } catch (err) {
+    console.error('獲取申請資料失敗:', err)
+    error.value = '無法載入申請資料，請稍後再試'
+    applications.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+// 將後端中文狀態映射到前端狀態類別
+function mapStatusToClass(status) {
+  if (!status) return 'processing'
+
+  const statusMap = {
+    '審核中': 'processing',
+    '需要補件': 'supplement',
+    '已退件': 'rejected',
+    '候補中': 'waitingForAdmission',
+    '撤銷申請審核中': 'revokeProcessing',
+    '撤銷申請通過': 'revoked',
+    '已退托': 'withdrawn',
+    '已錄取': 'admitted'
+  }
+
+  return statusMap[status] || 'processing'
+}
+
+// 組件掛載時獲取資料
+onMounted(() => {
+  fetchUserApplications()
+})
 
 // Entire item click behavior -> unified progress detail page
-const onItemClick = (item) => {
-  router.push({ name: 'ApplicationProgressDetail', params: { caseNo: item.caseNo } })
+const onItemClick = async (item) => {
+  console.log('點擊項目:', item)
+  // 嘗試多個可能的欄位來取得 caseNo
+  const selectedCase = item.caseNo || item.applicationID || item.applicationId || item.id || item.caseId || item.applicationNo || item.case_number || item.applicationID || null
+  console.log('選取的案件識別:', selectedCase)
+
+  if (!selectedCase) {
+    console.error('無法從項目中取得任何案件識別欄位', item)
+    alert('案件識別不存在，無法查看詳細資料')
+    return
+  }
+
+  const caseParam = String(selectedCase)
+  const pathPush = `/application-status/progress/${encodeURIComponent(caseParam)}`
+
+  console.log('使用 path 跳轉到:', pathPush)
+
+  try {
+    await router.push(pathPush)
+    console.log('路由跳轉成功 (path)')
+  } catch (e) {
+    console.error('path 跳轉失敗:', e)
+    alert('無法跳轉到詳細頁，請查看 console 以獲取更多資訊')
+  }
 }
 
 // Keyboard accessibility: Enter / Space triggers click
@@ -142,6 +275,8 @@ const onKeydown = (e, item) => {
 .status-badge.withdrawn { background:#f8d7da; color:#721c24 }
 
 .no-applications { text-align:center; color:#666; padding:18px 0 }
+.loading-message { text-align:center; color:#666; padding:18px 0; font-size:1rem }
+.error-message { text-align:center; color:#d32f2f; padding:18px 0; font-size:1rem; background:#ffebee; border-radius:8px }
 
 @media (max-width:760px) {
   .application-item { flex-direction:column; align-items:flex-start }

@@ -88,6 +88,44 @@ export const updateApplicationCase = async (id, { nationalID, status, reason, ch
     }
 };
 
+// 取得使用者申請詳細資訊
+// GET /applications/user/{userID}/details
+// @param {string} userID - 使用者身分證字號
+// @returns {Promise<Object>} 使用者申請詳細資訊
+export const getUserApplicationDetails = async (userID) => {
+    if (!userID) {
+        throw new Error('缺少 userID');
+    }
+    try {
+        const url = `/applications/user/${encodeURIComponent(userID)}/details`;
+        const response = await http.get(url);
+        return response.data;
+    } catch (error) {
+        console.error(`獲取使用者 ${userID} 申請詳細資訊失敗:`, error);
+        throw error;
+    }
+};
+
+// 取得特定案件的詳細資料
+// GET /user/{userID}/details
+// @param {string} userID - 使用者ID
+// @param {string} caseNo - 案件編號 (可選)
+// @returns {Promise<Object>} 案件詳細資訊
+export const getCaseDetails = async (userID, caseNo) => {
+    if (!userID) {
+        throw new Error('缺少 userID');
+    }
+    try {
+        const url = `/user/${encodeURIComponent(userID)}/details`;
+        const params = caseNo ? { caseNo } : {};
+        const response = await http.get(url, { params });
+        return response.data;
+    } catch (error) {
+        console.error(`獲取案件詳細資訊失敗:`, error);
+        throw error;
+    }
+};
+
 // 取得案件列表（分頁查詢）
 // GET /applications/cases/list
 // 根據條件查詢多個案件的摘要信息，支持分頁、狀態篩選、機構篩選

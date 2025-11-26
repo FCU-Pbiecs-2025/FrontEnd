@@ -109,8 +109,8 @@ const saveList = () => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(list.value))
 }
 
-// Map frontend string values to backend numeric values (assumption)
-// Assumptions: type: front=0, back=1; status: enabled=0, disabled=1
+// Map frontend string values to backend numeric values
+// type: front=1, back=2; status: enabled=0, disabled=1
 const mapToBackend = (payload) => {
   return {
     title: payload.title,
@@ -119,7 +119,7 @@ const mapToBackend = (payload) => {
     startDate: payload.date || null,
     endDate: payload.endDate || null,
     // convert type/status
-    type: payload.type === 'back' ? 1 : 0,
+    type: payload.type === 'back' ? 2 : 1,
     status: payload.status === 'disabled' ? 1 : 0,
     // optional fields: createdUser/createdTime can be omitted and backend will fill
   }
@@ -140,7 +140,7 @@ onMounted(async () => {
           form.value.title = data.title || ''
           form.value.content = data.content || ''
           // backend stores Type as numeric; map back to string
-          form.value.type = (data.type === 1 || data.type === '1') ? 'back' : 'front'
+          form.value.type = (data.type === 2 || data.type === '2') ? 'back' : 'front'
           // status
           form.value.status = (data.status === 1 || data.status === '1') ? 'disabled' : 'enabled'
           // dates: could be startDate or createdTime; prefer startDate

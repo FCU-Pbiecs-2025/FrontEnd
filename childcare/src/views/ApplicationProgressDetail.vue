@@ -5,11 +5,24 @@
       <p class="page-description">查看申請案件摘要與目前狀態</p>
     </div>
     <div class="content-area">
-      <div v-if="!application" class="empty-card">
+      <!-- Loading 狀態 -->
+      <div v-if="loading" class="loading-card">
+        <p>載入中...</p>
+      </div>
+
+      <!-- 錯誤狀態 -->
+      <div v-else-if="error" class="error-card">
+        <p>{{ error }}</p>
+        <button class="back-btn" @click="goBack">返回</button>
+      </div>
+
+      <!-- 找不到案件 -->
+      <div v-else-if="!application" class="empty-card">
         <p>找不到此案號：{{ caseNo }}</p>
         <button class="back-btn" @click="goBack">返回</button>
       </div>
 
+      <!-- 案件詳細資料 -->
       <div v-else>
         <div v-if="!childActive" class="detail-card">
           <h2>案件摘要</h2>
@@ -63,28 +76,143 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/store/auth.js'
+import { getCaseDetails } from '@/api/application.js'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
-const caseNo = route.params.caseNo
+// 允許從多個位置取 caseNo（route.params, route.query, 其它常見 param 名稱）
+let caseNo = route.params.caseNo || route.query.caseNo || route.params.applicationId || route.params.id || route.query.applicationId || null
 
-// 簡易本地資料（可改為串 API），補上申請人/幼兒/出生日期等欄位以展示摘要
-const dataset = [
-  { caseNo: 'A20251018001', applyDate: '2025-10-18', status: 'processing', statusClass: 'processing', details: '', applicantName: '王小明', childName: '王小寶', childBirth: '2022-05-01', targetInstitution: '幸福托育中心' },
-  { caseNo: 'A20251018002', applyDate: '2025-10-17', status: 'pending', statusClass: 'pending', details: '等候資料審核', applicantName: '王小明', childName: '王小寶', childBirth: '2022-05-01', targetInstitution: '幸福托育中心' },
-  { caseNo: 'A20250820003', applyDate: '2025-08-20', status: 'supplement', statusClass: 'supplement', details: '照片解析度不足，請上傳清晰頭像照片。', supplementItems: [ { key: 'hukou', label: '戶口名簿影本', required: true } ], supplementDeadline: '2025-09-03', applicantName: '林小華', childName: '林小安', childBirth: '2023-01-15', targetInstitution: '希望托育中心' },
-  { caseNo: 'A20250711004', applyDate: '2025-07-11', status: 'rejected', statusClass: 'rejected', details: '資料不完整：請補上父母身分證明文件。', applicantName: '李大華', childName: '李小華', childBirth: '2021-11-20', targetInstitution: '快樂托育中心' },
-  { caseNo: 'A20250425006', applyDate: '2025-04-25', status: 'waitingForAdmission', statusClass: 'waitingForAdmission', details: '', queueNumber: 12, queueTotal: 50, estimatedWaitWeeks: 8, applicantName: '陳建國', childName: '陳小明', childBirth: '2022-10-10', targetInstitution: '幸福托育中心' },
-  { caseNo: 'A20250601005', applyDate: '2025-06-01', status: 'revokeProcessing', statusClass: 'revokeProcessing', details: '已送出撤銷申請，等待處理。', applicantName: '張美麗', childName: '張小天', childBirth: '2021-06-05', targetInstitution: '希望托育中心' },
-  { caseNo: 'A20250601006', applyDate: '2025-06-02', status: 'revoked', statusClass: 'revoked', details: '撤銷申請已通過。', applicantName: '林雅文', childName: '林小花', childBirth: '2020-12-30', targetInstitution: '快樂托育中心' },
-  { caseNo: 'A20250130008', applyDate: '2025-01-30', status: 'withdrawn', statusClass: 'withdrawn', details: '已於 2025-02-15 正式退託。', applicantName: '吳淑芬', childName: '吳小虎', childBirth: '2020-05-10', targetInstitution: '幸福托育中心' },
-  { caseNo: 'A20250212007', applyDate: '2025-02-12', status: 'admitted', statusClass: 'admitted', details: '恭喜，您已錄取。', admittedAt: '2025-03-01', assignedInstitution: { id: 'I-1001', name: '幸福托育中心' }, applicantName: '黃志明', childName: '黃小龍', childBirth: '2021-03-22' }
-]
+// 響應式資料
+const application = ref(null)
+const loading = ref(false)
+const error = ref(null)
 
-const application = computed(() => dataset.find(a => String(a.caseNo) === String(caseNo)))
+// 檢查並從 API 取得案件詳細資料，支援多種回傳結構
+const fetchCaseDetails = async (effectiveCaseNo) => {
+  const userID = authStore.user?.UserID
+  if (!userID) {
+    error.value = '請先登入'
+    console.warn('[ApplicationProgressDetail] 未找到 authStore.user.UserID')
+    return
+  }
+
+  loading.value = true
+  error.value = null
+
+  try {
+    console.log('[ApplicationProgressDetail] 取得案件詳細，userID:', userID, 'caseNo:', effectiveCaseNo)
+
+    // 從 /applications/{id} 或 /applications/user/{userID}/details 取得資料（後端可能回傳多筆或單筆）
+    const res = await getCaseDetails(userID, effectiveCaseNo)
+    console.log('[ApplicationProgressDetail] API 回應 (raw):', res)
+
+    // helper: 將單筆或陣列的後端物件轉為統一格式
+    const normalizeItem = (item) => {
+      if (!item) return null
+      return {
+        caseNo: item.caseNo || item.applicationID || item.applicationId || item.id || item.applicationNo || item.caseId || item.applicationID || null,
+        applyDate: item.applyDate || item.applicationDate || item.submittedAt || null,
+        status: item.status || item.caseStatus || item.state || null,
+        statusClass: item.statusClass || item.status || item.caseStatus || null,
+        details: item.details || item.description || item.reason || null,
+        applicantName: item.applicantName || item.parentName || item.name || null,
+        childName: item.childName || item.child || null,
+        childBirth: item.childBirth || item.childBirthDate || item.childDob || null,
+        targetInstitution: item.targetInstitution || item.institutionName || null,
+        assignedInstitution: item.assignedInstitution || item.assigned || null,
+        supplementItems: item.supplementItems || item.supplements || null,
+        supplementDeadline: item.supplementDeadline || item.supplement_deadline || null,
+        queueNumber: item.queueNumber || item.queueNo || null,
+        admittedAt: item.admittedAt || item.assignedAt || null
+      }
+    }
+
+    // 情況 1: API 回傳陣列
+    if (Array.isArray(res)) {
+      console.log('[ApplicationProgressDetail] 回傳為陣列，共', res.length, '筆')
+      if (effectiveCaseNo) {
+        const found = res.find(i => {
+          const raw = i.caseNo || i.applicationID || i.applicationId || i.id || i.applicationNo || i.caseId || i.applicationID
+          return raw && String(raw) === String(effectiveCaseNo)
+        })
+        if (found) {
+          application.value = normalizeItem(found)
+        } else {
+          error.value = '找不到此案件（API 回傳多筆，未找到對應案號）'
+          console.warn('[ApplicationProgressDetail] 在陣列中找不到對應 caseNo:', effectiveCaseNo)
+        }
+      } else {
+        // 沒有傳入 caseNo，取第一筆作為預設顯示（可視需求改為報錯）
+        application.value = normalizeItem(res[0])
+        console.warn('[ApplicationProgressDetail] 未提供 caseNo，使用第一筆資料顯示')
+      }
+
+    // 情況 2: API 回傳物件且可能含 content 或 data
+    } else if (res && typeof res === 'object') {
+      // 若回傳格式為 { content: [...] }
+      if (Array.isArray(res.content)) {
+        console.log('[ApplicationProgressDetail] 回傳 content 陣列，共', res.content.length, '筆')
+        const arr = res.content
+        if (effectiveCaseNo) {
+          const found = arr.find(i => {
+            const raw = i.caseNo || i.applicationID || i.applicationId || i.id || i.applicationNo || i.caseId || i.applicationID
+            return raw && String(raw) === String(effectiveCaseNo)
+          })
+          if (found) {
+            application.value = normalizeItem(found)
+          } else {
+            error.value = '找不到此案件（content 中未找到對應案號）'
+            console.warn('[ApplicationProgressDetail] content 中找不到對應 caseNo:', effectiveCaseNo)
+          }
+        } else if (arr.length > 0) {
+          application.value = normalizeItem(arr[0])
+          console.warn('[ApplicationProgressDetail] 未提供 caseNo，使用 content 第一筆資料顯示')
+        } else {
+          error.value = '後端回傳空陣列'
+        }
+
+      // 若回傳已是單一案件物件
+      } else {
+        const normalized = normalizeItem(res)
+        // 若 normalized.caseNo 與 effectiveCaseNo 不同，仍可顯示，但警告
+        if (effectiveCaseNo && normalized.caseNo && String(normalized.caseNo) !== String(effectiveCaseNo)) {
+          console.warn('[ApplicationProgressDetail] 回傳單筆案件的 caseNo 與 route caseNo 不同', normalized.caseNo, effectiveCaseNo)
+        }
+        application.value = normalized
+      }
+
+    } else {
+      error.value = '後端回傳格式無法解析'
+      console.warn('[ApplicationProgressDetail] 未知的 API 回傳格式', res)
+    }
+
+  } catch (err) {
+    console.error('[ApplicationProgressDetail] 取得案件資料失敗:', err)
+    application.value = null
+    if (err?.response?.status === 404) {
+      error.value = '找不到此案件（404），請確認案號是否正確'
+    } else {
+      error.value = err?.message || '載入資料時發生錯誤'
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+// 組件掛載時取得資料，允許從 route.query 或其他 param 名稱取得 caseNo
+onMounted(() => {
+  // 若 route.params.caseNo 未提供，嘗試從 query 或其他 param 拿到
+  caseNo = caseNo || route.params.caseNo || route.query.caseNo || route.params.applicationId || route.params.id || null
+  console.log('ApplicationProgressDetail mounted, resolved caseNo:', caseNo)
+  console.log('AuthStore user:', authStore.user)
+  fetchCaseDetails(caseNo)
+})
 
 function getStatusLabel(statusClass, rawStatus) {
   const map = {
@@ -142,8 +270,10 @@ const goRevoke = () => router.push({ name: 'ApplicationProgressRevoke', params: 
 
 .content-area { max-width: 900px; margin: 0 auto; padding: 0 20px; }
 
-.empty-card, .detail-card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(249,175,174,0.1); }
-.empty-card { text-align: center; }
+.loading-card, .error-card, .empty-card, .detail-card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(249,175,174,0.1); }
+.loading-card, .error-card, .empty-card { text-align: center; }
+.error-card { border-left: 4px solid #dc3545; }
+.loading-card { border-left: 4px solid #F9AFAE; }
 
 .detail-card h2 { color: #333; font-size: 1.6rem; margin-bottom: 16px; border-bottom: 3px solid #F9AFAE; padding-bottom: 8px; }
 

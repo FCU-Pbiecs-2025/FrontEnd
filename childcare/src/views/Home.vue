@@ -9,17 +9,17 @@
         <div class="card-container">
           <div class="card" @click="goToPage('ApplicationStatus')" style="cursor:pointer;">
             <img src="../imgs/research.png" alt="申請進度查詢">
-<!--            <img src="https://img.icons8.com/ios/100/ffe8e8/id-verified.png" alt="申請進度查詢">-->
+            <!--            <img src="https://img.icons8.com/ios/100/ffe8e8/id-verified.png" alt="申請進度查詢">-->
             <p>申請進度查詢</p>
           </div>
           <div class="card" @click="goToPage('ApplyService')" style="cursor:pointer;">
             <img src="../imgs/paper.png" alt="申請托育服務">
-<!--            <img src="https://img.icons8.com/ios/100/ffe8e8/document.png" alt="申請托育服務">-->
+            <!--            <img src="https://img.icons8.com/ios/100/ffe8e8/document.png" alt="申請托育服務">-->
             <p>申請托育服務</p>
           </div>
           <div class="card" @click="goToPage('SubsidyCalculator')" style="cursor:pointer;">
             <img src="../imgs/salary.png" alt="補助試算">
-<!--            <img src="https://img.icons8.com/ios/100/ffe8e8/upload.png" alt="補助試算">-->
+            <!--            <img src="https://img.icons8.com/ios/100/ffe8e8/upload.png" alt="補助試算">-->
 
             <p>補助試算</p>
           </div>
@@ -37,11 +37,11 @@
         <div class="content-area">
           <div class="news-list">
             <div
-              v-for="item in newsItems"
-              :key="item.announcementID"
-              class="news-item"
-              @click="goToNewsDetail(item.announcementID)"
-              style="cursor:pointer;"
+                v-for="item in newsItems"
+                :key="item.announcementID"
+                class="news-item"
+                @click="goToNewsDetail(item.announcementID)"
+                style="cursor:pointer;"
             >
               <div class="news-date">
                 {{ item.startDate ? `${formatDate(item.startDate).year}/${formatDate(item.startDate).month}/${formatDate(item.startDate).day}` : '未定' }}
@@ -164,13 +164,13 @@ const loadNewsData = async () => {
     const response = await getAllAnnouncements()
     // 處理後端返回的數據格式
     newsItems.value = response.data
-      .map(item => ({
-        announcementID: item.announcementID,
-        title: item.title,
-        content: item.content,
-        startDate: item.startDate
-      }))
-      // .sort((a, b) => new Date(b.startDate) - new Date(a.startDate)) // 按日期降序排列
+        .map(item => ({
+          announcementID: item.announcementID,
+          title: item.title,
+          content: item.content,
+          startDate: item.startDate
+        }))
+    // .sort((a, b) => new Date(b.startDate) - new Date(a.startDate)) // 按日期降序排列
   } catch (err) {
     console.error('載入最新消息失敗:', err)
     if (err.response) {

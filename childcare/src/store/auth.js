@@ -3,9 +3,12 @@ import { login, logout } from '../api/auth.js'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    // token: localStorage.getItem('token') || null,
-    token: null, // disabled JWT persistence
-    user: null,
+    token: null, // JWT or session token
+    user: {
+      UserID: null, // 對應 users 資料表的 UserID
+      PermissionType: null, // 權限類型
+      Name: '', // 使用者名稱
+    },
     isAuthenticated: false
   }),
 
@@ -17,27 +20,26 @@ export const useAuthStore = defineStore('auth', {
     async loginUser(account, password, captcha) {
       try {
         const response = await login(account, password, captcha)
-        // 根據後端格式直接回傳
         if (response.success) {
           const { user } = response
 
           // 根據 permissionType 設定對應的 role
           let role = 'general'
-          if (user.permissionType === 1) {
+          if (user.PermissionType === 1) {
             role = 'super_admin'
-          } else if (user.permissionType === 2) {
+          } else if (user.PermissionType === 2) {
             role = 'admin'
           }
 
-          // temporarily disable token persistence (do not store token)
-          this.token = 'user-token'
+          // 設定 token 與 user 資訊
+          this.token = response.token || 'user-token'
           this.user = {
-            ...user,
-            role: role // 設定 role 供路由守衛使用
+            UserID: user.UserID,
+            PermissionType: user.PermissionType,
+            Name: user.Name,
+            role: role // 供路由守衛使用
           }
           this.isAuthenticated = true
-          // localStorage.setItem('token', token)
-          // localStorage.setItem('user', JSON.stringify(user))
           return { success: true }
         } else {
           return {
@@ -61,12 +63,12 @@ export const useAuthStore = defineStore('auth', {
         console.error('Logout error:', error)
       } finally {
         this.token = null
-        this.user = null
+        this.user = {
+          UserID: null,
+          PermissionType: null,
+          Name: '',
+        }
         this.isAuthenticated = false
-
-        // 清除 localStorage - disabled
-        // localStorage.removeItem('token')
-        // localStorage.removeItem('user')
       }
     },
 
@@ -91,12 +93,11 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async changePassword(newPassword) {
-      if (!this.user || !this.user.account) {
+      if (!this.user || !this.user.UserID) {
         throw new Error('找不到使用者帳號')
       }
-      // 若有舊密碼需求可擴充
       try {
-        const response = await import('../api/auth.js').then(m => m.changePassword(this.user.account, '', newPassword))
+        const response = await import('../api/auth.js').then(m => m.changePassword(this.user.UserID, '', newPassword))
         if (response.success) {
           return { success: true }
         } else {

@@ -70,10 +70,11 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { getAdminAnnouncements } from '@/api/AdminHome.js'
+import { deleteAnnouncement } from '@/api/announcements.js'
 const router = useRouter()
 const route = useRoute()
 
-const STORAGE_KEY = 'announcementData'
 
 // 查詢條件
 const type = ref({ front: true, back: true })
@@ -85,37 +86,45 @@ const list = ref([])
 const resultList = ref([])
 const showBack = ref(false)
 
-const loadList = () => {
+const loadList = async () => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      list.value = JSON.parse(raw)
+    const data = await getAdminAnnouncements()
+    if (data && Array.isArray(data)) {
+      list.value = data.map(item => ({
+        id: item.id || item.announcementId,
+        date: item.publishDate || item.createdDate || new Date().toISOString().split('T')[0],
+        title: item.title || item.announcementTitle,
+        content: item.content || item.announcementContent,
+        // 將後端數值轉換為前端字串：1=front, 2=back
+        type: (item.type === 2 || item.type === '2') ? 'back' : 'front'
+      }))
     } else {
-      // 初始範例資料
+      // 如果 API 沒有返回資料，使用初始範例資料
       list.value = [
         { id: 1, date: '2025-10-01', title: '系統維護公告', content: '維護內容...', type: 'front' },
         { id: 2, date: '2025-10-05', title: '後台功能更新', content: '更新內容...', type: 'back' }
       ]
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(list.value))
     }
   } catch (e) {
     console.error('loadList error', e)
+    // API 出錯時使用範例資料
+    list.value = [
+      { id: 1, date: '2025-10-01', title: '系統維護公告', content: '維護內容...', type: 'front' },
+      { id: 2, date: '2025-10-05', title: '後台功能更新', content: '更新內容...', type: 'back' }
+    ]
   }
 }
 
-const saveList = () => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list.value))
-}
 
-onMounted(() => {
-  loadList()
+onMounted(async () => {
+  await loadList()
   resultList.value = [...list.value]
 })
 
 // 監聽路由變化，從編輯頁面返回時重新載入資料
-watch(() => route.name, (newName, oldName) => {
+watch(() => route.name, async (newName, oldName) => {
   if (newName === 'AdminAnnouncement' && (oldName === 'AdminAnnouncementCreate' || oldName === 'AdminAnnouncementEdit')) {
-    loadList()
+    await loadList()
     resultList.value = [...list.value]
     // 重置查詢條件
     type.value = { front: true, back: true }
@@ -125,8 +134,8 @@ watch(() => route.name, (newName, oldName) => {
   }
 })
 
-const doQuery = () => {
-  loadList() // 確保查詢前先重新載入最新資料
+const doQuery = async () => {
+  await loadList() // 確保查詢前先重新載入最新資料
   resultList.value = list.value.filter(item => {
     // 類型篩選
     if (item.type === 'front' && !type.value.front) return false
@@ -143,29 +152,31 @@ const addNew = () => {
   router.push({ name: 'AdminAnnouncementCreate' })
 }
 
-const edit = (item) => {
-  router.push({ name: 'AdminAnnouncementEdit', params: { id: item.id } })
-}
 
-const remove = (item) => {
+const remove = async (item) => {
   if (confirm('確定要刪除這則公告嗎？')) {
-    loadList()
-    list.value = list.value.filter(i => i.id !== item.id)
-    saveList()
-    // 重新執行查詢以更新顯示列表
-    if (showBack.value) {
-      doQuery()
-    } else {
-      resultList.value = [...list.value]
+    try {
+      await deleteAnnouncement(item.id)
+      // 刪除成功後重新載入資料
+      await loadList()
+      // 重新執行查詢以更新顯示列表
+      if (showBack.value) {
+        doQuery()
+      } else {
+        resultList.value = [...list.value]
+      }
+    } catch (error) {
+      console.error('刪除公告失敗:', error)
+      alert('刪除公告失敗，請稍後再試')
     }
   }
 }
 
-const goBack = () => {
+const goBack = async () => {
   type.value = { front: true, back: true }
   dateStart.value = ''
   dateEnd.value = ''
-  loadList()
+  await loadList()
   resultList.value = [...list.value]
   showBack.value = false
 }
@@ -189,7 +200,7 @@ const goDetail = (item) => {
 .icon { width:32px; height:32px; }
 .main-title { font-size:1.35rem; color:#2e6fb7; font-weight:700 }
 .query-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; ; margin-bottom:50px;   box-shadow:0 2px 8px rgba(16,24,40,0.04); margin-top:50px; }
-.query-row {  gap:12px; margin-bottom:12px;width: 490px; margin: 1px auto; }
+.query-row { gap:12px; width: 490px; margin: 1px auto 12px auto; }
 .search-area { gap:30px; display:flex; align-items:center; margin-bottom:8px; }
 .type-label, .date-label { font-weight:600; color:#2e6fb7; min-width: 100px; text-align: right; }
 .checkbox-group { display:flex; gap:60px; align-items:center; }
@@ -203,13 +214,11 @@ const goDetail = (item) => {
 .btn.query { background:#e6f2ff; color:#2e6fb7; border:1px solid #b3d4fc }
 .btn.small { padding:6px 12px; font-size:0.95rem; background:#f3f4f6; margin-right:6px; }
 .btn.danger { background:#ff7b8a; color:#fff }
-.table-section { }
 .announcement-table { width:100%; border-collapse:collapse }
 .announcement-table thead th { background:#cfe8ff; color:#2e6fb7; padding:10px; text-align:left; font-weight:700; }
 .announcement-table td { padding:12px; border-bottom:1px solid #f3f4f6; vertical-align: middle; }
 .date-cell { font-weight:600; color:#334e5c }
 .title-cell { color:#334e5c }
-.action-cell { text-align:left }
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
 .bottom-row { display:flex; justify-content:center; gap:12px; margin-top:10vh; }
 @media (max-width:900px){ .announcement-card{ width:100%; padding:16px } .date-input{ width:100px } }

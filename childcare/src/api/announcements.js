@@ -13,3 +13,18 @@ export const getAnnouncementsByOffset = (offset = 0) => {
 export const getAnnouncementDetail = (id) => {
     return http.get(`/announcements/${id}`)
 }
+
+// 刪除公告
+export const deleteAnnouncement = (id) => {
+  return http.delete(`/announcements/${id}`)
+}
+
+// 新增公告
+export const createAnnouncement = (data) => {
+  return http.post('/announcements', data)
+}
+
+// 更新公告
+export const updateAnnouncement = (id, data) => {
+  return http.put(`/announcements/${id}`, data)
+}
