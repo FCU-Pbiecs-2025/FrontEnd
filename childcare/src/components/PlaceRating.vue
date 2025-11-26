@@ -48,6 +48,8 @@ const props = defineProps({
   apiKey: { type: String, required: false },
   placeName: { type: String, required: false },
   placeId: { type: String, required: false },
+  latitude: { type: Number, required: false },  // 機構緯度
+  longitude: { type: Number, required: false }, // 機構經度
   inline: { type: Boolean, default: false },
   fallbackText: { type: String, default: '無評分' }
 });
@@ -105,7 +107,17 @@ async function fetchRating() {
         emit('error', error.value);
         return;
       }
-      const place = await searchPlaceByText(localPlaceName.value, /*apiKey*/ apiKeyUsed.value);
+
+      // 如果提供了經緯度，使用嚴格模式搜尋
+      const searchOptions = {};
+      if (typeof props.latitude === 'number' && typeof props.longitude === 'number') {
+        searchOptions.location = { lat: props.latitude, lng: props.longitude };
+        searchOptions.radius = 1000;  // 1km 搜尋範圍
+        searchOptions.strictMode = true;
+      }
+
+      const result = await searchPlaceByText(localPlaceName.value, /*apiKey*/ apiKeyUsed.value, searchOptions);
+      const place = result.place || result; // 新版 API 返回 { place, details }
       console.log('[PlaceRating] searchPlaceByText result for', localPlaceName.value, place);
       id = place.id || place.placeId || place.result?.placeId || place.result?.id || place.place?.id;
     }

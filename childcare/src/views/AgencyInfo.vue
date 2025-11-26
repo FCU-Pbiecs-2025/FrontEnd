@@ -102,13 +102,42 @@ const classList = ref([])
 const loading = ref(true)
 const error = ref(null)
 
+// 圖片路徑處理函數 - 將 API 返回的路徑轉換為可訪問的 HTTP URL
+function getImageUrl(imagePath) {
+  if (!imagePath) return ''
+
+  // 如果已經是完整的 HTTP URL，直接返回
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    console.log('[AgencyInfo] 已是完整 URL:', imagePath)
+    return imagePath
+  }
+
+  // 路徑映射：
+  // API 返回: /InstitutionResource/filename 或其他路徑
+  // 提取文件名: filename
+  // 前端訪問 URL: http://localhost:8080/institution-files/filename
+  const backendBaseUrl = 'http://localhost:8080/institution-files'
+
+  // 提取文件名（移除路徑前綴）
+  const fileName = imagePath.replace(/.*\//, '')
+  const fullUrl = `${backendBaseUrl}/${fileName}`
+
+  console.log('[AgencyInfo] imagePath 來源:', imagePath)
+  console.log('[AgencyInfo] 提取的文件名:', fileName)
+  console.log('[AgencyInfo] 後端基礎 URL:', backendBaseUrl)
+  console.log('[AgencyInfo] 完整 URL:', fullUrl)
+  console.log('========== getImageUrl 計算完成 ==========')
+
+  return fullUrl
+}
+
 // 圖片
 const images = computed(() => {
   // 兼容：imagePath（單張字串）或 images（陣列）
   const fromArray = (agencyRaw.value?.images && Array.isArray(agencyRaw.value.images))
-      ? agencyRaw.value.images.filter(Boolean)
+      ? agencyRaw.value.images.map(img => getImageUrl(img)).filter(Boolean)
       : []
-  const fromSingle = agencyRaw.value?.imagePath ? [agencyRaw.value.imagePath] : []
+  const fromSingle = agencyRaw.value?.imagePath ? [getImageUrl(agencyRaw.value.imagePath)] : []
   const merged = [...fromArray, ...fromSingle].filter(Boolean)
   // 去重
   return Array.from(new Set(merged))
