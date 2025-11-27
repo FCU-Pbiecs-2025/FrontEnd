@@ -128,8 +128,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../store/auth.js'
+import { getUserFamilyInfo } from '../api/user.js'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 // 幼兒資料
 const children = ref([])
@@ -168,11 +171,84 @@ function validateTWId(id) {
 }
 
 // 載入幼兒資料（僅四欄位）
-const loadChildren = () => {
-  const savedChildren = localStorage.getItem('childrenData')
-  if (savedChildren) {
-    children.value = JSON.parse(savedChildren)
-  } else {
+const loadChildren = async () => {
+  try {
+    // 確保用戶已登入，從 authStore 取得 userID
+    if (!authStore.isLoggedIn) {
+      console.warn('用戶未登入')
+      return
+    }
+
+    const userID = authStore.user?.UserID
+    if (!userID) {
+      console.error('無法從 authStore 獲取 userID')
+      return
+    }
+
+    console.log('========== ManageChildren: 從 authStore 取得用戶信息 ==========')
+    console.log('authStore.user:', authStore.user)
+    console.log('取得的 userID:', userID)
+
+    // 調用 API 獲取家庭信息
+    console.log('========== 開始調用 getUserFamilyInfo API ==========')
+    const response = await getUserFamilyInfo(userID)
+
+    if (!response || !response.data) {
+      console.error('❌ API 回應為空')
+      // 如果 API 失敗，使用預設資料
+      children.value = [
+        {
+          id: 1,
+          name: '王小寶',
+          idNumber: '',
+          gender: '男',
+          birthday: '2022-05-01'
+        }
+      ]
+      return
+    }
+
+    const familyData = response.data
+    console.log('========== ManageChildren: 家庭數據結構分析 ==========')
+    console.log('familyData 完整對象:', familyData)
+    console.log('familyData.children 內容:', familyData.children)
+
+    // 映射 API 返回的幼兒數據到組件變量
+    if (Array.isArray(familyData.children) && familyData.children.length > 0) {
+      console.log('========== 開始映射幼兒資料 ==========')
+      const mappedChildren = familyData.children.map((child, idx) => {
+        const mappedChild = {
+          id: idx + 1,
+          childID: child.childID || '',
+          idNumber: child.nationalID || '',
+          name: child.name || '',
+          gender: child.gender === false ? '女' : '男',
+          birthday: child.birthDate || ''
+        }
+        console.log(`映射幼兒 #${idx + 1}:`, mappedChild)
+        return mappedChild
+      })
+
+      children.value = mappedChildren
+      childIdErrors.value = new Array(mappedChildren.length).fill('')
+      console.log('✅ 已從 API 載入幼兒資料:', children.value)
+    } else {
+      console.warn('⚠️ 沒有幼兒資料或 children 不是陣列')
+      // 使用預設資料
+      children.value = [
+        {
+          id: 1,
+          name: '王小寶',
+          idNumber: '',
+          gender: '男',
+          birthday: '2022-05-01'
+        }
+      ]
+      childIdErrors.value = ['']
+    }
+  } catch (error) {
+    console.error('❌ 載入幼兒信息失敗:', error)
+    // 載入失敗時使用預設資料
     children.value = [
       {
         id: 1,
@@ -182,8 +258,8 @@ const loadChildren = () => {
         birthday: '2022-05-01'
       }
     ]
+    childIdErrors.value = ['']
   }
-  childIdErrors.value = new Array(children.value.length).fill('')
 }
 
 // 儲存幼兒資料到 localStorage
@@ -276,8 +352,8 @@ const goBack = () => {
   router.push('/member-center')
 }
 
-onMounted(() => {
-  loadChildren()
+onMounted(async () => {
+  await loadChildren()
 })
 </script>
 

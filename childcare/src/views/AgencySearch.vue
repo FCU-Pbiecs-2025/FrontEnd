@@ -36,24 +36,21 @@
             <div class="form-row">
               <div class="form-group">
                 <label>鄉鎮市區</label>
-                <select>
-                  <option>請選擇</option>
-                  <option>竹北市</option>
-                  <option>竹東鎮</option>
-                  <option>新埔鎮</option>
-                  <option>關西鎮</option>
+                <select v-model="selectedTown">
+                  <option value="">請選擇</option>
+                  <option v-for="t in towns" :key="t" :value="t">{{ t }}</option>
                 </select>
               </div>
               <div class="form-group">
                 <label>托育類型</label>
-                <select>
-                  <option>請選擇</option>
-                  <option>公立托育機構</option>
-                  <option>準公共托育機構</option>
+                <select v-model="selectedType">
+                  <option value="">請選擇</option>
+                  <option value="0">公立托育機構</option>
+                  <option value="1">準公共托育機構</option>
                 </select>
               </div>
             </div>
-            <button class="search-btn">搜尋機構</button>
+            <button class="search-btn" @click="handleSearch">搜尋機構</button>
           </div>
         </div>
 
@@ -77,21 +74,29 @@
 
           <!-- 機構列表 -->
           <div v-else class="agency-list">
-            <div class="agency-item" v-for="agency in agencies" :key="agency.id" @click="goToInfo(agency)" style="cursor:pointer;">
-              <div class="agency-info">
-                <h3>{{ agency.name }}</h3>
-                <p class="agency-address">地址: {{ agency.address }}</p>
-                <p class="agency-phone" v-if="agency.phone">聯絡電話: {{ agency.phone }}</p>
-                <p class="agency-email" v-if="agency.email">信箱:{{ agency.email }}</p>
-                <p class="agency-description" v-if="agency.description">特色描述: {{ agency.description }}</p>
-              </div>
-              <div class="agency-rating-wrapper">
-                <PlaceRating
-                  :placeName="agency.name + ' ' + agency.address"
-                  inline
-                  fallbackText="無評分資料"
-                  class="agency-rating"
-                />
+            <div v-if="filteredAgencies.length === 0 && searchTriggered" class="no-results">
+              <p>未找到符合條件的機構</p>
+            </div>
+            <div v-else-if="!searchTriggered" class="no-results">
+              <p>請選擇條件並點擊搜尋</p>
+            </div>
+            <div v-else>
+              <div class="agency-item" v-for="agency in filteredAgencies" :key="agency.id" @click="goToInfo(agency)" style="cursor:pointer;">
+                <div class="agency-info">
+                  <h3>{{ agency.name }}</h3>
+                  <p class="agency-address">地址: {{ agency.address }}</p>
+                  <p class="agency-phone" v-if="agency.phone">聯絡電話: {{ agency.phone }}</p>
+                  <p class="agency-email" v-if="agency.email">信箱:{{ agency.email }}</p>
+                  <p class="agency-description" v-if="agency.description">特色描述: {{ agency.description }}</p>
+                </div>
+                <div class="agency-rating-wrapper">
+                  <PlaceRating
+                    :placeName="agency.name + ' ' + agency.address"
+                    inline
+                    fallbackText="無評分資料"
+                    class="agency-rating"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -131,6 +136,26 @@ export default {
     const agencies = ref([])
     const isLoading = ref(false)
     const error = ref(null)
+    const displayedAgencies = ref([]) // 用於存儲要顯示的機構列表
+
+    // 新竹縣鄉鎮列表
+    const towns = [
+      '竹北市',
+      '竹東鎮',
+      '關西鎮',
+      '新埔鎮',
+      '湖口鄉',
+      '新豐鄉',
+      '芎林鄉',
+      '寶山鄉',
+      '橫山鄉',
+      '峨眉鄉',
+      '五峰鄉',
+      '尖石鄉'
+    ]
+    const selectedTown = ref('')
+    const selectedType = ref('')
+    const searchTriggered = ref(false)
 
     // 載入托育機構資料
     const loadAgenciesData = async () => {
@@ -147,7 +172,8 @@ export default {
             phone: item.phoneNumber || '',
             email: item.email || '',
             fax: item.fax || '',
-            description: item.description || ''
+            description: item.description || '',
+            institutionsType: item.institutionsType
           }))
       } catch (err) {
         console.error('載入托育機構資料失敗:', err)
@@ -160,10 +186,45 @@ export default {
         }
         // 如果 API 失敗，使用預設資料作為後備
         agencies.value = [
-          { id: 1, name: '新竹市東區公共托嬰中心', address: '新竹市東區金城一路50-8號1樓', phone: '', capacity: 30, statusText: '有名額', statusClass: 'available' },
-          { id: 2, name: '禾田托嬰中心 Hetian Baby Care Center', address: '新竹市北區金竹路146號148號', phone: '', capacity: 25, statusText: '有名額', statusClass: 'available' },
-          { id: 3, name: '新竹市私立樂橙托嬰中心', address: '新竹市北區水田街1號2樓', phone: '', capacity: 20, statusText: '有名額', statusClass: 'available' }
+          { id: 1, name: '新竹市東區公共托嬰中心', address: '新竹市東區金城一路50-8號1樓', phone: '', institutionsType: true },
+          { id: 2, name: '禾田托嬰中心 Hetian Baby Care Center', address: '新竹市北區金竹路146號148號', phone: '', institutionsType: false },
+          { id: 3, name: '新竹市私立樂橙托嬰中心', address: '新竹市北區水田街1號2樓', phone: '', institutionsType: true }
         ]
+      } finally {
+        isLoading.value = false
+      }
+    }
+
+    // 計算過濾後的機構列表
+    const filteredAgencies = computed(() => displayedAgencies.value)
+
+    // 搜尋機構處理函數
+    const handleSearch = async () => {
+      isLoading.value = true
+      error.value = null
+
+      try {
+        // 進行過濾
+        let result = agencies.value
+        if (selectedTown.value) {
+          result = result.filter(agency => agency.address.includes(selectedTown.value))
+        }
+        if (selectedType.value !== '') {
+          const isPublic = selectedType.value === '0'
+          result = result.filter(agency => agency.institutionsType === isPublic)
+        }
+
+        displayedAgencies.value = result
+
+        console.log('========== 搜尋機構 ==========')
+        console.log('選定鄉鎮:', selectedTown.value || '全部')
+        console.log('選定類型:', selectedType.value || '全部')
+        console.log('過濾結果數量:', result.length)
+        console.log('過濾結果:', result)
+      } catch (err) {
+        console.error('搜尋失敗:', err)
+        error.value = '搜尋失敗，請稍後再試'
+        displayedAgencies.value = []
       } finally {
         isLoading.value = false
       }
@@ -184,9 +245,32 @@ export default {
       router.push({ name: 'AgencyInfo', params: { id: agency.id } })
     }
 
-    // 組件掛載時載入資料
-    onMounted(() => {
-      loadAgenciesData()
+    // 組件掛載時自動載入所有機構資料
+    onMounted(async () => {
+      isLoading.value = true
+      try {
+        const response = await getAllAgencies()
+        agencies.value = response.data
+          .map(item => ({
+            id: item.institutionID,
+            name: item.institutionName,
+            address: item.address,
+            phone: item.phoneNumber || '',
+            email: item.email || '',
+            fax: item.fax || '',
+            description: item.description || '',
+            institutionsType: item.institutionsType
+          }))
+        // 初始時顯示所有機構
+        displayedAgencies.value = agencies.value
+        searchTriggered.value = true // 設置為已搜尋狀態以顯示結果
+        console.log('初始載入完成，共', agencies.value.length, '個機構')
+      } catch (err) {
+        console.error('初始載入機構資料失敗:', err)
+        error.value = '載入機構資料失敗，請稍後再試'
+      } finally {
+        isLoading.value = false
+      }
     })
 
     return {
@@ -198,7 +282,13 @@ export default {
       switchView,
       goToInfo,
       loadAgenciesData,
-      API_KEY
+      API_KEY,
+      towns,
+      selectedTown,
+      selectedType,
+      filteredAgencies,
+      handleSearch,
+      searchTriggered
     }
   }
 }
@@ -207,8 +297,8 @@ export default {
 <style scoped>
 .agency-search-page {
   min-height: calc(100vh - 160px);
-
 }
+
 .list-title{
   text-align:center;
   font-size:1.5rem;
@@ -216,6 +306,7 @@ export default {
   margin:50px 0 16px 0;
   letter-spacing:2px;
 }
+
 .title-decoration{
   width: 80%;
   height: 2px;
@@ -230,6 +321,7 @@ export default {
   margin-left: 71%;
   margin-bottom: 20px;
 }
+
 .toggle-btn {
   background: white;
   border: 2px solid #F9AFAE;
@@ -318,11 +410,11 @@ export default {
 .agency-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
 }
 
 .agency-item {
   background: white;
+  margin-bottom: 20px;
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 2px 8px rgba(249, 175, 174, 0.1);
@@ -366,7 +458,13 @@ export default {
   white-space: nowrap;
 }
 
-
+/* 無搜尋結果提示 */
+.no-results {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+  font-size: 1.1rem;
+}
 
 /* 載入狀態樣式 */
 .loading-state {
@@ -448,3 +546,4 @@ export default {
   }
 }
 </style>
+

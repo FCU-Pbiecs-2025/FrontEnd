@@ -7,17 +7,17 @@
 
     <div class="content-area">
       <div class="member-info-section">
-        <h2>個人資料</h2>
+        <h2>使用者資料</h2>
         <div class="member-card">
           <div class="member-avatar">
             <img src="https://img.icons8.com/ios-filled/100/F9AFAE/user-male-circle.png" alt="會員頭像" />
           </div>
           <div class="member-details">
             <div v-if="!editProfileMode">
-              <h3 class="user-info-title">{{ authStore.user?.name || authStore.user?.account || '用戶' }}</h3>
-              <p class="user-info-detail">email: {{ authStore.user?.email || '未設定' }}</p>
-              <p class="user-info-detail">電話: {{ authStore.user?.phone || '未設定' }}</p>
-              <p class="user-info-detail">地址: {{ authStore.user?.address || '未設定' }}</p>
+              <h3 class="user-info-title">{{ userProfile.name || '用戶' }}</h3>
+              <p class="user-info-detail">email: {{ userProfile.email || '未設定' }}</p>
+              <p class="user-info-detail">電話: {{ userProfile.phone || '未設定' }}</p>
+              <p class="user-info-detail">地址: {{ userProfile.address || '未設定' }}</p>
               <button class="edit-btn" @click="editProfile">編輯資料</button>
             </div>
             <div v-else class="profile-edit-form">
@@ -43,7 +43,7 @@
       </div>
 
       <div class="services-section">
-        <h2>資料管理</h2>
+        <h2>家庭關係管理</h2>
         <div class="services-grid">
           <div class="service-card">
             <h1>家長資料</h1>
@@ -135,6 +135,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../store/auth.js'
+import { getUserFamilyInfo } from '../api/user.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -241,25 +242,43 @@ const newChild = ref({ idNumber: '', name: '', birthday: '', gender: '男' })
 const editProfileMode = ref(false)
 const editableUser = ref({ name: '', email: '', phone: '', address: '' })
 
+// 用戶個人資料（從 API 獲取）
+const userProfile = ref({
+  name: '',
+  email: '',
+  phone: '',
+  address: '',
+  birthday: '',
+  nationalID: '',
+  occupation: ''
+})
+
 const editProfile = () => {
-  const u = authStore.user || {}
   editableUser.value = {
-    name: u.name || u.account || '',
-    email: u.email || '',
-    phone: u.phone || '',
-    address: u.address || ''
+    name: userProfile.value.name || '',
+    email: userProfile.value.email || '',
+    phone: userProfile.value.phone || '',
+    address: userProfile.value.address || ''
   }
   editProfileMode.value = true
 }
 
 const saveProfile = () => {
-  if (!authStore.user) return
-  // 更新 store 上的用戶資料（視 store 設計，這裡直接修改）
-  authStore.user.name = editableUser.value.name
-  authStore.user.email = editableUser.value.email
-  authStore.user.phone = editableUser.value.phone
-  authStore.user.address = editableUser.value.address
+  // 更新 userProfile
+  userProfile.value.name = editableUser.value.name
+  userProfile.value.email = editableUser.value.email
+  userProfile.value.phone = editableUser.value.phone
+  userProfile.value.address = editableUser.value.address
+
+  // 同時更新 authStore
+  if (authStore.user) {
+    authStore.user.name = editableUser.value.name
+    authStore.user.email = editableUser.value.email
+    authStore.user.phone = editableUser.value.phone
+    authStore.user.address = editableUser.value.address
+  }
   editProfileMode.value = false
+  alert('個人資料已儲存')
 }
 
 const cancelProfileEdit = () => {
@@ -270,11 +289,161 @@ const cancelProfileEdit = () => {
 onMounted(async () => {
   // 確保用戶已登入，如果沒有登入則導向登入頁
   if (!authStore.isLoggedIn) {
+    console.warn('用戶未登入，導向登入頁面')
     router.push('/login')
     return
   }
 
-  // 載入用戶的申請記錄（這裡可以呼叫 API）
+  // 從 authStore 取得 userID
+  const userID = authStore.user?.UserID
+  console.log('========== 從 authStore 取得用戶信息 ==========')
+  console.log('authStore.user:', authStore.user)
+  console.log('取得的 userID:', userID)
+
+  // 載入用戶的家庭信息（包括家長和幼兒資訊）
+  if (!userID) {
+    console.error('無法從 authStore 獲取 userID，家庭信息無法載入')
+    return
+  }
+
+  try {
+    console.log('========== 開始調用 getUserFamilyInfo API ==========')
+    console.log('將查詢的 userID:', userID)
+
+    const response = await getUserFamilyInfo(userID)
+
+    console.log('========== API 回應完整信息 ==========')
+    console.log('完整 response:', response)
+    console.log('response.data:', response?.data)
+    console.log('response.status:', response?.status)
+    console.log('response.statusText:', response?.statusText)
+
+    // 檢查回應結構
+    if (!response) {
+      console.error('❌ response 為空')
+      return
+    }
+
+    if (!response.data) {
+      console.error('❌ response.data 為空')
+      console.log('完整 response 對象:', response)
+      return
+    }
+
+    const familyData = response.data
+    console.log('========== familyData 結構分析 ==========')
+    console.log('familyData 完整對象:', familyData)
+    console.log('familyData 的所有 key:', Object.keys(familyData))
+    console.log('familyData.parents 類型:', typeof familyData.parents)
+    console.log('familyData.parents 是陣列?', Array.isArray(familyData.parents))
+    console.log('familyData.parents 內容:', familyData.parents)
+    console.log('familyData.children 類型:', typeof familyData.children)
+    console.log('familyData.children 是陣列?', Array.isArray(familyData.children))
+    console.log('familyData.children 內容:', familyData.children)
+
+    console.log('familyData 結構:', {
+      hasParents: Array.isArray(familyData.parents),
+      parentsCount: familyData.parents?.length || 0,
+      hasChildren: Array.isArray(familyData.children),
+      childrenCount: familyData.children?.length || 0,
+      userID: familyData.userID,
+      name: familyData.name,
+      email: familyData.email
+    })
+
+    // ========== 提取並映射用戶個人資料 ==========
+    console.log('========== 開始映射用戶個人資料 ==========')
+    if (familyData) {
+      userProfile.value = {
+        name: familyData.name || authStore.user?.name || authStore.user?.account || '',
+        email: familyData.email || authStore.user?.email || '',
+        phone: familyData.phoneNumber || authStore.user?.phone || '',
+        address: familyData.mailingAddress || authStore.user?.address || '',
+        birthday: familyData.birthDate || '',
+        nationalID: familyData.nationalID || '',
+        occupation: familyData.occupation || ''
+      }
+      console.log('✅ 已映射用戶個人資料:', userProfile.value)
+
+      // 同時更新 authStore 的用戶資料
+      if (authStore.user) {
+        authStore.user.name = userProfile.value.name
+        authStore.user.email = userProfile.value.email
+        authStore.user.phone = userProfile.value.phone
+        authStore.user.address = userProfile.value.address
+      }
+    }
+
+    // 更新家長資料 (API 返回 parents 陣列)
+    if (Array.isArray(familyData.parents) && familyData.parents.length > 0) {
+      console.log('========== 開始映射家長資料 ==========')
+      console.log('家長數量:', familyData.parents.length)
+
+      const mappedParents = familyData.parents.map((parent, idx) => {
+        console.log(`映射家長 #${idx + 1}:`, parent)
+        const mappedParent = {
+          id: idx + 1,
+          idNumber: parent.nationalID || '',
+          name: parent.name || '',
+          gender: parent.gender === false ? '女' : '男',
+          relation: parent.relationship || '',
+          job: parent.occupation || '',
+          phone: parent.phoneNumber || '',
+          householdAddress: parent.householdAddress || '',
+          contactAddress: parent.mailingAddress || '',
+          email: parent.email || '',
+          birthday: parent.birthDate || '',
+          isLeave: parent.isSuspended || false,
+          leaveStart: '',
+          leaveEnd: parent.suspendEnd || ''
+        }
+        console.log(`映射結果:`, mappedParent)
+        return mappedParent
+      })
+
+      parents.value = mappedParents
+      console.log('✅ 已載入家長資料:', parents.value)
+    } else {
+      console.warn('⚠️ 沒有家長資料或 parents 不是陣列')
+      console.warn('familyData.parents:', familyData.parents)
+    }
+
+    // 更新幼兒資料 (API 返回 children 陣列)
+    if (Array.isArray(familyData.children) && familyData.children.length > 0) {
+      console.log('========== 開始映射幼兒資料 ==========')
+      console.log('幼兒數量:', familyData.children.length)
+
+      const mappedChildren = familyData.children.map((child, idx) => {
+        console.log(`映射幼兒 #${idx + 1}:`, child)
+        const mappedChild = {
+          id: idx + 1,
+          idNumber: child.nationalID || '',
+          name: child.name || '',
+          birthday: child.birthDate || '',
+          gender: child.gender === false ? '女' : '男'
+        }
+        console.log(`映射結果:`, mappedChild)
+        return mappedChild
+      })
+
+      children.value = mappedChildren
+      console.log('✅ 已載入幼兒資料:', children.value)
+    } else {
+      console.warn('⚠️ 沒有幼兒資料或 children 不是陣列')
+      console.warn('familyData.children:', familyData.children)
+    }
+  } catch (error) {
+    console.error('❌ 載入家庭信息失敗:', error)
+    if (error.response) {
+      console.error('API 錯誤狀態碼:', error.response.status)
+      console.error('API 錯誤訊息:', error.response.data)
+    }
+    if (error.request) {
+      console.error('Request 信息:', error.request)
+    }
+  }
+
+  // 載入用戶的申請記錄
   loadApplications()
 })
 
