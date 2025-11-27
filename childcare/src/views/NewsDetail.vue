@@ -2,11 +2,6 @@
   <div class="news-detail-bg">
     <div class="news-detail">
       <h1 class="news-main-title">{{ news?.title || '公告詳細內容' }}</h1>
-      <div class="news-title-row">
-        <div class="news-title">{{ news?.title || '公告詳細內容' }}</div>
-        <RouterLink to="/news" class="more-news-link">更多消息</RouterLink>
-
-      </div>
 
       <div v-if="isLoading" class="loading-state">
         <div class="loading-spinner"></div>

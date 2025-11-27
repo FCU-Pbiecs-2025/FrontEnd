@@ -27,12 +27,14 @@
         <div v-if="!childActive" class="detail-card">
           <h2>案件摘要</h2>
           <div class="summary-grid">
-            <div class="field"><span class="label">案號</span><span class="value">{{ application.caseNo }}</span></div>
-            <div class="field"><span class="label">申請日期</span><span class="value">{{ application.applyDate }}</span></div>
+            <div class="field"><span class="label">申請案號</span><span class="value">{{ application.caseNo }}</span></div>
+            <div class="field"><span class="label">申請日期</span><span class="value">{{ application.applyDate || application.applicationDate }}</span></div>
             <div class="field"><span class="label">申請人姓名</span><span class="value">{{ application.applicantName || '—' }}</span></div>
             <div class="field"><span class="label">申請幼兒姓名</span><span class="value">{{ application.childName || '—' }}</span></div>
+            <div class="field"><span class="label">幼兒出生日期</span><span class="value">{{ application.childBirth || '—' }}</span></div>
             <div class="field"><span class="label">幼兒月齡</span><span class="value">{{ childMonthsLabel }}</span></div>
-            <div class="field"><span class="label">申請機構</span><span class="value">{{ application.assignedInstitution?.name || application.targetInstitution || '—' }}</span></div>
+            <div class="field"><span class="label">申請機構</span><span class="value">{{ application.institutionName || application.assignedInstitution?.name || application.targetInstitution || '—' }}</span></div>
+            <div class="field" v-if="application.cancellationID"><span class="label">撤銷案號</span><span class="value">{{ application.cancellationID }}</span></div>
           </div>
 
           <div class="status-row">
@@ -54,12 +56,16 @@
               </ul>
               <p v-if="application.supplementDeadline" class="deadline">補件期限：{{ application.supplementDeadline }}</p>
             </div>
-            <p v-else-if="application.status === 'rejected'" class="explain-text">您的申請已退件，建議查看退件原因並完成修正後再行申請。</p>
-            <p v-else-if="application.status === 'waitingForAdmission'" class="explain-text">
-              您目前為候補序位第 <strong>{{ application.queueNumber }}</strong> 位，名額釋出後將依序通知。
+            <p v-if="application.status === 'rejected'" class="explain-text">您的申請已退件，建議查看退件原因並完成修正後再行申請。</p>
+            <p v-else-if="application.status === 'waitingForAdmission' || application.status === '候補中' || application.status === '錄取候補中'" class="explain-text">
+              您目前為候補序位第 <strong>{{ application.currentOrder || application.queueNumber || '—' }}</strong> 位，名額釋出後將依序通知。
             </p>
             <p v-else-if="application.status === 'admitted'" class="explain-text">恭喜錄取！請依通知完成後續報到手續。</p>
             <p v-else-if="application.status === 'withdrawn'" class="explain-text">案件已退托，如需再次申請可回到申請頁面重新提出申請。</p>
+            <p v-else-if="application.status === 'revokeProcessing'" class="explain-text">
+              您的撤銷申請正在審核中，目前序位為第 <strong>{{ application.currentOrder || application.queueNumber || '—' }}</strong> 位。
+            </p>
+            <p v-else-if="application.status === 'revoked'" class="explain-text">您的撤銷申請已通過，案件已結束。</p>
             <p v-else class="explain-text">{{ application.details || '—' }}</p>
           </div>
 
@@ -76,14 +82,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth.js'
+import { useApplicationsStore } from '@/store/applications.js'
 import { getCaseDetails } from '@/api/application.js'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const applicationsStore = useApplicationsStore()
 
 // 允許從多個位置取 caseNo（route.params, route.query, 其它常見 param 名稱）
 let caseNo = route.params.caseNo || route.query.caseNo || route.params.applicationId || route.params.id || route.query.applicationId || null
@@ -93,8 +101,57 @@ const application = ref(null)
 const loading = ref(false)
 const error = ref(null)
 
-// 檢查並從 API 取得案件詳細資料，支援多種回傳結構
+// 檢查並從 store 或 API 取得案件詳細資料
 const fetchCaseDetails = async (effectiveCaseNo) => {
+  // 首先檢查 store 中是否有選中的申請資料
+  const selectedApplication = applicationsStore.selectedApplication
+
+  if (selectedApplication && (
+    String(selectedApplication.caseNo) === String(effectiveCaseNo) ||
+    String(selectedApplication.applicationID) === String(effectiveCaseNo)
+  )) {
+    console.log('[ApplicationProgressDetail] 使用 store 中的申請資料:', selectedApplication)
+
+    // 將 store 資料轉換為詳情頁需要的格式
+    application.value = {
+      caseNo: selectedApplication.caseNo,
+      applyDate: selectedApplication.applyDate || selectedApplication.applicationDate,
+      status: selectedApplication.status,
+      statusClass: selectedApplication.statusClass,
+      details: selectedApplication.details || selectedApplication.reason,
+      applicantName: selectedApplication.username,
+      childName: selectedApplication.childname,
+      childBirth: selectedApplication.birthDate,
+      targetInstitution: selectedApplication.institutionName,
+      assignedInstitution: selectedApplication.assignedInstitution,
+      supplementItems: selectedApplication.supplementItems,
+      supplementDeadline: selectedApplication.supplementDeadline,
+      queueNumber: selectedApplication.currentOrder || selectedApplication.queueNumber,
+      admittedAt: selectedApplication.admittedAt,
+      // 新增的欄位
+      applicationID: selectedApplication.applicationID,
+      applicationDate: selectedApplication.applicationDate,
+      institutionID: selectedApplication.institutionID,
+      institutionName: selectedApplication.institutionName,
+      cancellationID: selectedApplication.cancellationID,
+      reason: selectedApplication.reason,
+      currentOrder: selectedApplication.currentOrder,
+      childNationalID: selectedApplication.childNationalID
+    }
+
+    // 調試信息：確保序位正確傳遞
+    console.log('[ApplicationProgressDetail] 序位信息:', {
+      currentOrder: selectedApplication.currentOrder,
+      queueNumber: selectedApplication.queueNumber,
+      finalOrder: selectedApplication.currentOrder || selectedApplication.queueNumber,
+      status: selectedApplication.status
+    })
+
+    loading.value = false
+    return
+  }
+
+  // 如果 store 中沒有資料，則從 API 獲取
   const userID = authStore.user?.UserID
   if (!userID) {
     error.value = '請先登入'
@@ -106,7 +163,7 @@ const fetchCaseDetails = async (effectiveCaseNo) => {
   error.value = null
 
   try {
-    console.log('[ApplicationProgressDetail] 取得案件詳細，userID:', userID, 'caseNo:', effectiveCaseNo)
+    console.log('[ApplicationProgressDetail] store 中無資料，從 API 取得案件詳細，userID:', userID, 'caseNo:', effectiveCaseNo)
 
     // 從 /applications/{id} 或 /applications/user/{userID}/details 取得資料（後端可能回傳多筆或單筆）
     const res = await getCaseDetails(userID, effectiveCaseNo)
@@ -119,17 +176,26 @@ const fetchCaseDetails = async (effectiveCaseNo) => {
         caseNo: item.caseNo || item.applicationID || item.applicationId || item.id || item.applicationNo || item.caseId || item.applicationID || null,
         applyDate: item.applyDate || item.applicationDate || item.submittedAt || null,
         status: item.status || item.caseStatus || item.state || null,
-        statusClass: item.statusClass || item.status || item.caseStatus || null,
+        statusClass: item.statusClass || mapStatusToClass(item.status || item.caseStatus || item.state),
         details: item.details || item.description || item.reason || null,
-        applicantName: item.applicantName || item.parentName || item.name || null,
-        childName: item.childName || item.child || null,
-        childBirth: item.childBirth || item.childBirthDate || item.childDob || null,
+        applicantName: item.applicantName || item.parentName || item.name || item.username || null,
+        childName: item.childName || item.child || item.childname || null,
+        childBirth: item.childBirth || item.childBirthDate || item.childDob || item.birthDate || null,
         targetInstitution: item.targetInstitution || item.institutionName || null,
         assignedInstitution: item.assignedInstitution || item.assigned || null,
         supplementItems: item.supplementItems || item.supplements || null,
         supplementDeadline: item.supplementDeadline || item.supplement_deadline || null,
-        queueNumber: item.queueNumber || item.queueNo || null,
-        admittedAt: item.admittedAt || item.assignedAt || null
+        queueNumber: item.currentOrder || item.queueNumber || item.queueNo || null,
+        admittedAt: item.admittedAt || item.assignedAt || null,
+        // 新增的欄位
+        applicationID: item.applicationID || item.applicationId || null,
+        applicationDate: item.applicationDate || null,
+        institutionID: item.institutionID || null,
+        institutionName: item.institutionName || null,
+        cancellationID: item.cancellationID || null,
+        reason: item.reason || null,
+        currentOrder: item.currentOrder || null,
+        childNationalID: item.childNationalID || null
       }
     }
 
@@ -214,26 +280,74 @@ onMounted(() => {
   fetchCaseDetails(caseNo)
 })
 
+// 監聽路由變化，當從子路由（如撤銷申請）返回時重新獲取資料
+watch(() => route.name, (newName, oldName) => {
+  console.log('[ApplicationProgressDetail] 路由變化:', oldName, '->', newName)
+
+  // 當從撤銷申請頁面返回到詳情頁時
+  if (oldName === 'ApplicationProgressRevoke' && newName === 'ApplicationProgressDetail') {
+    console.log('[ApplicationProgressDetail] 從撤銷申請頁面返回，重新獲取資料')
+    // 清除 store 中的選中申請，強制從 API 獲取最新資料
+    applicationsStore.clearSelectedApplication()
+    fetchCaseDetails(caseNo)
+  }
+
+  // 當從補件頁面返回時也重新獲取資料
+  if (oldName === 'ApplicationProgressSupplement' && newName === 'ApplicationProgressDetail') {
+    console.log('[ApplicationProgressDetail] 從補件頁面返回，重新獲取資料')
+    applicationsStore.clearSelectedApplication()
+    fetchCaseDetails(caseNo)
+  }
+})
+
 function getStatusLabel(statusClass, rawStatus) {
+  // 如果後端直接提供中文狀態，優先使用
+  if (rawStatus && typeof rawStatus === 'string' && /[\u4e00-\u9fa5]/.test(rawStatus)) {
+    return rawStatus
+  }
+
+  // 否則根據 statusClass 轉換
   const map = {
     processing: '審核中',
+    pending: '審核中',
     supplement: '需要補件',
     rejected: '已退件',
-    waitingForAdmission: '錄取候補中',
+    waitingForAdmission: '候補中',
     revokeProcessing: '撤銷申請審核中',
     revoked: '撤銷申請通過',
     admitted: '已錄取',
-    withdrawn: '已退托',
-
+    withdrawn: '已退托'
   }
-  return map[statusClass] || map[rawStatus] || rawStatus || '未知狀態'
+  return map[statusClass] || rawStatus || '未知狀態'
+}
+
+// 將後端中文狀態映射到前端狀態類別
+function mapStatusToClass(status) {
+  if (!status) return 'processing'
+
+  const statusMap = {
+    '審核中': 'processing',
+    '需要補件': 'supplement',
+    '已退件': 'rejected',
+    '候補中': 'waitingForAdmission',
+    '錄取候補中': 'waitingForAdmission',
+    '撤銷申請審核中': 'revokeProcessing',
+    '撤銷申請通過': 'revoked',
+    '已退托': 'withdrawn',
+    '已錄取': 'admitted'
+  }
+
+  return statusMap[status] || 'processing'
 }
 
 const isProcessing = computed(() => {
   const s = application.value?.status
-  return s === 'processing' || s === 'pending'
+  return s === 'processing' || s === 'pending' || s === '審核中'
 })
-const isSupplement = computed(() => application.value?.status === 'supplement')
+const isSupplement = computed(() => {
+  const s = application.value?.status
+  return s === 'supplement' || s === '需要補件'
+})
 
 // 檢查是否為補件 / 撤銷 子路由（若是，則 childActive 為 true）
 const childActive = computed(() => {

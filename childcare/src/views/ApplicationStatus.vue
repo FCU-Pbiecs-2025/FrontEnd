@@ -24,11 +24,13 @@
           <div class="application-info">
             <h4 class="application-title">{{ item.caseNo }} </h4>
             <p class="application-date">申請日期: {{ item.applyDate }}</p>
-            <p v-if="item.details" class="application-details">{{ item.details }}</p>
+            <p class="application-details">申請人: {{ item.username || '—' }}</p>
+            <p class="application-details">幼兒姓名: {{ item.childname || '—' }}</p>
+            <p class="application-details">申請機構: {{ item.institutionName || '—' }}</p>
+            <p v-if="item.reason" class="application-details">原因: {{ item.reason }}</p>
             <p v-else class="application-details muted">無詳細說明</p>
-
-            <p v-if="item.status === 'waitingForAdmission' && item.queueNumber" class="queue-info">
-              目前序位：<span class="queue-number">第 {{ item.queueNumber }} 位</span>
+            <p v-if="(item.status === '錄取候補中' || item.status === 'waitingForAdmission') && item.currentOrder" class="queue-info">
+              目前序位：<span class="queue-number">第 {{ item.currentOrder }} 位</span>
             </p>
           </div>
 
@@ -59,14 +61,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/store/auth.js'
+import { useApplicationsStore } from '@/store/applications.js'
 import { getUserApplicationDetails } from '@/api/application.js'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const applicationsStore = useApplicationsStore()
 
 const childActive = computed(() => {
   return route.name === 'ApplicationProgressDetail' || route.name === 'ApplicationProgressSupplement' || route.name === 'ApplicationProgressRevoke'
@@ -93,53 +97,54 @@ function getStatusLabel(statusClass, rawStatus) {
   return map[statusClass] || rawStatus || '未知狀態'
 }
 
-// 申請資料
-const applications = ref([])
-const loading = ref(false)
-const error = ref(null)
+// 申請資料從 store 取得
+const applications = computed(() => applicationsStore.applications)
+const loading = computed(() => applicationsStore.loading)
+const error = computed(() => applicationsStore.error)
 
 // 從後端獲取使用者申請詳細資訊
 const fetchUserApplications = async () => {
   try {
-    loading.value = true
-    error.value = null
+    applicationsStore.setLoading(true)
+    applicationsStore.clearError()
 
     // 從 Pinia authStore 獲取使用者 ID
     const userID = authStore.user?.UserID
 
     if (!userID) {
       console.warn('未找到使用者 ID，無法獲取申請資料')
-      applications.value = []
+      applicationsStore.setApplications([])
       return
     }
 
-    console.log('[ApplicationStatus] 正在獲取使用者申請資料，UserID:', userID)
     const response = await getUserApplicationDetails(userID)
 
-    console.log('[ApplicationStatus] API回應:', response)
-    console.log('[ApplicationStatus] API回應類型:', typeof response)
-    console.log('[ApplicationStatus] 是否為陣列:', Array.isArray(response))
-
-    // 將後端資料轉換為前端格式
+    // 將後端資料轉換為前端格式並存入 store
     if (response && Array.isArray(response)) {
-      applications.value = response.map((item, index) => {
+      const formattedApplications = response.map((item, index) => {
         // 優先使用後端 DTO 的 applicationID
-        const rawCase = item.applicationID || item.applicationId || item.applicationId || item.caseNo || item.id || item.applicationNo || item.case_number || item.caseId || item.applicationID
+        const rawCase = item.applicationID || item.applicationId || item.caseNo || item.id || item.applicationNo || item.case_number || item.caseId
         const caseNo = rawCase ? String(rawCase) : `CASE-${Date.now()}-${index}`
-
-        console.log('處理案件資料:', {
-          originalData: item,
-          mappedCaseNo: caseNo
-        })
 
         return {
           caseNo: caseNo,
           applicationID: item.applicationID || item.applicationId || null,
-          applyDate: item.applicationDate || item.applyDate || item.submittedAt,
-          status: item.status,
+          applicationDate: item.applicationDate || item.applyDate,
+          applyDate: item.applicationDate || item.applyDate,
+          childname: item.childname || '',
+          birthDate: item.birthDate || '',
+          institutionID: item.institutionID || '',
+          institutionName: item.institutionName || '',
+          username: item.username || '',
+          cancellationID: item.cancellationID || '',
+          reason: item.reason || '',
+          status: item.status || '',
           statusClass: mapStatusToClass(item.status),
-          details: item.details || item.reason || '',
-          queueNumber: item.queueNumber,
+          // 新增的欄位
+          currentOrder: item.currentOrder || item.queueNumber || null,
+          childNationalID: item.childNationalID || '',
+          // 保留其他可能的欄位
+          queueNumber: item.currentOrder || item.queueNumber,
           queueTotal: item.queueTotal,
           estimatedWaitWeeks: item.estimatedWaitWeeks,
           supplementItems: item.supplementItems,
@@ -149,37 +154,22 @@ const fetchUserApplications = async () => {
         }
       })
 
-      console.log('映射後的applications:', applications.value)
+      applicationsStore.setApplications(formattedApplications)
+      console.log('申請資料已存入 store:', formattedApplications)
     } else if (response) {
       // 如果回傳的不是陣列，但有資料
       console.log('API回傳非陣列格式:', response)
-      applications.value = []
+      applicationsStore.setApplications([])
     } else {
-      console.log('API沒有回傳有效的陣列資料，使用測試資料')
-      // 臨時測試資料 - 在實際API正常回應後可以移除
-      applications.value = [
-        {
-          caseNo: 'TEST-001',
-          applyDate: '2024-11-20',
-          status: '審核中',
-          statusClass: 'processing',
-          details: '您的申請正在審核中，請耐心等候',
-        },
-        {
-          caseNo: 'TEST-002',
-          applyDate: '2024-11-15',
-          status: '需要補件',
-          statusClass: 'supplement',
-          details: '請補充戶口名簿影本',
-        }
-      ]
+      console.log('API沒有回傳有效資料')
+      applicationsStore.setApplications([])
     }
   } catch (err) {
     console.error('獲取申請資料失敗:', err)
-    error.value = '無法載入申請資料，請稍後再試'
-    applications.value = []
+    applicationsStore.setError('無法載入申請資料，請稍後再試')
+    applicationsStore.setApplications([])
   } finally {
-    loading.value = false
+    applicationsStore.setLoading(false)
   }
 }
 
@@ -192,6 +182,7 @@ function mapStatusToClass(status) {
     '需要補件': 'supplement',
     '已退件': 'rejected',
     '候補中': 'waitingForAdmission',
+    '錄取候補中': 'waitingForAdmission',
     '撤銷申請審核中': 'revokeProcessing',
     '撤銷申請通過': 'revoked',
     '已退托': 'withdrawn',
@@ -209,6 +200,11 @@ onMounted(() => {
 // Entire item click behavior -> unified progress detail page
 const onItemClick = async (item) => {
   console.log('點擊項目:', item)
+
+  // 將選中的申請資料存入 store
+  applicationsStore.setSelectedApplication(item)
+  console.log('已將申請資料存入 store:', item)
+
   // 嘗試多個可能的欄位來取得 caseNo
   const selectedCase = item.caseNo || item.applicationID || item.applicationId || item.id || item.caseId || item.applicationNo || item.case_number || item.applicationID || null
   console.log('選取的案件識別:', selectedCase)

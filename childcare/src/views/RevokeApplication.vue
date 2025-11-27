@@ -22,19 +22,19 @@
           <div class="info-card">
             <div class="info-row">
               <span class="label">申請案號：</span>
-              <span class="value">{{ applicationId }}</span>
+              <span class="value">{{ applicationId || '—' }}</span>
             </div>
             <div class="info-row">
               <span class="label">申請人：</span>
-              <span class="value">{{ applicantName }}</span>
+              <span class="value">{{ applicantName || '—' }}</span>
             </div>
             <div class="info-row">
               <span class="label">幼兒姓名：</span>
-              <span class="value">{{ childName }}</span>
+              <span class="value">{{ childName || '—' }}</span>
             </div>
             <div class="info-row">
               <span class="label">目前序位：</span>
-              <span class="value priority">第 {{ queueNumber }} 位</span>
+              <span class="value priority">第 {{ queueNumber ?? '—' }} 位</span>
             </div>
           </div>
 
@@ -67,48 +67,137 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../store/auth.js'
+import { useApplicationsStore } from '@/store/applications.js'
+import { getCaseDetails } from '@/api/application.js'
+import { createRevoke } from '@/api/revokes.js'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const applicationsStore = useApplicationsStore()
 
-// 支援嵌套路由下的 :caseNo，若無則退回 query.applicationId
-const applicationId = ref(route.params.caseNo || route.query.applicationId || 'APP20240114001')
-const applicantName = ref(authStore.user?.name || '王小明')
-const childName = ref('王小寶')
-const queueNumber = ref(15)
+// 常數：撤銷申請審核中 對應後端狀態碼 (CASE_STATUS_MAP 中的 '5')
+const REVOKE_PROCESSING_STATUS_CODE = '5'
 
+// 取得路由中的 caseNo / applicationId
+const routeCaseNo = route.params.caseNo || route.query.applicationId || null
+
+// 反應式：提交狀態
+const submitting = ref(false)
+const loadError = ref(null)
+
+// 從 store 取得選中申請
+const selected = computed(() => applicationsStore.selectedApplication)
+
+// 計算顯示欄位（優先使用 selected，其次嘗試在 store.applications 中搜尋，最後為 null）
+const applicationRecord = computed(() => {
+  if (selected.value) return selected.value
+  // 在 store 中搜尋
+  const found = applicationsStore.applications.find(a => {
+    return [a.caseNo, a.applicationID, a.applicationId].filter(Boolean).some(id => String(id) === String(routeCaseNo))
+  })
+  return found || null
+})
+
+const applicationId = computed(() => applicationRecord.value?.applicationID || applicationRecord.value?.caseNo)
+const applicantName = computed(() => applicationRecord.value?.username)
+const childName = computed(() => applicationRecord.value?.childname)
+const queueNumber = computed(() => applicationRecord.value?.currentOrder ?? applicationRecord.value?.queueNumber)
+const childNationalID = computed(() => applicationRecord.value?.childNationalID)
+
+// 撤銷原因、同意條款
 const revokeReason = ref('')
 const agreeTerms = ref(false)
 
+// 是否可提交
 const canSubmit = computed(() => {
-  // require revoke reason and agreement
-  return revokeReason.value.trim() !== '' && agreeTerms.value
+  return !submitting.value && revokeReason.value.trim() !== '' && agreeTerms.value && !!applicationId.value
 })
+
+// 載入申請資訊（若 store 中沒有）
+const loadApplicationInfo = async () => {
+  try {
+    loadError.value = null
+    if (applicationRecord.value) {
+      // 已有資料，若尚未設定 selected，將其塞入 selected 以便後續操作
+      if (!selected.value) applicationsStore.setSelectedApplication(applicationRecord.value)
+      return
+    }
+    // 無資料 -> 呼叫後端補抓 (需要 userID 與 caseNo)
+    const userID = authStore.user?.UserID
+    if (!userID || !routeCaseNo) {
+      loadError.value = '無法載入申請資料（缺少使用者或案件識別）'
+      return
+    }
+    const res = await getCaseDetails(userID, routeCaseNo)
+    // 正規化：沿用 ApplicationProgressDetail.vue 的 normalize 方式簡化
+    const norm = Array.isArray(res) ? res[0] : (res?.content && Array.isArray(res.content) ? res.content[0] : res)
+    if (norm) {
+      const mapped = {
+        caseNo: norm.caseNo || norm.applicationID || norm.applicationId || routeCaseNo,
+        applicationID: norm.applicationID || norm.applicationId || norm.caseNo || null,
+        applicationDate: norm.applicationDate || norm.applyDate,
+        applyDate: norm.applicationDate || norm.applyDate,
+        institutionID: norm.institutionID,
+        institutionName: norm.institutionName,
+        childname: norm.childname || norm.childName,
+        birthDate: norm.birthDate || norm.childBirth,
+        status: norm.status,
+        statusClass: norm.statusClass,
+        reason: norm.reason,
+        currentOrder: norm.currentOrder || norm.queueNumber,
+        queueNumber: norm.currentOrder || norm.queueNumber,
+        childNationalID: norm.childNationalID || norm.nationalID,
+        username: norm.username || norm.applicantName
+      }
+      applicationsStore.setSelectedApplication(mapped)
+    } else {
+      loadError.value = '後端未回傳有效的申請資料'
+    }
+  } catch (e) {
+    console.error('[RevokeApplication] 載入資料失敗', e)
+    loadError.value = e.message || '載入申請資料失敗'
+  }
+}
 
 onMounted(() => {
   loadApplicationInfo()
 })
 
-const loadApplicationInfo = () => {
-  // TODO: 根據 applicationId 從 API 載入申請資訊
-}
-
-const submitRevoke = () => {
+// 提交撤銷
+const submitRevoke = async () => {
   if (!canSubmit.value) {
     alert('請填寫完整資料並勾選同意事項')
     return
   }
-
-  const revokeData = {
-    applicationId: applicationId.value,
-    revokeReason: revokeReason.value
+  if (!applicationId.value) {
+    alert('無法取得申請案號，無法提交撤銷')
+    return
   }
-
-  // TODO: 呼叫 API 提交撤銷申請
-  console.log('撤銷申請資料：', revokeData)
-  alert('撤銷申請已送出，將於 3-5 個工作天完成審核')
-  router.back()
+  submitting.value = true
+  try {
+    // 呼叫後端建立 cancellation 紀錄
+    const resp = await createRevoke({
+      applicationID: applicationId.value,
+      nationalID: childNationalID.value,
+      abandonReason: revokeReason.value
+    })
+    console.log('[RevokeApplication] createRevoke response:', resp)
+    // 更新 store 中的 selected 狀態
+    if (selected.value) {
+      selected.value.status = '撤銷申請審核中'
+      selected.value.statusClass = 'revokeProcessing'
+      selected.value.reason = revokeReason.value
+      selected.value.cancellationID = resp?.cancellationID || selected.value.cancellationID
+    }
+    alert('撤銷申請已送出，審核約 3-5 個工作天')
+    router.back()
+  } catch (e) {
+    console.error('[RevokeApplication] 撤銷提交失敗', e)
+    alert(e.message || '撤銷申請提交失敗，請稍後再試')
+  } finally {
+    submitting.value = false
+  }
 }
 
 const goBack = () => router.back()
