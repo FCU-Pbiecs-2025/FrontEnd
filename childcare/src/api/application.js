@@ -192,3 +192,96 @@ export const getApplicationsCasesList = async (options = {}) => {
     }
 };
 
+// 提交新的申請案件（包含案件資訊和附件檔案）
+// POST /applications/case/submit
+//
+// 功能說明：
+// 1. 接收 CaseEditUpdateDTO 格式的申請資料（JSON）
+// 2. 支持上傳最多 4 個附件檔案
+// 3. 建立案件資訊並將檔案儲存到 IdentityResource/{applicationID}/ 目錄
+// 4. 返回建立成功的完整案件資訊
+//
+// @param {Object} caseData - 案件資訊 (CaseEditUpdateDTO)
+// @param {string} caseData.caseNumber - 案件編號
+// @param {string} caseData.applyDate - 申請日期 (YYYY-MM-DD)
+// @param {number} caseData.identityType - 身分別 (0=一般民眾, 1=低收入戶, 2=中低收入戶)
+// @param {string} caseData.institutionId - 機構 UUID
+// @param {string} caseData.institutionName - 機構名稱
+// @param {string} caseData.selectedClass - 選擇的班級 ID
+// @param {number} caseData.currentOrder - 序號
+// @param {Object} caseData.User - 申請人信息 (UserSimpleDTO)
+// @param {Array} caseData.parents - 家長列表
+// @param {Array} caseData.children - 幼兒列表
+// @param {File} file - 第一個附件檔案 (可選)
+// @param {File} file1 - 第二個附件檔案 (可選)
+// @param {File} file2 - 第三個附件檔案 (可選)
+// @param {File} file3 - 第四個附件檔案 (可選)
+// @returns {Promise<Object>} 返回建立成功的完整案件資訊
+export const submitApplicationCase = async (caseData, files = {}) => {
+    if (!caseData) {
+        throw new Error('缺少案件資料');
+    }
+
+    try {
+        console.log('========== 📋 [API] 開始提交申請案件 ==========');
+        console.log('完整 caseData:', JSON.stringify(caseData, null, 2));
+
+        // 建立 FormData 對象
+        const formData = new FormData();
+
+        // 添加 JSON 案件資訊（作為 Blob，設置正確的 Content-Type）
+        const caseDataJson = JSON.stringify(caseData);
+        const caseDataBlob = new Blob([caseDataJson], { type: 'application/json' });
+        // ✅ 關鍵修改：後端期望參數名稱為 'caseDto' 而不是 'caseData'
+        formData.append('caseDto', caseDataBlob, 'caseDto.json');
+
+        // 添加附件檔案（最多 4 個）
+        const fileKeys = ['file', 'file1', 'file2', 'file3'];
+        let fileCount = 0;
+        fileKeys.forEach(key => {
+            if (files[key]) {
+                formData.append(key, files[key], files[key].name);
+                fileCount++;
+                console.log(`📎 附件 ${key}:`, files[key].name, `(${(files[key].size / 1024).toFixed(2)}KB)`);
+            }
+        });
+
+        console.log('📊 FormData 內容:');
+        console.log('  - caseDto: JSON Blob (' + caseDataBlob.size + ' bytes)');
+        console.log('  - 附件數:', fileCount);
+        console.log('  - UserID:', caseData.UserID);
+
+        console.log('🚀 發送 POST 到: http://localhost:8080/applications/case/submit');
+        console.log('   (透過 Vite proxy: /api/applications/case/submit)');
+
+        const response = await http.post('/applications/case/submit', formData);
+
+        console.log('========== ✅ 提交成功 ==========');
+        console.log('回應:', response.data);
+
+        // 返回響應數據
+        return response.data;
+
+    } catch (error) {
+        console.error('========== ❌ 提交失敗 ==========');
+        console.error('錯誤:', error.message);
+
+        if (error.response) {
+            console.error('HTTP 狀態碼:', error.response.status);
+            console.error('回應頭:', error.response.headers);
+            console.error('錯誤數據:', error.response.data);
+
+            // 提供診斷信息
+            if (error.response.status === 400) {
+                alert('❌ 提交失敗 (400 Bad Request)\n\n請查看 Console 中的詳細錯誤信息');
+            } else if (error.response.status === 500) {
+                alert('❌ 提交失敗 (500 Server Error)\n\n' + (error.response.data || '伺服器內部錯誤'));
+            }
+        } else {
+            alert('❌ 提交失敗\n\n' + error.message);
+        }
+
+        throw error;
+    }
+};
+

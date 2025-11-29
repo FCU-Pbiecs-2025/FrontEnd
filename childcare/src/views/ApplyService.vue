@@ -323,10 +323,12 @@
 
         <div class="agency-row">
           <label class="agency-label">申請之就讀機構</label>
-          <select v-model="selectedAgency" class="agency-select">
+          <select @change="onAgencyChange" class="agency-select">
             <option value="">請選擇申請之就讀機構</option>
-            <option v-for="a in agencyOptions" :key="a" :value="a">{{ a }}</option>
             <option value="市政府">市政府</option>
+            <option v-for="inst in agencyOptions" :key="inst.institutionName" :value="inst.institutionName">
+              {{ inst.institutionName }}
+            </option>
           </select>
         </div>
 
@@ -368,7 +370,7 @@
           <div class="finish-summary">
             <div class="summary-block">
               <h3>機構</h3>
-              <p v-if="selectedAgency">{{ selectedAgency }}</p>
+              <p v-if="selectedAgency.name">{{ selectedAgency.name }}</p>
               <p v-else class="empty-text">未選擇</p>
             </div>
             <div class="summary-block">
@@ -395,70 +397,58 @@
 </template>
 
 <script setup>
-import { ref, onBeforeUnmount, onMounted, computed, watch } from 'vue'
+import { ref, onBeforeUnmount, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import LoginView from './LoginView.vue'
 import { useAuthStore } from '@/store/auth.js'
+import { getUserFamilyInfo } from '@/api/user.js'
+import { submitApplicationCase } from '@/api/application.js'
 import { getInstitutionsSimpleAll } from '@/api/Institution.js'
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 const step = ref(1) // 目前步驟，預設1
 const validationMessage = ref('') // 新增：儲存驗證提示訊息
 const identityTypeSelect = ref('') // 新增：申請之身分別選擇
 
+// 身分別轉換函數：將選中的身分別描述轉換為序位數字
+// 第一序位（所有選項）-> 1，第二序位（所有選項）-> 2，第三序位 -> 3
+function convertIdentityTypeToNumber(identityDescription) {
+  console.log('🔄 convertIdentityTypeToNumber 被調用，輸入:', identityDescription);
+
+  // 定義身分別對應的序位數字
+  const identityMap = {
+    // 第一序位 - 所有選項都回傳 1
+    '弱勢家庭(含低收入戶、中低收入戶、危機家庭、特殊境遇家庭或經濟困難未成年父母)': 1,
+    '具原住民身分之嬰幼兒': 1,
+    '發展遲緩或持有輕度身心障礙證明之嬰幼兒': 1,
+    '嬰幼兒其手足或父母或監護人之一為中度以上身心障礙者': 1,
+    '家庭內育有雙胞胎或三位以上同胞子女之家庭': 1,
+    // 第二序位 - 所有選項都回傳 2
+    '該公共托育機構員工之子女': 2,
+    '提供辦理該公共托育機構場地之學校教職員工之子女': 2,
+    // 第三序位 - 回傳 3
+    '設籍本縣一般家庭嬰幼兒': 3
+  };
+
+  const identityNumber = identityMap[identityDescription] || 0;
+  console.log('📍 身分別序位轉換結果:', identityNumber, `(第${identityNumber}序位 - ${identityDescription})`);
+  return identityNumber;
+}
+
 // 申請表單資料
 const form = ref({
-  applicant: { name: '', birth: '', id: '', homeAddress: '', mailAddress: '', mobile: '', email: '' },
+  applicant: { name: '', birth: '', id: '', gender: '', homeAddress: '', mailAddress: '', mobile: '', email: '' },
   parent1: { name: '', birth: '', id: '', parentType: '', homeAddress: '', mobile: '', company: '', gender: '', contactAddress: '', email: '', isLeave: false, leaveStart: '', leaveEnd: '' },
   parent2: { name: '', birth: '', id: '', parentType: '', homeAddress: '', mobile: '', company: '', gender: '', contactAddress: '', email: '', isLeave: false, leaveStart: '', leaveEnd: '' }
 })
 
-// 改為三筆模擬資料：申請人 / 家長1 / 家長2
-const mockProfiles = ref({
-  applicant: {
-    name: '陳小華',
-    birth: '1992-03-15',
-    id: 'B987654321',
-    homeAddress: '台中市西屯區市政路100號',
-    mailAddress: '台中市西屯區市政路100號',
-    contactAddress: '台中市西屯區市政路100號',
-    mobile: '0966888777',
-    email: 'applicant@example.com',
-    gender: '女',
-    company: '申請人公司'
-  },
-  parent1: {
-    name: '李大明',
-    birth: '1985-01-20',
-    id: 'C234567890',
-    parentType: '父親',
-    homeAddress: '台中市北區中清路200號',
-    contactAddress: '台中市北區中清路200號',
-    mobile: '0911222333',
-    email: 'parent1@example.com',
-    gender: '男',
-    company: '家長公司A',
-    // 模擬此位家長有留停
-    isLeave: true,
-    leaveStart: '2025-01-01',
-    leaveEnd: '2025-06-30'
-  },
-  parent2: {
-    name: '吳小英',
-    birth: '1987-07-07',
-    id: 'D345678901',
-    parentType: '母親',
-    homeAddress: '台中市南區復興路50號',
-    contactAddress: '台中市南區復興路50號',
-    mobile: '0922333444',
-    email: 'parent2@example.com',
-    gender: '女',
-    company: '家長公司B',
-    isLeave: false,
-    leaveStart: '',
-    leaveEnd: ''
-  }
+// 從 API 獲取的家庭資料
+const familyData = ref({
+  userInfo: {},
+  parents: [],
+  children: []
 })
 
 
@@ -472,72 +462,193 @@ const sameAsMember = ref({
 // 監聽同會員資料勾選，帶入或清空資料
 watch(() => sameAsMember.value.applicant, (val) => {
   if (val) {
-    // 帶入申請人專屬模擬資料（完整鎖死）
-    const m = JSON.parse(JSON.stringify(mockProfiles.value.applicant))
+    // 帶入申請人的 API 資料（從 familyData.userInfo 取得）
+    const userInfo = familyData.value.userInfo
     form.value.applicant = {
-      name: m.name || '',
-      birth: m.birth || '',
-      id: m.id || '',
-      homeAddress: m.homeAddress || '',
-      mailAddress: m.mailAddress || m.contactAddress || '',
-      mobile: m.mobile || '',
-      email: m.email || ''
+      name: userInfo.name || '',
+      birth: userInfo.birthDate || '',
+      id: userInfo.nationalID || '',
+      gender: userInfo.gender === false ? '女' : '男',
+      homeAddress: userInfo.householdAddress || '',
+      mailAddress: userInfo.mailingAddress || userInfo.householdAddress || '',
+      mobile: userInfo.phoneNumber || '',
+      email: userInfo.email || ''
     }
+    console.log('✅ 已綁定申請人資料:', form.value.applicant)
   } else {
     // 取消勾選 -> 清空申請人資料
-    form.value.applicant = { name:'', birth:'', id:'', homeAddress:'', mailAddress:'', mobile:'', email:'' }
+    form.value.applicant = { name:'', birth:'', id:'', gender:'', homeAddress:'', mailAddress:'', mobile:'', email:'' }
+    console.log('🔄 已清空申請人資料')
   }
 })
 
 watch(() => sameAsMember.value.parent1, (val) => {
   if (val) {
-    // 帶入家長1模擬資料（身分證欄位在 template 已設定 :disabled）
-    const m = JSON.parse(JSON.stringify(mockProfiles.value.parent1))
-    form.value.parent1 = {
-      name: m.name || '',
-      birth: m.birth || '',
-      id: m.id || '',
-      parentType: m.parentType || '',
-      homeAddress: m.homeAddress || '',
-      mobile: m.mobile || '',
-      company: m.company || '',
-      gender: m.gender || '',
-      contactAddress: m.contactAddress || '',
-      email: m.email || '',
-      isLeave: !!m.isLeave,
-      leaveStart: m.leaveStart || '',
-      leaveEnd: m.leaveEnd || ''
+    // 帶入家長1的 API 資料（從 familyData.parents[0] 取得）
+    const parent1 = familyData.value.parents[0]
+    if (parent1) {
+      form.value.parent1 = {
+        name: parent1.name || '',
+        birth: parent1.birthDate || '',
+        id: parent1.nationalID || '',
+        parentType: parent1.relationship || '',
+        homeAddress: parent1.householdAddress || '',
+        mobile: parent1.phoneNumber || '',
+        company: parent1.occupation || '',
+        gender: parent1.gender || '',
+        contactAddress: parent1.mailingAddress || parent1.householdAddress || '',
+        email: parent1.email || '',
+        isLeave: !!parent1.isSuspended,
+        leaveStart: parent1.suspendStart || '',
+        leaveEnd: parent1.suspendEnd || ''
+      }
+      console.log('✅ 已綁定家長1資料:', form.value.parent1)
     }
   } else {
     // 取消勾選 -> 清空家長1
     form.value.parent1 = { name:'', birth:'', id:'', parentType:'', homeAddress:'', mobile:'', company:'', gender:'', contactAddress:'', email:'', isLeave:false, leaveStart:'', leaveEnd:'' }
+    console.log('🔄 已清空家長1資料')
   }
 })
 
 watch(() => sameAsMember.value.parent2, (val) => {
   if (val) {
-    const m = JSON.parse(JSON.stringify(mockProfiles.value.parent2))
-    form.value.parent2 = {
-      name: m.name || '',
-      birth: m.birth || '',
-      id: m.id || '',
-      parentType: m.parentType || '',
-      homeAddress: m.homeAddress || '',
-      mobile: m.mobile || '',
-      company: m.company || '',
-      gender: m.gender || '',
-      contactAddress: m.contactAddress || '',
-      email: m.email || '',
-      isLeave: !!m.isLeave,
-      leaveStart: m.leaveStart || '',
-      leaveEnd: m.leaveEnd || ''
+    // 帶入家長2的 API 資料（從 familyData.parents[1] 取得）
+    const parent2 = familyData.value.parents[1]
+    if (parent2) {
+      form.value.parent2 = {
+        name: parent2.name || '',
+        birth: parent2.birthDate || '',
+        id: parent2.nationalID || '',
+        parentType: parent2.relationship || '',
+        homeAddress: parent2.householdAddress || '',
+        mobile: parent2.phoneNumber || '',
+        company: parent2.occupation || '',
+        gender: parent2.gender || '',
+        contactAddress: parent2.mailingAddress || parent2.householdAddress || '',
+        email: parent2.email || '',
+        isLeave: !!parent2.isSuspended,
+        leaveStart: parent2.suspendStart || '',
+        leaveEnd: parent2.suspendEnd || ''
+      }
+      console.log('✅ 已綁定家長2資料:', form.value.parent2)
     }
   } else {
+    // 取消勾選 -> 清空家長2
     form.value.parent2 = { name:'', birth:'', id:'', parentType:'', homeAddress:'', mobile:'', company:'', gender:'', contactAddress:'', email:'', isLeave:false, leaveStart:'', leaveEnd:'' }
+    console.log('🔄 已清空家長2資料')
   }
 })
 
-// 上傳檔案狀態
+// ========== 在組件掛載時載入用戶家庭資料 ==========
+onMounted(async () => {
+  console.log('========== ApplyService.vue 已掛載 ==========')
+
+  // 檢查用戶是否已登入
+  if (!authStore.isLoggedIn) {
+    console.warn('用戶未登入，跳過載入家庭資料')
+    return
+  }
+
+  const userID = authStore.user?.UserID
+  if (!userID) {
+    console.error('無法從 authStore 獲取 userID')
+    return
+  }
+
+  try {
+    console.log('========== 開始調用 getUserFamilyInfo API ==========')
+    console.log('userID:', userID)
+
+    const response = await getUserFamilyInfo(userID)
+
+    if (!response || !response.data) {
+      console.error('❌ API 回應為空')
+      return
+    }
+
+    const data = response.data
+    console.log('========== API 返回的完整數據 ==========')
+    console.log('data:', data)
+
+    // 存放用戶個人信息
+    familyData.value.userInfo = {
+      name: data.name || '',
+      email: data.email || '',
+      phoneNumber: data.phoneNumber || '',
+      nationalID: data.nationalID || '',
+      birthDate: data.birthDate || '',
+      gender: data.gender,
+      occupation: data.occupation || '',
+      householdAddress: data.householdAddress || '',
+      mailingAddress: data.mailingAddress || ''
+    }
+
+    // 存放家長資料
+    if (Array.isArray(data.parents)) {
+      familyData.value.parents = data.parents.map((parent, idx) => ({
+        index: idx,
+        name: parent.name || '',
+        phoneNumber: parent.phoneNumber || '',
+        nationalID: parent.nationalID || '',
+        birthDate: parent.birthDate || '',
+        gender: parent.gender === false ? '女' : '男',
+        relationship: parent.relationship || '',
+        occupation: parent.occupation || '',
+        householdAddress: parent.householdAddress || '',
+        mailingAddress: parent.mailingAddress || '',
+        isSuspended: parent.isSuspended || false,
+        suspendStart: parent.suspendStart || '',
+        suspendEnd: parent.suspendEnd || '',
+        email: parent.email || ''
+      }))
+    }
+
+    // 存放幼兒資料
+    if (Array.isArray(data.children)) {
+      familyData.value.children = data.children.map((child, idx) => ({
+        index: idx,
+        name: child.name || '',
+        nationalID: child.nationalID || '',
+        birthDate: child.birthDate || '',
+        gender: child.gender === false ? '女' : '男'
+      }))
+    }
+
+    console.log('✅ 已成功載入家庭資料:')
+    console.log('userInfo:', familyData.value.userInfo)
+    console.log('parents:', familyData.value.parents)
+    console.log('children:', familyData.value.children)
+
+    // 獲取機構列表
+    try {
+      console.log('========== 開始調用 getInstitutionsSimpleAll API ==========')
+      const institutionsResponse = await getInstitutionsSimpleAll()
+      console.log('[API] 機構列表響應:', institutionsResponse)
+
+      if (institutionsResponse && Array.isArray(institutionsResponse)) {
+        agencyOptions.value = institutionsResponse
+        console.log('✅ 已成功載入機構列表:', agencyOptions.value)
+      } else {
+        console.warn('⚠️ 機構列表為空或格式錯誤')
+        agencyOptions.value = []
+      }
+    } catch (error) {
+      console.error('❌ 獲取機構列表失敗:', error)
+      agencyOptions.value = []
+    }
+
+
+  } catch (error) {
+    console.error('❌ 載入家庭資料失敗:', error)
+    if (error.response) {
+      console.error('API 錯誤狀態碼:', error.response.status)
+      console.error('API 錯誤訊息:', error.response.data)
+    }
+  }
+})
+
+
 const uploadedFiles = ref([])
 
 function handleFileChange(e) {
@@ -592,17 +703,77 @@ const goToNextStep = () => {
 }
 
 // Step3 選擇機構與幼兒資料狀態
-// 存儲從 API 獲取的機構列表（包含 institutionId 和 institutionName）
-const institutionsData = ref([])
-// agencyOptions 存儲機構名稱供下拉選單顯示
 const agencyOptions = ref([])
-const selectedAgency = ref("")
+const selectedAgency = ref({
+  id: '',
+  name: ''
+})
+
+// 機構選擇事件處理
+const onAgencyChange = (event) => {
+  const selectedName = event.target.value;
+
+  console.log('========== 🏢 機構選擇變化 ==========');
+  console.log('選擇的機構名稱:', selectedName);
+
+  // 詳細顯示所有可用的機構選項
+  console.log('📋 當前 agencyOptions 內容:');
+  console.log('  - 總數:', agencyOptions.value.length);
+  agencyOptions.value.forEach((inst, idx) => {
+    console.log(`  [${idx}] institutionName: "${inst.institutionName}"`);
+    console.log(`       institutionID: "${inst.institutionID}"`);
+  });
+
+  if (selectedName === '') {
+    selectedAgency.value = { id: '', name: '' };
+    console.log('❌ 未選擇機構（空值）');
+    return;
+  }
+
+  if (selectedName === '市政府') {
+    selectedAgency.value = { id: '市政府', name: '市政府' };
+    console.log('✅ 選擇的機構: 市政府 (特殊選項)');
+    return;
+  }
+
+  // 從 agencyOptions 中查找該機構的完整信息（使用 institutionName）
+  const selectedInst = agencyOptions.value.find(inst => inst.institutionName === selectedName);
+
+  if (selectedInst) {
+    // 使用 institutionID 作為 id（API 返回的真實 UUID）
+    selectedAgency.value = {
+      id: selectedInst.institutionID,
+      name: selectedInst.institutionName
+    };
+
+    console.log('✅ 找到該機構的 API 參數詳情:');
+    console.log('=' .repeat(50));
+
+    // 遍歷該機構對象的所有鍵值對
+    Object.entries(selectedInst).forEach(([key, value]) => {
+      console.log(`  📌 ${key}: ${JSON.stringify(value)}`);
+    });
+
+    console.log('=' .repeat(50));
+    console.log('🎯 核心參數:');
+    console.log('  - institutionID (真實 ID):', selectedInst.institutionID);
+    console.log('  - institutionName:', selectedInst.institutionName);
+    console.log('📊 selectedAgency 對象:', selectedAgency.value);
+  } else {
+    console.warn('⚠️ 未找到該機構:', selectedName);
+    selectedAgency.value = { id: '', name: '' };
+  }
+}
+
 const maxChildren = 5
 // 動態幼兒名單資料（後端取得）
 const children = ref([
   { id: Date.now(), name: "", gender: "", age: "", nationality: "" }
 ])
-const childNameOptions = ref(['小明', '小芳', '小安', '小美', '小寶', '小華', '小強', '小麗', '小宇', '小晴'])
+const childNameOptions = computed(() => {
+  // 從 familyData.children 中提取幼兒名稱
+  return familyData.value.children.map(child => child.name).filter(name => name)
+})
 function addChild(){
   if(children.value.length < maxChildren){
     children.value.push({ id: Date.now() + Math.random(), name: "", gender: "", age: "", nationality: "" })
@@ -614,183 +785,305 @@ function removeChild(index){
 // 若已登入並直接跳到第3步（保險）
 if(step.value === 3) fetchChildren()
 
+// 構建案件資訊數據
+const buildCaseData = () => {
+  console.log('========== buildCaseData 被調用 ==========');
+  console.log('📝 開始構建案件數據...');
+
+  // 驗證 UserID
+  console.log('👤 檢查 UserID:');
+  console.log('  - authStore.user:', authStore.user);
+  console.log('  - authStore.user?.UserID:', authStore.user?.UserID);
+
+  const userID = authStore.user?.UserID || authStore.user?.userId || authStore.user?.userID || '';
+  console.log('  - 最終 UserID:', userID);
+
+  if (!userID) {
+    console.error('❌ UserID 為空！無法提交申請');
+    alert('❌ 錯誤：無法獲取用戶 ID，請重新登入後再試');
+    throw new Error('UserID is required');
+  }
+
+  // 構建 User 對象
+  const userObject = {
+    UserID: userID,
+    Name: form.value.applicant.name || '',
+    Gender: form.value.applicant.gender === '女' ? 'F' : 'M',
+    BirthDate: form.value.applicant.birth || '',
+    MailingAddress: form.value.applicant.mailAddress || '',
+    email: form.value.applicant.email || '',
+    PhoneNumber: form.value.applicant.mobile || '',
+    NationalID: form.value.applicant.id || ''
+  };
+  console.log('✅ User 對象構建完成:', userObject);
+
+  // 構建家長列表 (只包含家長1和家長2，不包含申請人)
+  const parentsList = [];
+
+  // 添加家長 1
+  if (form.value.parent1.name) {
+    console.log('✅ 添加家長 1:', form.value.parent1.name);
+    parentsList.push({
+      participantType: 1,
+      nationalID: form.value.parent1.id || '',
+      name: form.value.parent1.name,
+      gender: form.value.parent1.gender === '女' ? 'F' : 'M',
+      relationShip: form.value.parent1.parentType || '',
+      occupation: form.value.parent1.company || '',
+      phoneNumber: form.value.parent1.mobile || '',
+      householdAddress: form.value.parent1.homeAddress || '',
+      mailingAddress: form.value.parent1.contactAddress || '',
+      email: form.value.parent1.email || '',
+      birthDate: form.value.parent1.birth || '',
+      isSuspended: form.value.parent1.isLeave || false,
+      suspendEnd: form.value.parent1.leaveEnd || null,
+
+    });
+  } else {
+    console.log('ℹ️ 家長 1 姓名為空，跳過');
+  }
+
+  // 添加家長 2
+  if (form.value.parent2.name) {
+    console.log('✅ 添加家長 2:', form.value.parent2.name);
+    parentsList.push({
+      participantType: 1,
+      nationalID: form.value.parent2.id || '',
+      name: form.value.parent2.name,
+      gender: form.value.parent2.gender === '女' ? 'F' : 'M',
+      relationShip: form.value.parent2.parentType || '',
+      occupation: form.value.parent2.company || '',
+      phoneNumber: form.value.parent2.mobile || '',
+      householdAddress: form.value.parent2.homeAddress || '',
+      mailingAddress: form.value.parent2.contactAddress || '',
+      email: form.value.parent2.email || '',
+      birthDate: form.value.parent2.birth || '',
+      isSuspended: form.value.parent2.isLeave || false,
+      suspendEnd: form.value.parent2.leaveEnd || null,
+
+    });
+  } else {
+    console.log('ℹ️ 家長 2 姓名為空，跳過');
+  }
+  console.log('👨‍👩‍👧 家長列表構建完成，總數:', parentsList.length);
+
+  // 構建幼兒列表
+  const childrenList = children.value.map((child, idx) => {
+    console.log(`✅ 添加幼兒 ${idx + 1}:`, child.name, `(性別: ${child.gender})`);
+
+    // 從 familyData.children 中查找對應的幼兒信息
+    const familyChild = familyData.value.children.find(fc => fc.name === child.name);
+    const childNationalID = familyChild?.nationalID || '';
+    const childBirthDate = familyChild?.birthDate || '';
+    const childGender = familyChild?.gender === '女' ? 'F' : 'M';
+
+    console.log(`  - nationalID: "${childNationalID}"`);
+    console.log(`  - birthDate: "${childBirthDate}"`);
+
+    return {
+      participantType: 0,
+      nationalID: childNationalID,
+      name: child.name || '',
+      gender: childGender,
+      relationShip: '幼兒',
+      occupation: null,
+      phoneNumber: null,
+      householdAddress: form.value.applicant.homeAddress || '',
+      mailingAddress: form.value.applicant.mailAddress || '',
+      email: null,
+      birthDate: childBirthDate,
+      isSuspended: false,
+      suspendEnd: null,
+
+      status: '審核中',
+      reason: null,
+      classID: null,
+      reviewDate: null
+    };
+  });
+  console.log('👶 幼兒列表構建完成，總數:', childrenList.length);
+
+  // 獲取今天的日期
+  const today = new Date();
+  const applyDate = today.toISOString().split('T')[0];
+  console.log('📅 申請日期:', applyDate);
+
+  // 構建完整的案件資訊
+  // 轉換身分別為序位數字 (確保為整數)
+  const identityTypeNumber = convertIdentityTypeToNumber(identityTypeSelect.value);
+  console.log('🔢 身分別轉換完成:', identityTypeSelect.value, '->', identityTypeNumber, '(類型:', typeof identityTypeNumber, ')');
+
+  // 生成案件編號：使用時間戳
+  const caseNumber = Date.now();
+  console.log('📋 生成案件編號:', caseNumber);
+
+  const caseData = {
+    caseNumber: caseNumber,
+    applyDate: applyDate,
+    identityType: identityTypeNumber,
+    institutionId: selectedAgency.value.id || '',
+    institutionName: selectedAgency.value.name || '',
+    selectedClass: null,
+    currentOrder: null,
+    reviewDate: null,
+    applicationID: null,
+    // ✅ 頂層添加 UserID（後端需要用於 applications 表插入）
+    UserID: userID,
+    User: userObject,
+    parents: parentsList,
+    children: childrenList,
+    attachmentPath: null,
+    attachmentPath1: null,
+    attachmentPath2: null,
+    attachmentPath3: null
+  };
+
+  console.log('✅ buildCaseData 完成，最終案件數據:');
+  console.log('  - caseNumber:', caseData.caseNumber);
+  console.log('  - applyDate:', caseData.applyDate);
+  console.log('  - identityType:', caseData.identityType, '(類型:', typeof caseData.identityType, ')');
+  console.log('  - institutionId:', caseData.institutionId);
+  console.log('  - institutionName:', caseData.institutionName);
+  console.log('  - UserID (頂層):', caseData.UserID);
+  console.log('  - User (對象):', caseData.User);
+  console.log('  - parents 數量:', caseData.parents.length);
+  console.log('  - children 數量:', caseData.children.length);
+
+  return caseData;
+};
+
+// 構建檔案對象
+const buildFilesData = () => {
+  console.log('========== buildFilesData 被調用 ==========');
+  const filesData = {};
+
+  console.log('📦 上傳的檔案總數:', uploadedFiles.value.length);
+
+  uploadedFiles.value.forEach((file, idx) => {
+    if (idx === 0) {
+      filesData.file = file.file;
+      console.log(`✅ 第 ${idx} 個檔案 -> filesData.file:`, file.file.name, `(${(file.file.size / 1024).toFixed(2)}KB)`);
+    } else if (idx < 4) {
+      filesData[`file${idx}`] = file.file;
+      console.log(`✅ 第 ${idx} 個檔案 -> filesData.file${idx}:`, file.file.name, `(${(file.file.size / 1024).toFixed(2)}KB)`);
+    } else {
+      console.warn(`⚠️ 第 ${idx} 個檔案超過上限(最多4個)，已跳過`);
+    }
+  });
+
+  console.log('✅ buildFilesData 完成，最終檔案對象 keys:', Object.keys(filesData));
+
+  return filesData;
+};
+
+// 提交案件
+async function submitCase() {
+  try {
+    console.log('========== 開始提交申請案件 (submitCase) ==========');
+
+    // 構建案件數據和檔案數據
+    const caseDataObj = buildCaseData();
+    const filesData = buildFilesData();
+
+    console.log('📋 案件資訊構建完成:');
+    console.log('  - caseNumber:', caseDataObj.caseNumber);
+    console.log('  - applyDate:', caseDataObj.applyDate);
+    console.log('  - identityType:', caseDataObj.identityType);
+    console.log('  - institutionId:', caseDataObj.institutionId);
+    console.log('  - institutionName:', caseDataObj.institutionName);
+    console.log('  - User:', caseDataObj.User);
+    console.log('  - parents 數量:', caseDataObj.parents.length);
+    console.log('  - children 數量:', caseDataObj.children.length);
+    console.log('完整案件資訊:', caseDataObj);
+
+    console.log('📎 附件檔案:');
+    console.log('  - 檔案總數:', Object.keys(filesData).length);
+    Object.keys(filesData).forEach(key => {
+      console.log(`  - ${key}:`, filesData[key].name, `(${(filesData[key].size / 1024).toFixed(2)}KB)`);
+    });
+
+    // 打印完整的 JSON 請求 body
+    console.log('========== 📤 完整的請求 Body (JSON 格式) ==========');
+    console.log(JSON.stringify(caseDataObj, null, 2));
+
+    // 打印完整的 FormData 內容
+    console.log('========== 📤 完整的 FormData 內容 ==========');
+    console.log('FormData 鍵值對:');
+    console.log('  - caseData:', JSON.stringify(caseDataObj, null, 2));
+    console.log('  - Files:');
+    Object.keys(filesData).forEach(key => {
+      console.log(`    - ${key}: ${filesData[key].name} (${(filesData[key].size / 1024).toFixed(2)}KB)`);
+    });
+
+    // 調用 API 提交案件
+    console.log('🚀 正在調用 submitApplicationCase API...');
+    const response = await submitApplicationCase(caseDataObj, filesData);
+
+    console.log('✅ 申請案件已成功提交:');
+    console.log('API 回應數據:', response);
+
+    // 儲存申請成功的信息
+    localStorage.setItem('lastApplicationResult', JSON.stringify(response));
+    console.log('💾 申請結果已儲存到 localStorage: lastApplicationResult');
+
+    // 顯示成功提示
+    alert('✅ 您的申請已成功提交！');
+
+    return response;
+  } catch (error) {
+    console.error('========== ❌ 提交申請案件失敗 ==========');
+    console.error('錯誤信息:', error.message);
+    console.error('錯誤詳情:', error);
+    if (error.response) {
+      console.error('API 錯誤狀態碼:', error.response.status);
+      console.error('API 錯誤數據:', error.response.data);
+    }
+    if (error.config) {
+      console.error('請求配置:', error.config);
+    }
+    alert('❌ 提交申請失敗，請重試或聯絡客服');
+    throw error;
+  }
+}
+
 const canProceedStep3 = computed(()=>{
-  if(!selectedAgency.value) return false
+  if(!selectedAgency.value.id) return false
   // 僅檢查幼兒姓名 (目前介面只有姓名下拉)
   return children.value.every(c=>c.name)
 })
-
-// 特殊機構常量
-const CITY_GOVERNMENT = '市政府'
-
-// 轉換身分別描述為數字
-function convertIdentityTypeToNumber(identityDescription) {
-  const identityMap = {
-    '弱勢家庭(含低收入戶、中低收入戶、危機家庭、特殊境遇家庭或經濟困難未成年父母)': 1,
-    '具原住民身分之嬰幼兒': 1,
-    '發展遲緩或持有輕度身心障礙證明之嬰幼兒': 1,
-    '嬰幼兒其手足或父母或監護人之一為中度以上身心障礙者': 1,
-    '家庭內育有雙胞胎或三位以上同胞子女之家庭': 1,
-    '該公共托育機構員工之子女': 2,
-    '提供辦理該公共托育機構場地之學校教職員工之子女': 2,
-    '設籍本縣一般家庭嬰幼兒': 3
-  }
-  const result = identityMap[identityDescription]
-  if (result === undefined) {
-    console.warn('⚠️ 未知的身分別類型:', identityDescription)
-    return 3 // 預設為第三序位（一般家庭）
-  }
-  return result
-}
-
-// 建構案件資料 JSON
-function buildCaseData() {
-  console.log('========== buildCaseData 被調用 ==========')
-  
-  const now = new Date()
-  const applyDate = now.toISOString().split('T')[0]
-  
-  // 獲取選中機構的真實 ID
-  let realInstitutionId = ''
-  let realInstitutionName = selectedAgency.value || ''
-  
-  if (selectedAgency.value === CITY_GOVERNMENT) {
-    realInstitutionId = CITY_GOVERNMENT
-    realInstitutionName = CITY_GOVERNMENT
-  } else if (selectedAgency.value) {
-    const found = institutionsData.value.find(inst => inst.institutionName === selectedAgency.value)
-    if (found) {
-      realInstitutionId = found.institutionID || ''
-      realInstitutionName = found.institutionName
-      console.log('✅ 找到機構 ID:', realInstitutionId)
-    }
-  }
-  
-  console.log('🏢 機構信息 - ID:', realInstitutionId, ', Name:', realInstitutionName)
-
-  // 轉換身分別為序位數字 (確保為整數)
-  const identityTypeNumber = convertIdentityTypeToNumber(identityTypeSelect.value)
-
-  // 建構家長列表 (只包含 parent1 和 parent2)
-  const parentsList = []
-  
-  if (form.value.parent1.name) {
-    parentsList.push({
-      participantType: 1, // 整數 1 表示家長
-      name: form.value.parent1.name,
-      gender: form.value.parent1.gender,
-      birthDate: form.value.parent1.birth,
-      nationalID: form.value.parent1.id,
-      parentType: form.value.parent1.parentType,
-      homeAddress: form.value.parent1.homeAddress,
-      contactAddress: form.value.parent1.contactAddress,
-      mobile: form.value.parent1.mobile,
-      email: form.value.parent1.email,
-      company: form.value.parent1.company,
-      isLeave: form.value.parent1.isLeave,
-      leaveStart: form.value.parent1.leaveStart,
-      leaveEnd: form.value.parent1.leaveEnd,
-      classID: null
-    })
-  }
-  
-  if (form.value.parent2.name) {
-    parentsList.push({
-      participantType: 1, // 整數 1 表示家長
-      name: form.value.parent2.name,
-      gender: form.value.parent2.gender,
-      birthDate: form.value.parent2.birth,
-      nationalID: form.value.parent2.id,
-      parentType: form.value.parent2.parentType,
-      homeAddress: form.value.parent2.homeAddress,
-      contactAddress: form.value.parent2.contactAddress,
-      mobile: form.value.parent2.mobile,
-      email: form.value.parent2.email,
-      company: form.value.parent2.company,
-      isLeave: form.value.parent2.isLeave,
-      leaveStart: form.value.parent2.leaveStart,
-      leaveEnd: form.value.parent2.leaveEnd,
-      classID: null
-    })
-  }
-
-  // 建構幼兒列表
-  const childrenList = children.value.map((child, idx) => ({
-    participantType: 0, // 整數 0 表示幼兒
-    name: child.name,
-    gender: child.gender,
-    age: child.age,
-    nationality: child.nationality,
-    classID: null // 設置為 null
-  }))
-
-  const caseData = {
-    caseNumber: Date.now(),
-    applyDate: applyDate,
-    identityType: identityTypeNumber,
-    institutionId: realInstitutionId,
-    institutionName: realInstitutionName,
-    selectedClass: null, // 設置為 null
-    status: '審核中', // 設置初始狀態為審核中
-    currentOrder: 1,
-    User: {
-      name: form.value.applicant.name,
-      birthDate: form.value.applicant.birth,
-      nationalID: form.value.applicant.id,
-      homeAddress: form.value.applicant.homeAddress,
-      mailAddress: form.value.applicant.mailAddress,
-      mobile: form.value.applicant.mobile,
-      email: form.value.applicant.email,
-      gender: form.value.applicant.gender
-    },
-    parents: parentsList,
-    children: childrenList
-  }
-
-  console.log('📋 buildCaseData 完成:', JSON.stringify(caseData, null, 2))
-  return caseData
-}
-
 function goToFinish(){
+  console.log('========== goToFinish 被調用 ==========');
+  console.log('canProceedStep3.value:', canProceedStep3.value);
+  console.log('selectedAgency.value:', selectedAgency.value);
+  console.log('children.value:', children.value);
+
   if(canProceedStep3.value){
-    // 建構並輸出案件資料
-    const caseData = buildCaseData()
-    console.log('🚀 準備提交的案件資料:', caseData)
-    step.value = 4
+    console.log('✅ 驗證通過，開始提交案件');
+    // 提交案件
+    submitCase().then(() => {
+      console.log('✅ submitCase promise 已resolve，進入完成頁面 (step 4)');
+      // 提交成功後進入完成頁面
+      step.value = 4;
+    }).catch((error) => {
+      // 提交失敗，保留在當前步驟
+      console.error('❌ submitCase promise 已reject:', error);
+      console.error('提交案件失敗，保留在步驟 3');
+    });
+  } else {
+    console.warn('❌ 驗證失敗，無法提交:');
+    if(!selectedAgency.value.id) console.warn('  - 未選擇機構');
+    if(!children.value.every(c=>c.name)) console.warn('  - 幼兒姓名不完整');
   }
 }
-
-// 組件掛載時獲取機構列表
-onMounted(async () => {
-  try {
-    console.log('📡 開始獲取機構列表...')
-    const response = await getInstitutionsSimpleAll()
-    console.log('📡 getInstitutionsSimpleAll 回應:', response)
-    
-    if (Array.isArray(response)) {
-      institutionsData.value = response
-      agencyOptions.value = response.map(inst => inst.institutionName)
-      console.log('✅ 機構列表已載入:', institutionsData.value)
-    } else {
-      console.warn('⚠️ getInstitutionsSimpleAll 回傳非陣列')
-      // 保留預設值
-      agencyOptions.value = ['機構A', '機構B', '機構C', '機構D']
-    }
-  } catch (error) {
-    console.error('❌ 獲取機構列表失敗:', error)
-    // 發生錯誤時保留預設值
-    agencyOptions.value = ['機構A', '機構B', '機構C', '機構D']
-  }
-})
 
 function startNew(){
   // 釋放舊的預覽 URL
   uploadedFiles.value.forEach(f=>{ if(f.previewUrl) URL.revokeObjectURL(f.previewUrl) })
   uploadedFiles.value = []
-  selectedAgency.value = ''
+  selectedAgency.value = { id: '', name: '' }
   children.value = [{ id: Date.now(), name: '', gender:'', age:'', nationality:'' }]
   form.value = {
-    applicant:{ name:'', birth:'', id:'', homeAddress:'', mailAddress:'', mobile:'', email:'' },
+    applicant:{ name:'', birth:'', id:'', gender:'', homeAddress:'', mailAddress:'', mobile:'', email:'' },
     parent1:{ name:'', birth:'', id:'', parentType:'', homeAddress:'', mobile:'', company:'', gender:'', contactAddress:'', email:'', isLeave:false, leaveStart:'', leaveEnd:'' },
     parent2:{ name:'', birth:'', id:'', parentType:'', homeAddress:'', mobile:'', company:'', gender:'', contactAddress:'', email:'', isLeave:false, leaveStart:'', leaveEnd:'' }
   }
@@ -798,7 +1091,6 @@ function startNew(){
   step.value = 1
   window.scrollTo({top:0, behavior:'smooth'})
 }
-const router = useRouter()
 function goHome(){
   // 使用路由跳轉回首頁
   router.push('/')
