@@ -38,6 +38,18 @@
         </div>
       </div>
 
+      <!-- 身分證影像 Card（放在大約原本第 175 行附近） -->
+      <div class="detail-card" v-if="getChildImageUrl(childList[0])">
+        <h3>身分別：{{ getIdentityOrderLabel(applicationData.identityType) }}</h3>
+        <div class="identity-card">
+          <img
+            :src="getChildImageUrl(childList[0])"
+            alt="identity image"
+            class="identity-image"
+          />
+        </div>
+      </div>
+
       <!-- Family Information Section -->
       <div class="collapse-card">
         <div class="collapse-header" @click="parentOpen = !parentOpen">
@@ -199,8 +211,6 @@ const childOpen = ref(false)
 const parentList = ref([])
 const childList = ref([])
 
-// 移除：originalChildren 與 selectedChildNationalID
-
 // 計算幼兒年齡
 function getChildAge(birthDate) {
   if (!birthDate) return '';
@@ -228,6 +238,41 @@ function getChildAge(birthDate) {
   let months = totalMonths % 12;
   let weeks = Math.floor(days / 7);
   return `${years}歲${months}月${weeks}周`;
+}
+
+// identityType 對應顯示序位文字
+const getIdentityOrderLabel = (identityType) => {
+  const t = (identityType ?? '').toString()
+  if (t === '1') return '第一序位'
+  if (t === '2') return '第二序位'
+  if (t === '3') return '第三序位'
+  return ''
+}
+
+// 根據後端回傳的附件路徑組成身份證照片 URL
+// 優先順序：AttachmentPath > AttachmentPath1 > AttachmentPath2 > AttachmentPath3
+const getChildImageUrl = (child) => {
+  if (!applicationData.value) return ''
+  const a = applicationData.value
+  const path =
+    a.AttachmentPath ||
+    a.attachmentPath ||
+    a.AttachmentPath1 ||
+    a.attachmentPath1 ||
+    a.AttachmentPath2 ||
+    a.attachmentPath2 ||
+    a.AttachmentPath3 ||
+    a.attachmentPath3
+  if (!path) return ''
+  // 若後端已回傳完整 URL，直接使用；若已是 /identity-files 開頭，補上網域
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path
+  }
+  if (path.startsWith('/')) {
+    return `http://localhost:8080${path}`
+  }
+  // 其餘情況視為 /identity-files 底下的檔名
+  return `http://localhost:8080/identity-files/${path}`
 }
 
 // 透過 API 載入申請資料，可傳入 optional nationalID 當作 query
@@ -411,13 +456,11 @@ const confirmReview = async () => {
 
     // 更新畫面上的狀態資訊
     if (response && response.children && response.children.length > 0) {
-      // 從回傳的 children 陣列中更新資訊
       const updatedChild = response.children[0]
       childList.value[0].status = updatedChild.status || reviewResult.value
       childList.value[0].reason = updatedChild.reason || reviewNote.value || ''
       childList.value[0].reviewDate = updatedChild.reviewDate || new Date().toISOString()
     } else {
-      // 如果後端沒有返回完整資訊，則手動更新
       childList.value[0].status = reviewResult.value
       childList.value[0].reason = reviewNote.value || ''
       childList.value[0].reviewDate = new Date().toISOString()
@@ -695,6 +738,22 @@ const confirmReview = async () => {
   justify-content: center;
   gap: 12px;
   margin: 24px 0;
+}
+
+/* 身分證影像區塊樣式 */
+.identity-card {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.identity-image {
+  max-width: 100%;
+  max-height: 260px;
+  border-radius: 8px;
+  border: 1px solid #d8dbe0;
+  object-fit: contain;
+  background-color: #f9fafb;
 }
 
 @media (max-width: 900px) {
