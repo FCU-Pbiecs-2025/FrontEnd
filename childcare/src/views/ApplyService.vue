@@ -620,6 +620,9 @@ const canProceedStep3 = computed(()=>{
   return children.value.every(c=>c.name)
 })
 
+// 特殊機構常量
+const CITY_GOVERNMENT = '市政府'
+
 // 轉換身分別描述為數字
 function convertIdentityTypeToNumber(identityDescription) {
   const identityMap = {
@@ -632,7 +635,12 @@ function convertIdentityTypeToNumber(identityDescription) {
     '提供辦理該公共托育機構場地之學校教職員工之子女': 2,
     '設籍本縣一般家庭嬰幼兒': 3
   }
-  return identityMap[identityDescription] || 0
+  const result = identityMap[identityDescription]
+  if (result === undefined) {
+    console.warn('⚠️ 未知的身分別類型:', identityDescription)
+    return 3 // 預設為第三序位（一般家庭）
+  }
+  return result
 }
 
 // 建構案件資料 JSON
@@ -646,9 +654,9 @@ function buildCaseData() {
   let realInstitutionId = ''
   let realInstitutionName = selectedAgency.value || ''
   
-  if (selectedAgency.value === '市政府') {
-    realInstitutionId = '市政府'
-    realInstitutionName = '市政府'
+  if (selectedAgency.value === CITY_GOVERNMENT) {
+    realInstitutionId = CITY_GOVERNMENT
+    realInstitutionName = CITY_GOVERNMENT
   } else if (selectedAgency.value) {
     const found = institutionsData.value.find(inst => inst.institutionName === selectedAgency.value)
     if (found) {
