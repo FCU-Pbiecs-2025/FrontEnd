@@ -326,7 +326,7 @@
           <select v-model="selectedAgency" class="agency-select">
             <option value="">請選擇申請之就讀機構</option>
             <option v-for="a in agencyOptions" :key="a" :value="a">{{ a }}</option>
-            <option value="中低收入戶">中低收入戶</option>
+            <option value="市政府">市政府</option>
           </select>
         </div>
 
@@ -395,10 +395,11 @@
 </template>
 
 <script setup>
-import { ref, onBeforeUnmount, computed, watch } from 'vue'
+import { ref, onBeforeUnmount, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import LoginView from './LoginView.vue'
 import { useAuthStore } from '@/store/auth.js'
+import { getInstitutionsSimpleAll } from '@/api/Institution.js'
 
 const authStore = useAuthStore()
 
@@ -591,7 +592,10 @@ const goToNextStep = () => {
 }
 
 // Step3 選擇機構與幼兒資料狀態
-const agencyOptions = ref(["機構A","機構B","機構C","機構D"])
+// 存儲從 API 獲取的機構列表（包含 institutionId 和 institutionName）
+const institutionsData = ref([])
+// agencyOptions 存儲機構名稱供下拉選單顯示
+const agencyOptions = ref([])
 const selectedAgency = ref("")
 const maxChildren = 5
 // 動態幼兒名單資料（後端取得）
@@ -615,11 +619,161 @@ const canProceedStep3 = computed(()=>{
   // 僅檢查幼兒姓名 (目前介面只有姓名下拉)
   return children.value.every(c=>c.name)
 })
+
+// 轉換身分別描述為數字
+function convertIdentityTypeToNumber(identityDescription) {
+  const identityMap = {
+    '弱勢家庭(含低收入戶、中低收入戶、危機家庭、特殊境遇家庭或經濟困難未成年父母)': 1,
+    '具原住民身分之嬰幼兒': 1,
+    '發展遲緩或持有輕度身心障礙證明之嬰幼兒': 1,
+    '嬰幼兒其手足或父母或監護人之一為中度以上身心障礙者': 1,
+    '家庭內育有雙胞胎或三位以上同胞子女之家庭': 1,
+    '該公共托育機構員工之子女': 2,
+    '提供辦理該公共托育機構場地之學校教職員工之子女': 2,
+    '設籍本縣一般家庭嬰幼兒': 3
+  }
+  return identityMap[identityDescription] || 0
+}
+
+// 建構案件資料 JSON
+function buildCaseData() {
+  console.log('========== buildCaseData 被調用 ==========')
+  
+  const now = new Date()
+  const applyDate = now.toISOString().split('T')[0]
+  
+  // 獲取選中機構的真實 ID
+  let realInstitutionId = ''
+  let realInstitutionName = selectedAgency.value || ''
+  
+  if (selectedAgency.value === '市政府') {
+    realInstitutionId = '市政府'
+    realInstitutionName = '市政府'
+  } else if (selectedAgency.value) {
+    const found = institutionsData.value.find(inst => inst.institutionName === selectedAgency.value)
+    if (found) {
+      realInstitutionId = found.institutionID || ''
+      realInstitutionName = found.institutionName
+      console.log('✅ 找到機構 ID:', realInstitutionId)
+    }
+  }
+  
+  console.log('🏢 機構信息 - ID:', realInstitutionId, ', Name:', realInstitutionName)
+
+  // 轉換身分別為序位數字 (確保為整數)
+  const identityTypeNumber = convertIdentityTypeToNumber(identityTypeSelect.value)
+
+  // 建構家長列表 (只包含 parent1 和 parent2)
+  const parentsList = []
+  
+  if (form.value.parent1.name) {
+    parentsList.push({
+      participantType: 1, // 整數 1 表示家長
+      name: form.value.parent1.name,
+      gender: form.value.parent1.gender,
+      birthDate: form.value.parent1.birth,
+      nationalID: form.value.parent1.id,
+      parentType: form.value.parent1.parentType,
+      homeAddress: form.value.parent1.homeAddress,
+      contactAddress: form.value.parent1.contactAddress,
+      mobile: form.value.parent1.mobile,
+      email: form.value.parent1.email,
+      company: form.value.parent1.company,
+      isLeave: form.value.parent1.isLeave,
+      leaveStart: form.value.parent1.leaveStart,
+      leaveEnd: form.value.parent1.leaveEnd,
+      classID: null
+    })
+  }
+  
+  if (form.value.parent2.name) {
+    parentsList.push({
+      participantType: 1, // 整數 1 表示家長
+      name: form.value.parent2.name,
+      gender: form.value.parent2.gender,
+      birthDate: form.value.parent2.birth,
+      nationalID: form.value.parent2.id,
+      parentType: form.value.parent2.parentType,
+      homeAddress: form.value.parent2.homeAddress,
+      contactAddress: form.value.parent2.contactAddress,
+      mobile: form.value.parent2.mobile,
+      email: form.value.parent2.email,
+      company: form.value.parent2.company,
+      isLeave: form.value.parent2.isLeave,
+      leaveStart: form.value.parent2.leaveStart,
+      leaveEnd: form.value.parent2.leaveEnd,
+      classID: null
+    })
+  }
+
+  // 建構幼兒列表
+  const childrenList = children.value.map((child, idx) => ({
+    participantType: 0, // 整數 0 表示幼兒
+    name: child.name,
+    gender: child.gender,
+    age: child.age,
+    nationality: child.nationality,
+    classID: null // 設置為 null
+  }))
+
+  const caseData = {
+    caseNumber: Date.now(),
+    applyDate: applyDate,
+    identityType: identityTypeNumber,
+    institutionId: realInstitutionId,
+    institutionName: realInstitutionName,
+    selectedClass: null, // 設置為 null
+    status: '審核中', // 設置初始狀態為審核中
+    currentOrder: 1,
+    User: {
+      name: form.value.applicant.name,
+      birthDate: form.value.applicant.birth,
+      nationalID: form.value.applicant.id,
+      homeAddress: form.value.applicant.homeAddress,
+      mailAddress: form.value.applicant.mailAddress,
+      mobile: form.value.applicant.mobile,
+      email: form.value.applicant.email,
+      gender: form.value.applicant.gender
+    },
+    parents: parentsList,
+    children: childrenList
+  }
+
+  console.log('📋 buildCaseData 完成:', JSON.stringify(caseData, null, 2))
+  return caseData
+}
+
 function goToFinish(){
   if(canProceedStep3.value){
+    // 建構並輸出案件資料
+    const caseData = buildCaseData()
+    console.log('🚀 準備提交的案件資料:', caseData)
     step.value = 4
   }
 }
+
+// 組件掛載時獲取機構列表
+onMounted(async () => {
+  try {
+    console.log('📡 開始獲取機構列表...')
+    const response = await getInstitutionsSimpleAll()
+    console.log('📡 getInstitutionsSimpleAll 回應:', response)
+    
+    if (Array.isArray(response)) {
+      institutionsData.value = response
+      agencyOptions.value = response.map(inst => inst.institutionName)
+      console.log('✅ 機構列表已載入:', institutionsData.value)
+    } else {
+      console.warn('⚠️ getInstitutionsSimpleAll 回傳非陣列')
+      // 保留預設值
+      agencyOptions.value = ['機構A', '機構B', '機構C', '機構D']
+    }
+  } catch (error) {
+    console.error('❌ 獲取機構列表失敗:', error)
+    // 發生錯誤時保留預設值
+    agencyOptions.value = ['機構A', '機構B', '機構C', '機構D']
+  }
+})
 
 function startNew(){
   // 釋放舊的預覽 URL
