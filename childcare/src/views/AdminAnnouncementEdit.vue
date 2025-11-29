@@ -46,8 +46,25 @@
         </div>
         <div class="form-row">
           <label class="form-label">附件：</label>
-          <input type="file" @change="onFileChange" class="form-input" />
-          <span v-if="form.attachment">{{ form.attachment.name }}</span>
+          <div class="attachment-area">
+            <input type="file" @change="onFileChange" class="file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif" />
+
+            <!-- 顯示新上傳的檔案 -->
+            <div v-if="form.attachment" class="file-info">
+              <span class="file-name" :title="form.attachment.name">📎 {{ form.attachment.name }}</span>
+              <span class="file-size">({{ (form.attachment.size / 1024).toFixed(2) }} KB)</span>
+              <button type="button" @click="clearNewAttachment" class="clear-btn">✕</button>
+            </div>
+
+            <!-- 顯示原本的附件 (僅在編輯模式且沒有新上傳檔案時) -->
+            <div v-else-if="isEditPage && form.originalAttachmentPath" class="file-info original">
+              <span class="file-name" :title="getOriginalFileName()">📎 {{ getOriginalFileName() }} (現有檔案)</span>
+              <button type="button" @click="removeOriginalAttachment" class="clear-btn">✕</button>
+            </div>
+
+            <!-- 提示訊息 -->
+            <div v-else class="file-hint">支援格式：PDF、Word、Excel、圖片（最大 10MB）</div>
+          </div>
         </div>
       </div>
       <div class="bottom-row">
@@ -82,10 +99,14 @@ const form = ref({
   content: '',
   type: 'front',
   status: 'enabled',
-  attachment: null
+  attachment: null,
+  originalAttachmentPath: null // 儲存原本的附件路徑
 })
 
 const list = ref([])
+
+// 新增：記住載入時的原始附件路徑，用來判斷使用者是否清除附件
+const initialOriginalAttachment = ref(null)
 
 const loadList = () => {
   try {
@@ -110,7 +131,7 @@ const saveList = () => {
 }
 
 // Map frontend string values to backend numeric values
-// type: front=1, back=2; status: enabled=0, disabled=1
+// type: front=1, back=2; status: enabled=1, disabled=2
 const mapToBackend = (payload) => {
   return {
     title: payload.title,
@@ -120,7 +141,7 @@ const mapToBackend = (payload) => {
     endDate: payload.endDate || null,
     // convert type/status
     type: payload.type === 'back' ? 2 : 1,
-    status: payload.status === 'disabled' ? 1 : 0,
+    status: payload.status === 'disabled' ? 2 : 1, // 1=上架, 2=下架
     // optional fields: createdUser/createdTime can be omitted and backend will fill
   }
 }
@@ -141,12 +162,16 @@ onMounted(async () => {
           form.value.content = data.content || ''
           // backend stores Type as numeric; map back to string
           form.value.type = (data.type === 2 || data.type === '2') ? 'back' : 'front'
-          // status
-          form.value.status = (data.status === 1 || data.status === '1') ? 'disabled' : 'enabled'
+          // status: 1=上架(啟用), 2=下架(停用)
+          form.value.status = (data.status === 2 || data.status === '2') ? 'disabled' : 'enabled'
           // dates: could be startDate or createdTime; prefer startDate
           form.value.date = data.startDate || data.date || getToday()
           form.value.endDate = data.endDate || getToday()
-          form.value.attachment = null // do not auto-load file
+          // 保留原本的附件路徑資訊
+          form.value.originalAttachmentPath = data.attachmentPath || null
+          // 記錄載入時的原始附件，用來判斷是否被使用者清除
+          initialOriginalAttachment.value = data.attachmentPath || null
+          form.value.attachment = null // 新上傳的檔案
           return
         }
       } catch (e) {
@@ -161,6 +186,8 @@ onMounted(async () => {
     if (localData) {
       form.value = { ...form.value, ...localData }
       form.value.attachment = null
+      // 若 local data 含附件路徑，也記錄初始附件狀態
+      initialOriginalAttachment.value = form.value.originalAttachmentPath || null
     } else {
       router.replace({ path: '/admin/announcement' })
     }
@@ -178,7 +205,76 @@ const goBack = () => {
 
 const onFileChange = (e) => {
   const file = e.target.files[0]
-  form.value.attachment = file || null
+
+  if (!file) {
+    form.value.attachment = null
+    return
+  }
+
+  // 檢查檔案大小 (10MB = 10 * 1024 * 1024 bytes)
+  const maxSize = 10 * 1024 * 1024
+  if (file.size > maxSize) {
+    alert('檔案大小不能超過 10MB')
+    e.target.value = '' // 清除選擇的檔案
+    form.value.attachment = null
+    return
+  }
+
+  // 檢查檔案格式
+  const allowedTypes = [
+    'application/pdf',
+    'application/msword', // .doc
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+    'application/vnd.ms-excel', // .xls
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/gif'
+  ]
+
+  if (!allowedTypes.includes(file.type)) {
+    alert('不支援的檔案格式，請上傳 PDF、Word、Excel 或圖片檔案')
+    e.target.value = '' // 清除選擇的檔案
+    form.value.attachment = null
+    return
+  }
+
+  form.value.attachment = file
+}
+
+// 清除新上傳的檔案
+const clearNewAttachment = () => {
+  form.value.attachment = null
+  // 清除 file input 的值
+  const fileInput = document.querySelector('.file-input')
+  if (fileInput) {
+    fileInput.value = ''
+  }
+}
+
+// 移除原本的附件
+const removeOriginalAttachment = () => {
+  form.value.originalAttachmentPath = null
+}
+
+// 取得原本附件的檔案名稱
+const getOriginalFileName = () => {
+  if (!form.value.originalAttachmentPath) return ''
+
+  // 從路徑中提取檔案名稱
+  const path = form.value.originalAttachmentPath
+
+  // 處理各種路徑格式
+  if (path.includes('/')) {
+    const parts = path.split('/')
+    return parts[parts.length - 1]
+  } else if (path.includes('\\')) {
+    const parts = path.split('\\')
+    return parts[parts.length - 1]
+  }
+
+  return path
 }
 
 const validate = () => {
@@ -198,6 +294,22 @@ const validate = () => {
     alert('請選擇結束日期')
     return false
   }
+
+  // 檢查日期邏輯 - 結束日期不能早於發佈日期
+  if (new Date(form.value.endDate) < new Date(form.value.date)) {
+    alert('結束日期不能早於發佈日期')
+    return false
+  }
+
+  // 如果有附件，再次檢查附件是否有效
+  if (form.value.attachment) {
+    const maxSize = 10 * 1024 * 1024
+    if (form.value.attachment.size > maxSize) {
+      alert('附件檔案大小不能超過 10MB')
+      return false
+    }
+  }
+
   return true
 }
 
@@ -212,32 +324,53 @@ const save = async () => {
     const idParam = route.params.id
     try {
       if (form.value.attachment) {
-        // multipart PUT (file + meta)
+        // multipart PUT (file + meta) - 有新上傳檔案
         const fd = new FormData()
         fd.append('file', form.value.attachment)
+        // 後端期望 meta 是 JSON 格式，使用 Blob 並指定正確的 Content-Type
         fd.append('meta', new Blob([JSON.stringify(meta)], { type: 'application/json' }))
-        await http.put(`/announcements/${idParam}`, fd, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        })
+        // 不要手動設定 Content-Type，讓瀏覽器自動加上 boundary
+        await http.put(`/announcements/${idParam}`, fd)
         alert('編輯成功')
         goBack()
       } else {
-        // JSON PUT
-        await http.put(`/announcements/${idParam}`, meta)
-        alert('編輯成功')
-        goBack()
+        // 沒有新上傳檔案，處理原始附件的保留或刪除邏輯
+        // 1) 若載入時有原始附件(initialOriginalAttachment)且使用者在編輯時把它刪除(form.originalAttachmentPath == null)
+        //    -> 傳送 attachmentPath: '' 給後端，讓後端把資料庫的 attachmentPath 清空
+        // 2) 若使用者保留原始附件 (form.originalAttachmentPath 有值) -> 傳送該 path，確保後端不會遺失
+        // 3) 其他情況：不送 attachmentPath
+        if (initialOriginalAttachment.value && !form.value.originalAttachmentPath) {
+          const metaClearAttachment = { ...meta, attachmentPath: '' }
+          await http.put(`/announcements/${idParam}`, metaClearAttachment)
+          alert('編輯成功')
+          goBack()
+        } else if (form.value.originalAttachmentPath) {
+          const metaWithOriginalAttachment = { ...meta, attachmentPath: form.value.originalAttachmentPath }
+          await http.put(`/announcements/${idParam}`, metaWithOriginalAttachment)
+          alert('編輯成功')
+          goBack()
+        } else {
+          await http.put(`/announcements/${idParam}`, meta)
+          alert('編輯成功')
+          goBack()
+        }
       }
     } catch (e) {
-      console.warn('backend update failed, falling back to localStorage', e)
+      console.error('backend update failed:', e)
+      // 顯示詳細錯誤訊息
+      const errorMsg = e.response?.data?.message || e.response?.data || e.message || '未知錯誤'
+      alert(`編輯失敗: ${errorMsg}`)
+
       // fallback to localStorage behavior
       loadList()
       const idx = list.value.findIndex(item => String(item.id) === String(form.value.id) || Number(item.id) === Number(form.value.id))
       if (idx !== -1) {
-        list.value[idx] = { ...form.value }
+        // 複製表單數據但排除附件檔案（因為 File 物件無法序列化）
+        const { attachment, ...formDataWithoutFile } = form.value
+        list.value[idx] = { ...formDataWithoutFile }
         saveList()
-        alert('編輯成功 (已儲存在本機，後端連線失敗)')
+        alert('編輯失敗，已儲存在本機（不含附件）')
       }
-      goBack()
     }
   } else {
     // create
@@ -245,27 +378,32 @@ const save = async () => {
       if (form.value.attachment) {
         const fd = new FormData()
         fd.append('file', form.value.attachment)
+        // 後端期望 meta 是 JSON 格式，使用 Blob 並指定正確的 Content-Type
         fd.append('meta', new Blob([JSON.stringify(meta)], { type: 'application/json' }))
-        await http.post('/announcements/upload', fd, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        })
+        // 不要手動設定 Content-Type，讓瀏覽器自動加上 boundary
+        await http.post('/announcements/upload', fd)
         alert('新增成功')
         goBack()
       } else {
-        // JSON POST
+        // JSON POST (沒有附件)
         await http.post('/announcements', meta)
         alert('新增成功')
         goBack()
       }
     } catch (e) {
-      console.warn('backend create failed, falling back to localStorage', e)
+      console.error('backend create failed:', e)
+      // 顯示詳細錯誤訊息
+      const errorMsg = e.response?.data?.message || e.response?.data || e.message || '未知錯誤'
+      alert(`新增失敗: ${errorMsg}`)
+
       // fallback to localStorage
       loadList()
       form.value.id = Date.now()
-      list.value.push({ ...form.value })
+      // 複製表單數據但排除附件檔案（因為 File 物件無法序列化）
+      const { attachment, ...formDataWithoutFile } = form.value
+      list.value.push({ ...formDataWithoutFile })
       saveList()
-      alert('新增成功 (已儲存在本機，後端連線失敗)')
-      goBack()
+      alert('新增失敗，已儲存在本機（不含附件）')
     }
   }
 }
@@ -288,6 +426,16 @@ const save = async () => {
 .date-input { padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; width:150px;height: 40px }
 .radio-group{width: 420px;margin-top: 10px}
 .radio-group label{margin-right:30px;}
+.attachment-area { width: 420px; display: flex; flex-direction: column; gap: 8px; }
+.file-input { padding: 8px 10px; border-radius: 6px; border: 1px solid #d8dbe0; width: 100%; }
+.file-info { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; }
+.file-info.original { background: #fef3c7; border-color: #fcd34d; }
+.file-name { font-weight: 500; color: #0369a1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.file-info.original .file-name { color: #92400e; }
+.file-size { color: #64748b; font-size: 0.9rem; flex-shrink: 0; }
+.clear-btn { background: #ef4444; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 0.8rem; cursor: pointer; }
+.clear-btn:hover { background: #dc2626; }
+.file-hint { font-size: 0.85rem; color: #64748b; }
 .btn { padding:7px 18px; border-radius:8px; border:none; cursor:pointer; font-weight:600; font-size:1rem; }
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff }
 .btn.ghost { background:transparent; border:1px solid #3b82f6; color:#2563eb }

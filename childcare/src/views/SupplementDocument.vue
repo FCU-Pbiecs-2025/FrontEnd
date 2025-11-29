@@ -16,11 +16,6 @@
           <h2>補充資料</h2>
           <div class="form-grid">
             <div class="form-group">
-              <label>補件說明：</label>
-              <textarea v-model="supplementNote" placeholder="請說明補件內容" rows="4"></textarea>
-            </div>
-
-            <div class="form-group">
               <label>上傳文件：</label>
               <input type="file" @change="handleFileUpload" multiple accept=".pdf,.jpg,.jpeg,.png" />
               <div v-if="uploadedFiles.length > 0" class="file-list">
@@ -43,26 +38,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useApplicationsStore } from '@/store/applications.js'
 
 const router = useRouter()
 const route = useRoute()
+const applicationsStore = useApplicationsStore()
 
-const applicationId = ref(route.query.applicationId || '')
-const reviewComment = ref('請補充家長就業證明文件、幼兒戶籍謄本正本')
-const supplementNote = ref('')
+// 審核意見：優先取用 PINIA 選中申請的 reason，若無則嘗試從路由 query 帶入，最後為空字串
+const reviewComment = computed(() => {
+  return applicationsStore.selectedApplication?.reason || route.query.reason || ''
+})
+
 const uploadedFiles = ref([])
 
 onMounted(() => {
-  // 可從 API 載入審核意見
-  loadReviewComment()
+  // 如需額外載入可以在此補充，但目前以 PINIA 為主
 })
-
-const loadReviewComment = () => {
-  // 這裡可以根據 applicationId 從 API 載入審核意見
-  // 暫時使用示例資料
-}
 
 const handleFileUpload = (event) => {
   const files = Array.from(event.target.files)
@@ -74,16 +67,12 @@ const removeFile = (idx) => {
 }
 
 const submitSupplement = () => {
-  if (!supplementNote.value.trim()) {
-    alert('請填寫補件說明')
-    return
-  }
   if (uploadedFiles.value.length === 0) {
     alert('請至少上傳一個文件')
     return
   }
 
-  // TODO: 呼叫 API 提交補件資料
+  // TODO: 呼叫 API 提交補件資料（可透過 applicationsStore.selectedApplication 取得對應的 application 資訊）
   alert('補件已提交，等待審核')
   router.back()
 }
@@ -175,7 +164,6 @@ const goBack = () => {
   font-size: 1rem;
 }
 
-.form-group textarea,
 .form-group input {
   padding: 12px;
   border: 2px solid #e0e0e0;
@@ -184,7 +172,6 @@ const goBack = () => {
   transition: border-color 0.2s;
 }
 
-.form-group textarea:focus,
 .form-group input:focus {
   outline: none;
   border-color: #F9AFAE;
@@ -257,4 +244,3 @@ const goBack = () => {
   color: white;
 }
 </style>
-

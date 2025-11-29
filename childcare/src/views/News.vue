@@ -23,12 +23,15 @@
             @click="goToDetail(item.announcementID)"
             style="cursor:pointer;"
         >
-          <span class="news-date-cell">{{ formatDate(item.createdTime) }}</span>
+          <span class="news-date-cell">{{ formatDate(item.startDate) }}</span>
           <span class="news-title-cell" :title="item.title">{{ item.title.length > 18 ? item.title.slice(0, 18) + '...' : item.title }}</span>
           <span class="news-content-cell">{{ item.content }}</span>
-          <span class="news-attachment-cell"> <span v-if="item.attachmentPath">📎</span> </span>
+          <span class="news-attachment-cell" :title="getAttachmentName(item.attachmentPath)">
+            <span v-if="item.attachmentPath">📎</span>
+          </span>
         </div>
-        <div v-if="newsList.length === 0" class="empty-tip">目前沒有公告</div>
+        <div v-if="newsList.length === 0 && !loading" class="empty-tip">目前沒有公告</div>
+        <div v-if="loading" class="loading-tip">載入中...</div>
         <div class="pagination-bar" v-if="totalPages > 1">
           <button :disabled="currentPage === 1" @click="previousPage">上一頁</button>
           <span>第 {{ currentPage }} / {{ totalPages }} 頁</span>
@@ -45,6 +48,7 @@
 
 <script>
 import { getAnnouncementsByOffset } from '@/api/announcements.js'
+import { extractOriginalFilename } from '@/utils/fileUtils.js'
 
 export default {
   name: 'News',
@@ -65,12 +69,28 @@ export default {
       try {
         this.loading = true
         const offset = (this.currentPage - 1) * this.pageSize
+        console.log('Fetching news with offset:', offset) // Debug log
         const response = await getAnnouncementsByOffset(offset)
 
-        this.newsList = response.data.content
-        this.totalPages = response.data.totalPages
+        console.log('API Response:', response) // Debug log
+        console.log('Response content:', response.content) // Debug log
+        console.log('Response totalPages:', response.totalPages) // Debug log
+
+        this.newsList = (response.content || []).slice().sort((a, b) => {
+          // 若 startDate 為空，排到最後
+          if (!a.startDate && !b.startDate) return 0
+          if (!a.startDate) return 1
+          if (!b.startDate) return -1
+          // 由新到舊
+          return new Date(b.startDate) - new Date(a.startDate)
+        })
+        this.totalPages = response.totalPages || 1
+
+        console.log('Set newsList:', this.newsList) // Debug log
+        console.log('Set totalPages:', this.totalPages) // Debug log
       } catch (error) {
         console.error('獲取公告失敗:', error)
+        console.error('Error details:', error.response) // More detailed error info
         this.newsList = []
         this.totalPages = 1
       } finally {
@@ -93,8 +113,23 @@ export default {
       this.$router.push({ name: 'NewsDetail', params: { id: announcementID } })
     },
     formatDate(dateString) {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('zh-TW')
+      if (!dateString) return '-'
+      try {
+        const date = new Date(dateString)
+        if (isNaN(date.getTime())) return '-'
+        return date.toLocaleDateString('zh-TW', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        })
+      } catch (error) {
+        console.error('Date formatting error:', error)
+        return '-'
+      }
+    },
+    getAttachmentName(attachmentPath) {
+      if (!attachmentPath) return ''
+      return extractOriginalFilename(attachmentPath)
     }
   }
 }
@@ -303,6 +338,12 @@ export default {
 .empty-tip {
   text-align: center;
   color: #aaa;
+  padding: 32px 0 0 0;
+  font-size: 1.1rem;
+}
+.loading-tip {
+  text-align: center;
+  color: #666;
   padding: 32px 0 0 0;
   font-size: 1.1rem;
 }

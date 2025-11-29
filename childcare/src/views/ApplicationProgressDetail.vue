@@ -70,8 +70,13 @@
           </div>
 
           <div class="actions">
-            <button v-if="!['rejected','revoked','revokeProcessing','withdrawn'].includes(application.status)" class="danger-btn" @click="goRevoke">撤銷申請</button>
-            <button v-if="application.status === 'supplement'" class="primary-btn" @click="goSupplement">補件</button>
+            <button
+              class="danger-btn"
+              :class="{ disabled: revokeDisabled }"
+              :disabled="revokeDisabled"
+              @click="!revokeDisabled && goRevoke"
+            >撤銷申請</button>
+            <button v-if="isSupplement" class="primary-btn" @click="goSupplement">補件</button>
             <button class="back-btn" @click="goBack">返回</button>
           </div>
         </div>
@@ -346,7 +351,14 @@ const isProcessing = computed(() => {
 })
 const isSupplement = computed(() => {
   const s = application.value?.status
-  return s === 'supplement' || s === '需要補件'
+  const sc = application.value?.statusClass
+  return s === 'supplement' || s === '需要補件' || sc === 'supplement'
+})
+
+// 撤銷按鈕禁用條件：撤銷審核中、撤銷通過、已退托 不可再按
+const revokeDisabled = computed(() => {
+  const s = application.value?.status
+  return s === 'revokeProcessing' || s === 'revoked' || s === 'withdrawn' || s === '撤銷申請審核中' || s === '撤銷申請通過' || s === '已退托'
 })
 
 // 檢查是否為補件 / 撤銷 子路由（若是，則 childActive 為 true）
@@ -412,6 +424,7 @@ const goRevoke = () => router.push({ name: 'ApplicationProgressRevoke', params: 
 .primary-btn:hover { background:#f5a1a1; }
 .danger-btn { background:#dc3545; color:#fff; border:none; padding: 10px 20px; border-radius: 6px; cursor:pointer; }
 .danger-btn:hover { background:#c82333; }
+.danger-btn.disabled, .danger-btn:disabled { background:#e2e3e5; color:#777; cursor:not-allowed; }
 .back-btn { background: transparent; color: #F9AFAE; border: 2px solid #F9AFAE; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
 .back-btn:hover { background: #F9AFAE; color:#fff; }
 

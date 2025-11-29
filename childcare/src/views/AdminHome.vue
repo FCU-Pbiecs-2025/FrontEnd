@@ -98,7 +98,15 @@
               <span>公告標題</span>
               <span>公告內容</span>
             </div>
+            <!-- 載入中顯示 -->
+            <div v-if="loading" class="empty-tip">載入中...</div>
+            <!-- 錯誤訊息顯示 -->
+            <div v-else-if="error" class="error-tip" style="color: red; padding: 10px;">
+              錯誤: {{ error }}
+            </div>
+            <!-- 公告列表 -->
             <div
+              v-else
               v-for="item in announcementList"
               :key="item.id"
               class="news-list-row"
@@ -109,7 +117,8 @@
               <span class="news-title-cell" :title="item.title">{{ item.title.length > 18 ? item.title.slice(0, 18) + '...' : item.title }}</span>
               <span class="news-content-cell">{{ item.content }}</span>
             </div>
-            <div v-if="announcementList.length === 0" class="empty-tip">目前沒有公告</div>
+            <!-- 無資料時顯示 -->
+            <div v-if="!loading && !error && announcementList.length === 0" class="empty-tip">目前沒有公告</div>
           </div>
         </div>
       </template>
@@ -121,61 +130,49 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 // 導入通用的 Admin 響應式樣式
 import '@/styles/admin-responsive.css'
 // 導入後台首頁 API
-import { getTodoCounts, getAdminAnnouncements } from '@/api/AdminHome'
+import { getTodoCounts } from '@/api/AdminHome'
+import { getBackendAnnouncements } from '@/api/announcements.js'
 
 const router = useRouter()
 const route = useRoute()
 
-// 響應式狀態
+// Sidebar state: keep open by default on all admin pages
 const isMobile = ref(window.innerWidth < 1250)
-const sidebarOpen = ref(window.innerWidth >= 1250)
+const sidebarOpen = ref(true)
 
-// 控制每個 menu-section 的展開狀態
+// Sections open state
 const openSections = ref([true, true, true])
 
-const toggleSection = idx => {
-  openSections.value[idx] = !openSections.value[idx]
-}
+const toggleSection = idx => { openSections.value[idx] = !openSections.value[idx] }
+const toggleSidebar = () => { sidebarOpen.value = !sidebarOpen.value }
 
-const toggleSidebar = () => {
-  sidebarOpen.value = !sidebarOpen.value
-}
-
-const closeSidebar = () => {
-  if (isMobile.value) {
-    sidebarOpen.value = false
-  }
-}
-
+// Do not auto-close the sidebar on navigation; keep it open for consistent navigation
 const navigate = (path) => {
   router.push(path)
-  // 手機版點選後自動關閉側邊欄
-  closeSidebar()
+  // Intentionally do not close sidebar here to keep it visible across pages
 }
 
-const isActive = (path) => {
-  return route.path === path || route.path.startsWith(path + '/')
-}
+const isActive = (path) => route.path === path || route.path.startsWith(path + '/')
 
-// 監聽視窗大小變化
+// Resize handler: keep open on desktop; on mobile, preserve current state
 const handleResize = () => {
-  const wasMobile = isMobile.value
   isMobile.value = window.innerWidth < 1250
-
-  // 從手機版切換到桌面版時，自動展開側邊欄
-  if (wasMobile && !isMobile.value) {
+  if (!isMobile.value) {
     sidebarOpen.value = true
   }
-  // 從桌面版切換到手機版時，自動收起側邊欄
-  if (!wasMobile && isMobile.value) {
-    sidebarOpen.value = false
-  }
 }
+
+// Re-open sidebar when changing to any /admin route (ensures visibility across admin pages)
+watch(() => route.path, (newPath) => {
+  if (newPath.startsWith('/admin')) {
+    sidebarOpen.value = true
+  }
+})
 
 const breadcrumb = computed(() => {
   const matched = route.matched.slice().reverse().find(r => r.meta && r.meta.breadcrumb)
@@ -184,7 +181,6 @@ const breadcrumb = computed(() => {
 
 onMounted(() => {
   window.addEventListener('resize', handleResize)
-  // 初始化時抓取後端資料
   fetchTodoCountsAndAnnouncements()
 })
 
@@ -216,10 +212,7 @@ function buildTodoList(pending = 0, revoke = 0) {
 }
 
 const todoList = ref(buildTodoList(3, 0))
-const announcementList = ref([
-  { id: 1, title: '系統維護通知', content: '後台系統將於本週末進行維護，請提前完成重要作業。', date: '2025/10/08' },
-  { id: 2, title: '新功能上線', content: '公告管理功能已上線，歡迎使用。', date: '2025/10/05' }
-])
+const announcementList = ref([])
 
 const loading = ref(false)
 const error = ref(null)
@@ -229,11 +222,20 @@ async function fetchTodoCountsAndAnnouncements() {
   loading.value = true
   error.value = null
   try {
+    console.log('開始載入待辦事項和公告...')
+    console.log('當前日期:', new Date().toISOString().split('T')[0])
     // 使用 AdminHome.js 中的 API 函式並行呼叫後端
     const [todosRes, annRes] = await Promise.all([
       getTodoCounts(),
-      getAdminAnnouncements()
+      getBackendAnnouncements()
     ])
+
+    console.log('API 回傳結果:')
+    console.log('- todosRes:', todosRes)
+    console.log('- annRes (raw):', annRes)
+    console.log('- annRes 類型:', typeof annRes)
+    console.log('- annRes 是否為陣列:', Array.isArray(annRes))
+    console.log('- annRes 長度:', annRes?.length)
 
     // 解析 todo-counts 格式: { pending: number, revoke: number }
     // 更新 todoList 的 content 與 count
@@ -246,33 +248,51 @@ async function fetchTodoCountsAndAnnouncements() {
       todoList.value = buildTodoList(pending, revoke)
     }
 
-    // annRes 預期為陣列，符合 AnnouncementSummaryDTO 格式（對應資料庫 Announcement 資料表）
-    // 完整 DTO 欄位: announcementID, title, content, type, startDate, endDate, status,
-    //                createdUser, createdTime, updatedUser, updatedTime, attachmentPath
+    // annRes 現在直接是陣列，符合 AnnouncementSummaryDTO 格式
     if (Array.isArray(annRes)) {
       announcementList.value = annRes.map(announcement => ({
         id: announcement.announcementID, // PK uniqueidentifier (UUID)
         title: announcement.title || '無標題', // nvarchar(100)
         content: announcement.content || '無內容', // nvarchar(max)
         date: announcement.startDate || '', // date (ISO: "YYYY-MM-DD")
-        type: announcement.type, // tinyint (公告類型)
-        endDate: announcement.endDate, // date (結束日期)
-        status: announcement.status, // tinyint (公告狀態)
         attachmentPath: announcement.attachmentPath // nvarchar(max) (附件路徑)
       })).filter(item => item.id) // 過濾掉沒有 ID 的項目
+      console.log('Successfully loaded announcements:', announcementList.value)
+    } else {
+      console.warn('API 回傳的公告資料格式不正確:', annRes)
+      announcementList.value = []
     }
   } catch (e) {
-    console.error('fetchTodoCountsAndAnnouncements error', e)
-    error.value = e.message || String(e)
-    // 發生錯誤時保持預設資料，不清空列表
+    console.error('fetchTodoCountsAndAnnouncements error:', e)
+    console.error('錯誤詳情:', {
+      message: e.message,
+      response: e.response?.data,
+      status: e.response?.status,
+      statusText: e.response?.statusText,
+      config: e.config
+    })
+
+    // 顯示用戶友好的錯誤訊息
+    if (e.response?.status === 404) {
+      error.value = 'API 端點不存在，請檢查後端服務'
+    } else if (e.response?.status >= 500) {
+      error.value = '伺服器錯誤，請稍後再試'
+    } else if (e.code === 'NETWORK_ERROR') {
+      error.value = '網路連線錯誤，請檢查後端服務是否啟動'
+    } else {
+      error.value = e.message || String(e)
+    }
+
+    // 發生錯誤時清空列表，不保留假資料
+    announcementList.value = []
   } finally {
     loading.value = false
   }
 }
 
 const goAdminAnnouncementDetail = (id) => {
-  // 導向後台公告詳情頁
-  router.push({ name: 'AdminAnnouncementDetail', params: { id: String(id) } })
+  // 導向後台公告詳情頁 - 修正路由路徑
+  router.push({ path: `/admin/detail/${id}` })
 }
 </script>
 
@@ -280,6 +300,7 @@ const goAdminAnnouncementDetail = (id) => {
 
 .admin-layout {
   display: flex;
+  flex-wrap: nowrap; /* prevent wrapping that can squeeze sidebar */
   min-height: 80vh;
   gap: 30px;
   margin: 30px;
@@ -299,7 +320,9 @@ const goAdminAnnouncementDetail = (id) => {
 
 /* 預設為收合狀態：aside 與按鈕一樣大 */
 .admin-sidebar {
+  flex: 0 0 60px; /* default collapsed basis */
   width: 60px;
+  flex-shrink: 0; /* never shrink */
   height: 60px;
   background: #fff;
   border-radius: 12px;
@@ -311,6 +334,7 @@ const goAdminAnnouncementDetail = (id) => {
 }
 /* 展開狀態：回到完整側欄尺寸 */
 .admin-sidebar.is-open {
+  flex: 0 0 180px; /* expanded basis matches width */
   width: 180px;
   height: auto; /* 高度自動撐開 */
   padding: 10px ;
@@ -414,7 +438,8 @@ const goAdminAnnouncementDetail = (id) => {
 
 }
 .admin-main {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0; /* allow content to shrink instead of pushing sidebar */
   background: #fff;
   border-radius: 20px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.08);

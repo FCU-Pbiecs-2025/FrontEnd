@@ -8,22 +8,20 @@
 
       <!-- 錯誤和成功訊息 -->
       <div v-if="error" class="alert alert-error">{{ error }}</div>
-      <div v-if="success" class="alert alert-success">{{ success }}</div>
       <div v-if="loading" class="alert alert-info">處理中...</div>
 
       <div class="section-card">
-        <div class="section-header">收托資格</div>
-        <div ref="editor1" class="editor-container"></div>
-
-
-
+        <!-- reordered: show Service Content (editor2) first -->
         <div class="section-header">服務內容與時間</div>
         <div ref="editor2" class="editor-container"></div>
 
-
-
+        <!-- then Fee and Refund (editor3) -->
         <div class="section-header">收費及退費原則</div>
         <div ref="editor3" class="editor-container"></div>
+
+        <!-- finally Admission Eligibility (editor1) -->
+        <div class="section-header">收托資格</div>
+        <div ref="editor1" class="editor-container"></div>
       </div>
 
       <div class="bottom-row">
@@ -56,7 +54,6 @@ const quill3 = ref(null)
 const ruleId = ref(1)
 const loading = ref(false)
 const error = ref('')
-const success = ref('')
 
 const STORAGE_KEY = 'guidelinesContent'
 
@@ -153,7 +150,6 @@ const loadContent = async () => {
 const save = async () => {
   loading.value = true
   error.value = ''
-  success.value = ''
 
   // 確保編輯器存在
   if (!quill1.value || !quill2.value || !quill3.value) {
@@ -182,10 +178,10 @@ const save = async () => {
     // 同時備份到 localStorage
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data.value))
 
-    success.value = '儲存成功！資料已更新'
-    setTimeout(() => {
-      success.value = ''
-    }, 3000)
+    // 顯示瀏覽器的 alert 提示（使用者要求的跳 alert 方式）
+    alert('儲存成功！資料已更新')
+
+    // (內頁綠框提示已移除，如需在頁面顯示訊息可改用 error 或其他 UI 元件)
   } catch (err) {
     console.error('❌ 儲存失敗:', err)
 

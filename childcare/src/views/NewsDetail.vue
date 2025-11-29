@@ -17,7 +17,7 @@
 
           <ul class="attachments-list">
             <li v-for="(file, idx) in news.attachments" :key="idx">
-              <a :href="file.url" target="_blank" download :class="fileClass(file.name)">
+              <a href="#" @click="handleDownload(file, $event)" :class="fileClass(file.name)" :title="file.name">
                 <span class="file-icon" v-html="fileIcon(file.name)"></span>
                 {{ file.name }}
               </a>
@@ -35,10 +35,12 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { getAnnouncementDetail } from '../api/announcements.js'
+import { extractOriginalFilename, downloadFile } from '../utils/fileUtils.js'
 
 const route = useRoute()
+const router = useRouter()
 const news = ref(null)
 const isLoading = ref(false)
 const error = ref(null)
@@ -48,60 +50,68 @@ const loadNewsDetail = async (id) => {
   isLoading.value = true
   error.value = null
   try {
-    const response = await getAnnouncementDetail(id)
-    const data = response.data
-    // 將後端的 attachmentPath 映射為 attachments 陣列，提供下載 URL
-    const attachments = []
-    if (data && data.attachmentPath) {
-      // attachmentPath format: UUID_originalFilename
-      let displayName = data.attachmentPath
-      const underscoreIdx = data.attachmentPath.indexOf('_')
-      if (underscoreIdx > 0 && underscoreIdx < data.attachmentPath.length - 1) {
-        displayName = data.attachmentPath.substring(underscoreIdx + 1)
-      }
-      attachments.push({
-        name: displayName,
-        // 前端使用 /api 代理，後端的下載 endpoint 為 /announcements/{id}/attachment
-        url: `/api/announcements/${id}/attachment`
-      })
-    }
-    data.attachments = attachments
-    news.value = data
-  } catch (err) {
-    console.error('載入公告詳細資料失敗:', err)
-    error.value = '載入公告詳細資料失敗'
-    news.value = null
-  } finally {
-    isLoading.value = false
-  }
-}
+    // getAnnouncementDetail in api wrapper already returns res.data
+    const data = await getAnnouncementDetail(id)
+     // 將後端的 attachmentPath 映射為 attachments 陣列，提供下載 URL
+     const attachments = []
+     if (data && data.attachmentPath) {
+       // attachmentPath format: UUID_originalFilename
+       const displayName = extractOriginalFilename(data.attachmentPath)
 
-function fileClass(name) {
-  const ext = name.split('.').pop().toLowerCase()
-  if (ext === 'pdf') return 'file-pdf'
-  if (ext === 'doc' || ext === 'docx') return 'file-docx'
-  if (ext === 'odt') return 'file-odt'
-  return ''
-}
+       attachments.push({
+         name: displayName,
+         // 前端使用 /api 代理，後端的下載 endpoint 為 /announcements/{id}/attachment
+         url: `/api/announcements/${id}/attachment`
+       })
+     }
+     data.attachments = attachments
+     news.value = data
+   } catch (err) {
+     console.error('載入公告詳細資料失敗:', err)
+     error.value = '載入公告詳細資料失敗'
+     news.value = null
+   } finally {
+     isLoading.value = false
+   }
+ }
 
-function fileIcon(name) {
-  const ext = name.split('.').pop().toLowerCase()
-  if (ext === 'pdf') return `<svg width='20' height='20' viewBox='0 0 20 20'><rect width='20' height='20' rx='4' fill='#e35d6a'/><text x='4' y='15' font-size='10' fill='#fff'>PDF</text></svg>`
-  if (ext === 'doc' || ext === 'docx') return `<svg width='20' height='20' viewBox='0 0 20 20'><rect width='20' height='20' rx='4' fill='#2176d2'/><text x='3' y='15' font-size='10' fill='#fff'>DOCX</text></svg>`
-  if (ext === 'odt') return `<svg width='20' height='20' viewBox='0 0 20 20'><rect width='20' height='20' rx='4' fill='#1e88e5'/><text x='4' y='15' font-size='10' fill='#fff'>ODT</text></svg>`
-  return `<svg width='20' height='20' viewBox='0 0 20 20'><rect width='20' height='20' rx='4' fill='#aaa'/></svg>`
-}
+ // 處理檔案下載
+ const handleDownload = async (file, event) => {
+   event.preventDefault()
+   try {
+     await downloadFile(file.url, file.name)
+   } catch (err) {
+     console.error('下載失敗:', err)
+     alert('下載失敗，請稍後再試')
+   }
+ }
 
-function goBack() {
-  window.location.href = '/news';
-}
+ function fileClass(name) {
+   const ext = name.split('.').pop().toLowerCase()
+   if (ext === 'pdf') return 'file-pdf'
+   if (ext === 'doc' || ext === 'docx') return 'file-docx'
+   if (ext === 'odt') return 'file-odt'
+   return ''
+ }
 
-onMounted(() => {
-  const id = route.params.id
-  if (id) {
-    loadNewsDetail(id)
-  }
-})
+ function fileIcon(name) {
+   const ext = name.split('.').pop().toLowerCase()
+   if (ext === 'pdf') return `<svg width='20' height='20' viewBox='0 0 20 20'><rect width='20' height='20' rx='4' fill='#e35d6a'/><text x='4' y='15' font-size='10' fill='#fff'>PDF</text></svg>`
+   if (ext === 'doc' || ext === 'docx') return `<svg width='20' height='20' viewBox='0 0 20 20'><rect width='20' height='20' rx='4' fill='#2176d2'/><text x='3' y='15' font-size='10' fill='#fff'>DOCX</text></svg>`
+   if (ext === 'odt') return `<svg width='20' height='20' viewBox='0 0 20 20'><rect width='20' height='20' rx='4' fill='#1e88e5'/><text x='4' y='15' font-size='10' fill='#fff'>ODT</text></svg>`
+   return `<svg width='20' height='20' viewBox='0 0 20 20'><rect width='20' height='20' rx='4' fill='#aaa'/></svg>`
+ }
+
+ function goBack() {
+   router.push({ name: 'News' }).catch(() => {})
+ }
+
+ onMounted(() => {
+   const id = route.params.id
+   if (id) {
+     loadNewsDetail(id)
+   }
+ })
 </script>
 
 <style scoped>
@@ -114,8 +124,8 @@ onMounted(() => {
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 4px 16px rgba(249, 175, 174, 0.12);
-  width: 70%;
-
+  max-width: 900px; /* 改為 max-width，避免側邊欄被壓縮 */
+  width: 100%;
   margin: 48px auto 0 auto;
 }
 .news-title-row {

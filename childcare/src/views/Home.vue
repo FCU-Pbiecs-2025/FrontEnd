@@ -35,7 +35,17 @@
 
         <!-- 交換為 News.vue 的靜態區塊 -->
         <div class="content-area">
-          <div class="news-list">
+          <!-- 載入狀態 -->
+          <div v-if="isLoading" class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>載入中...</p>
+          </div>
+          <!-- 錯誤狀態 -->
+          <div v-else-if="error" class="error-state">
+            <p style="color: #e74c3c; text-align: center;">{{ error }}</p>
+          </div>
+          <!-- 新聞列表 -->
+          <div v-else class="news-list">
             <div
                 v-for="item in newsItems"
                 :key="item.announcementID"
@@ -50,6 +60,10 @@
                 <h3>{{ item.title }}</h3>
                 <p>{{ item.content }}</p>
               </div>
+            </div>
+            <!-- 沒有資料時顯示 -->
+            <div v-if="newsItems.length === 0" class="empty-state">
+              <p style="text-align: center; color: #888; padding: 40px 20px;">目前沒有最新消息</p>
             </div>
           </div>
         </div>
@@ -161,16 +175,41 @@ const loadNewsData = async () => {
   isLoading.value = true
   error.value = null
   try {
+    // 使用統一的 announcements API，並在 client 端過濾出前台公告 (type === 1)
     const response = await getAllAnnouncements()
-    // 處理後端返回的數據格式
-    newsItems.value = response.data
-        .map(item => ({
-          announcementID: item.announcementID,
-          title: item.title,
-          content: item.content,
-          startDate: item.startDate
-        }))
-    // .sort((a, b) => new Date(b.startDate) - new Date(a.startDate)) // 按日期降序排列
+    // getAllAnnouncements 已在 api wrapper 返回 res.data，但要保險處理
+    let announcements = Array.isArray(response) ? response : (response?.data ?? [])
+
+    // 有些後端會回傳字串形式的 JSON，要嘗試解析
+    if (typeof announcements === 'string') {
+      try {
+        const parsed = JSON.parse(announcements)
+        announcements = Array.isArray(parsed) ? parsed : []
+      } catch (e) {
+        console.warn('解析 announcements 字串失敗', e)
+        announcements = []
+      }
+    }
+
+    // 過濾前台公告：後端 type 字段：1=前台, 2=後台
+    const frontendAnnouncements = announcements.filter(item => {
+      // 若沒有 type 欄位，預設視為前台公告
+      if (item == null) return false
+      const t = item.type === undefined || item.type === null ? 1 : parseInt(item.type)
+      return t === 1
+    })
+
+    // 正規化欄位並排序、取前五筆
+    newsItems.value = frontendAnnouncements
+      .map(item => ({
+        announcementID: item.announcementID || item.id || item.announcementId,
+        title: item.title || '無標題',
+        content: item.content || item.summary || '無內容',
+        startDate: item.startDate || item.createdAt || item.date
+      }))
+      .filter(i => i.announcementID)
+      .sort((a, b) => new Date(b.startDate) - new Date(a.startDate))
+      .slice(0, 5)
   } catch (err) {
     console.error('載入最新消息失敗:', err)
     if (err.response) {
@@ -180,6 +219,8 @@ const loadNewsData = async () => {
     } else {
       error.value = '載入最新消息失敗，請稍後再試'
     }
+    // 發生錯誤時使用空陣列
+    newsItems.value = []
   } finally {
     isLoading.value = false
   }
@@ -196,16 +237,11 @@ onUnmounted(() => {
   window.removeEventListener('storage', onStorage)
 })
 
-// 新增：首頁最新消息列表資料
-const homeNewsList = [
-  { id: '1', title: '新竹縣公共托育服務申請流程更新通知', content: '為提供更優質的托育服務，本縣公共托育申請流程將於近期進行調整，請家長注意相關變更內容...', date: '2024/01/15' },
-  { id: '2', title: '托育補助申請期限提醒', content: '提醒各位家長，本年度托育補助申請將於月底截止，尚未申請的家長請儘速辦理相關手續...', date: '2024/01/10' },
-  { id: '3', title: '托育機構評鑑結果公告', content: '新竹縣各托育機構評鑑結果已公布，家長可至本系統查詢各機構的評鑑等級與服務品質...', date: '2024/01/05' }
-]
 
 // 新增：導航至新聞詳情頁面
 function goToNewsDetail(id) {
-  router.push({ name: 'NewsDetail', params: { id } })
+  if (!id) return
+  router.push({ name: 'NewsDetail', params: { id } }).catch(() => {})
 }
 </script>
 

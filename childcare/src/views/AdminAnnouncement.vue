@@ -38,6 +38,7 @@
               <tr>
                 <th>日期</th>
                 <th>標題</th>
+                <th>類型</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -47,12 +48,16 @@
                 <td class="title-cell">
                   <span class="title-link" @click="goDetail(item)">{{ item.title }}</span>
                 </td>
+                <td class="type-cell">{{ item.typeText }}</td>
                 <td>
-                  <button class="btn small danger" @click="remove(item)">刪除</button>
+                  <div style="display: flex; gap: 8px;">
+                    <button class="btn small" @click="editItem(item)">編輯</button>
+                    <button class="btn small danger" @click="remove(item)">刪除</button>
+                  </div>
                 </td>
               </tr>
               <tr v-if="resultList.length === 0">
-                <td colspan="3" class="empty-tip">目前沒有公告</td>
+                <td colspan="4" class="empty-tip">目前沒有公告</td>
               </tr>
             </tbody>
           </table>
@@ -70,8 +75,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getAdminAnnouncements } from '@/api/AdminHome.js'
-import { deleteAnnouncement } from '@/api/announcements.js'
+import { getAllAnnouncements, deleteAnnouncement } from '@/api/announcements.js'
 const router = useRouter()
 const route = useRoute()
 
@@ -88,30 +92,41 @@ const showBack = ref(false)
 
 const loadList = async () => {
   try {
-    const data = await getAdminAnnouncements()
+    const data = await getAllAnnouncements()
     if (data && Array.isArray(data)) {
-      list.value = data.map(item => ({
-        id: item.id || item.announcementId,
-        date: item.publishDate || item.createdDate || new Date().toISOString().split('T')[0],
-        title: item.title || item.announcementTitle,
-        content: item.content || item.announcementContent,
-        // 將後端數值轉換為前端字串：1=front, 2=back
-        type: (item.type === 2 || item.type === '2') ? 'back' : 'front'
-      }))
+      list.value = data.map(item => {
+        // Normalize id: support announcementID (UUID from real backend), announcementId, or id (from mock server)
+        const id = item.announcementID || item.announcementId || item.id || null
+
+        // Normalize date: support startDate, publishDate, createdDate
+        const date = item.startDate || item.publishDate || item.createdDate || new Date().toISOString().split('T')[0]
+
+        // Normalize type: backend may return numeric 1/2 or strings 'front'/'back'
+        const rawType = item.type
+        let typeNum = 1
+        if (rawType === 'back' || rawType === '後台' || rawType === 2 || rawType === '2') typeNum = 2
+        else typeNum = 1
+
+        const typeText = (rawType === 'back' || rawType === '後台' || typeNum === 2) ? '後台' : '前台'
+
+        return {
+          id,
+          date,
+          title: item.title || item.announcementTitle || '無標題',
+          content: item.content || item.announcementContent || '無內容',
+          attachmentPath: item.attachmentPath || null,
+          type: typeNum,
+          typeText
+        }
+      })
     } else {
-      // 如果 API 沒有返回資料，使用初始範例資料
-      list.value = [
-        { id: 1, date: '2025-10-01', title: '系統維護公告', content: '維護內容...', type: 'front' },
-        { id: 2, date: '2025-10-05', title: '後台功能更新', content: '更新內容...', type: 'back' }
-      ]
+      // API 沒有返回資料時，設為空陣列
+      list.value = []
     }
   } catch (e) {
     console.error('loadList error', e)
-    // API 出錯時使用範例資料
-    list.value = [
-      { id: 1, date: '2025-10-01', title: '系統維護公告', content: '維護內容...', type: 'front' },
-      { id: 2, date: '2025-10-05', title: '後台功能更新', content: '更新內容...', type: 'back' }
-    ]
+
+    list.value = []
   }
 }
 
@@ -137,9 +152,9 @@ watch(() => route.name, async (newName, oldName) => {
 const doQuery = async () => {
   await loadList() // 確保查詢前先重新載入最新資料
   resultList.value = list.value.filter(item => {
-    // 類型篩選
-    if (item.type === 'front' && !type.value.front) return false
-    if (item.type === 'back' && !type.value.back) return false
+    // 類型篩選 (後端 type: 1=前台, 2=後台)
+    if (item.type === 1 && !type.value.front) return false
+    if (item.type === 2 && !type.value.back) return false
     // 日期篩選
     if (dateStart.value && item.date < dateStart.value) return false
     if (dateEnd.value && item.date > dateEnd.value) return false
@@ -152,11 +167,24 @@ const addNew = () => {
   router.push({ name: 'AdminAnnouncementCreate' })
 }
 
+const editItem = (item) => {
+  if (!item.id) {
+    alert('無法編輯：缺少公告 ID')
+    return
+  }
+  router.push({ name: 'AdminAnnouncementEdit', params: { id: String(item.id) } })
+}
 
 const remove = async (item) => {
+  if (!item.id) {
+    alert('無法刪除：缺少公告 ID')
+    return
+  }
   if (confirm('確定要刪除這則公告嗎？')) {
     try {
+      console.log('刪除公告 ID:', item.id) // Debug log
       await deleteAnnouncement(item.id)
+      alert('刪除成功')
       // 刪除成功後重新載入資料
       await loadList()
       // 重新執行查詢以更新顯示列表
@@ -167,7 +195,9 @@ const remove = async (item) => {
       }
     } catch (error) {
       console.error('刪除公告失敗:', error)
-      alert('刪除公告失敗，請稍後再試')
+      // 更詳細的錯誤訊息
+      const errorMessage = error.response?.data?.message || error.response?.data || error.message || '刪除公告失敗'
+      alert(`刪除公告失敗：${errorMessage}`)
     }
   }
 }
@@ -182,7 +212,9 @@ const goBack = async () => {
 }
 
 const isEditPage = computed(() => {
-  return route.name === 'AdminAnnouncementCreate' || route.name === 'AdminAnnouncementEdit'
+  return route.name === 'AdminAnnouncementCreate' ||
+         route.name === 'AdminAnnouncementEdit' ||
+         route.name === 'AdminAnnouncementDetail'
 })
 
 const goDetail = (item) => {
@@ -219,6 +251,7 @@ const goDetail = (item) => {
 .announcement-table td { padding:12px; border-bottom:1px solid #f3f4f6; vertical-align: middle; }
 .date-cell { font-weight:600; color:#334e5c }
 .title-cell { color:#334e5c }
+.type-cell { color:#334e5c; font-weight: 600; }
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
 .bottom-row { display:flex; justify-content:center; gap:12px; margin-top:10vh; }
 @media (max-width:900px){ .announcement-card{ width:100%; padding:16px } .date-input{ width:100px } }
