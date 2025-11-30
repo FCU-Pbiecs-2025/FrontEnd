@@ -76,9 +76,6 @@ const route = useRoute()
 const authStore = useAuthStore()
 const applicationsStore = useApplicationsStore()
 
-// 常數：撤銷申請審核中 對應後端狀態碼 (CASE_STATUS_MAP 中的 '5')
-const REVOKE_PROCESSING_STATUS_CODE = '5'
-
 // 取得路由中的 caseNo / applicationId
 const routeCaseNo = route.params.caseNo || route.query.applicationId || null
 
@@ -183,15 +180,10 @@ const submitRevoke = async () => {
       abandonReason: revokeReason.value
     })
     console.log('[RevokeApplication] createRevoke response:', resp)
-    // 更新 store 中的 selected 狀態
-    if (selected.value) {
-      selected.value.status = '撤銷申請審核中'
-      selected.value.statusClass = 'revokeProcessing'
-      selected.value.reason = revokeReason.value
-      selected.value.cancellationID = resp?.cancellationID || selected.value.cancellationID
-    }
+    // 以前會更新 store 中的 selected 與 applications list；改為直接回到申請進度查詢，由該頁面重新從後端拉資料
     alert('撤銷申請已送出，審核約 3-5 個工作天')
-    router.back()
+    // 跳回申請進度查詢並強制刷新列表
+    await router.push({ name: 'ApplicationStatus', query: { refresh: Date.now() } })
   } catch (e) {
     console.error('[RevokeApplication] 撤銷提交失敗', e)
     alert(e.message || '撤銷申請提交失敗，請稍後再試')

@@ -61,11 +61,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/store/auth.js'
 import { useApplicationsStore } from '@/store/applications.js'
-import { getUserApplicationDetails } from '@/api/application.js'
+import { getUserApplicationDetails, CASE_STATUS_MAP } from '@/api/application.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -77,12 +77,20 @@ const childActive = computed(() => {
 })
 
 function getStatusLabel(statusClass, rawStatus) {
-  // 如果後端直接提供中文狀態，優先使用
+  // If backend returned a Chinese label already, use it
   if (rawStatus && typeof rawStatus === 'string' && /[\u4e00-\u9fa5]/.test(rawStatus)) {
     return rawStatus
   }
 
-  // 否則根據 statusClass 轉換
+  // If rawStatus is a numeric code (string or number) and we have a mapping, use it
+  if (rawStatus !== undefined && rawStatus !== null) {
+    const codeKey = String(rawStatus)
+    if (CASE_STATUS_MAP && CASE_STATUS_MAP[codeKey]) {
+      return CASE_STATUS_MAP[codeKey]
+    }
+  }
+
+  // Otherwise map from statusClass
   const map = {
     processing: '審核中',
     pending: '審核中',
@@ -126,6 +134,10 @@ const fetchUserApplications = async () => {
         const rawCase = item.applicationID || item.applicationId || item.caseNo || item.id || item.applicationNo || item.case_number || item.caseId
         const caseNo = rawCase ? String(rawCase) : `CASE-${Date.now()}-${index}`
 
+        // derive a normalized status value (prefer Chinese label if provided, else code or English)
+        const rawStatus = item.status !== undefined && item.status !== null ? item.status : item.caseStatus
+        const statusClass = mapStatusToClass(rawStatus)
+
         return {
           caseNo: caseNo,
           applicationID: item.applicationID || item.applicationId || null,
@@ -138,8 +150,8 @@ const fetchUserApplications = async () => {
           username: item.username || '',
           cancellationID: item.cancellationID || '',
           reason: item.reason || '',
-          status: item.status || '',
-          statusClass: mapStatusToClass(item.status),
+          status: item.status || item.caseStatus || item.state || '',
+          statusClass: statusClass,
           // 新增的欄位
           currentOrder: item.currentOrder || item.queueNumber || null,
           childNationalID: item.childNationalID || '',
@@ -177,6 +189,14 @@ const fetchUserApplications = async () => {
 function mapStatusToClass(status) {
   if (!status) return 'processing'
 
+  // If status is numeric code, map via CASE_STATUS_MAP
+  const codeKey = String(status)
+  let resolved = status
+  if (CASE_STATUS_MAP && CASE_STATUS_MAP[codeKey]) {
+    resolved = CASE_STATUS_MAP[codeKey]
+  }
+
+  // now resolved is likely Chinese label or english
   const statusMap = {
     '審核中': 'processing',
     '需要補件': 'supplement',
@@ -186,15 +206,25 @@ function mapStatusToClass(status) {
     '撤銷申請審核中': 'revokeProcessing',
     '撤銷申請通過': 'revoked',
     '已退托': 'withdrawn',
-    '已錄取': 'admitted'
+    '已錄取': 'admitted',
+    'admitted': 'admitted',
+    '錄取': 'admitted'
   }
 
-  return statusMap[status] || 'processing'
+  // If resolved is a known key, return mapping, else default to processing
+  return statusMap[resolved] || 'processing'
 }
 
 // 組件掛載時獲取資料
 onMounted(() => {
   fetchUserApplications()
+})
+
+// 監聽 refresh 參數，若變動則重新抓資料
+watch(() => route.query.refresh, (newVal, oldVal) => {
+  if (newVal !== oldVal) {
+    fetchUserApplications()
+  }
 })
 
 // Entire item click behavior -> unified progress detail page

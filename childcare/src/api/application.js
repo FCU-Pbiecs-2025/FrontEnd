@@ -285,3 +285,21 @@ export const submitApplicationCase = async (caseData, files = {}) => {
     }
 };
 
+// 上傳申請附件（最多4個）
+// POST /api/applications/:id/attachments
+export const uploadApplicationAttachments = async (applicationId, files) => {
+    const formData = new FormData();
+    files.forEach(file => {
+        formData.append('attachments', file);
+    });
+    const url = `/api/applications/${encodeURIComponent(applicationId)}/attachments`;
+    try {
+        const response = await http.post(url, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    } catch (error) {
+        console.error('上傳附件失敗:', error);
+        throw error;
+    }
+};

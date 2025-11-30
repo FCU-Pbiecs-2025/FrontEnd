@@ -46,16 +46,15 @@
 
           <div class="explain-card">
             <h3>說明</h3>
-            <p v-if="isProcessing" class="explain-text">請靜候幾日等候審核，我們會盡快完成審核並以簡訊/Email 通知您。</p>
-            <div v-else-if="isSupplement" class="explain-text">
-              <p>需補上戶口名簿圖片檔，或其他審核要求的文件。</p>
+            <template v-if="isProcessing"></template>
+            <template v-else-if="isSupplement">
               <ul v-if="application.supplementItems?.length" class="supplement-list">
                 <li v-for="it in application.supplementItems" :key="it.key">
                   <strong>{{ it.label }}</strong><span v-if="it.required" class="required">（必填）</span>
                 </li>
               </ul>
               <p v-if="application.supplementDeadline" class="deadline">補件期限：{{ application.supplementDeadline }}</p>
-            </div>
+            </template>
             <p v-if="application.status === 'rejected'" class="explain-text">您的申請已退件，建議查看退件原因並完成修正後再行申請。</p>
             <p v-else-if="application.status === 'waitingForAdmission' || application.status === '候補中' || application.status === '錄取候補中'" class="explain-text">
               您目前為候補序位第 <strong>{{ application.currentOrder || application.queueNumber || '—' }}</strong> 位，名額釋出後將依序通知。
@@ -66,17 +65,21 @@
               您的撤銷申請正在審核中，目前序位為第 <strong>{{ application.currentOrder || application.queueNumber || '—' }}</strong> 位。
             </p>
             <p v-else-if="application.status === 'revoked'" class="explain-text">您的撤銷申請已通過，案件已結束。</p>
-            <p v-else class="explain-text">{{ application.details || '—' }}</p>
+            <p v-else-if="application.details" class="explain-text">{{ application.details }}</p>
           </div>
 
           <div class="actions">
             <button
               class="danger-btn"
               :class="{ disabled: revokeDisabled }"
-              :disabled="revokeDisabled"
-              @click="!revokeDisabled && goRevoke"
+              :aria-disabled="revokeDisabled"
+              @click="goRevoke"
             >撤銷申請</button>
-            <button v-if="isSupplement" class="primary-btn" @click="goSupplement">補件</button>
+            <button
+              v-if="isSupplement && !childActive"
+              class="primary-btn"
+              @click="goSupplement"
+            >補件</button>
             <button class="back-btn" @click="goBack">返回</button>
           </div>
         </div>
@@ -385,7 +388,50 @@ function monthsBetween(from, to) {
 
 const goBack = () => router.back()
 const goSupplement = () => router.push({ name: 'ApplicationProgressSupplement', params: { caseNo } })
-const goRevoke = () => router.push({ name: 'ApplicationProgressRevoke', params: { caseNo } })
+const goRevoke = () => {
+  // Try several sources for a stable case identifier (case number or applicationID)
+  const candidate = (
+    application.value?.caseNo ||
+    application.value?.applicationID ||
+    applicationsStore.selectedApplication?.caseNo ||
+    applicationsStore.selectedApplication?.applicationID ||
+    route.params.caseNo ||
+    route.query.caseNo ||
+    route.params.applicationId ||
+    route.query.applicationId ||
+    null
+  )
+
+  if (!candidate) {
+    alert('找不到案件編號，無法進行撤銷申請')
+    console.warn('[ApplicationProgressDetail] goRevoke 無法取得 caseNo 或 applicationID')
+    return
+  }
+
+  // If the case is already withdrawn (已退托), explicitly tell the user it's not possible
+  const statusRaw = application.value?.status || application.value?.statusClass || applicationsStore.selectedApplication?.status || applicationsStore.selectedApplication?.statusClass
+  if (statusRaw === 'withdrawn' || statusRaw === '已退托' || statusRaw === '已退托') {
+    alert('無法撤銷')
+    return
+  }
+
+  // Check revokeDisabled state and show alert if action is not allowed
+  if (revokeDisabled.value) {
+    alert('目前無法撤銷申請，請稍後再試')
+    return
+  }
+
+  console.log('[ApplicationProgressDetail] goRevoke -> candidate:', candidate, 'revokeDisabled:', revokeDisabled.value)
+
+  const path = `/application-status/progress/${encodeURIComponent(String(candidate))}/revoke`
+  // Use path push which is robust for nested routes
+  router.push(path).then(() => {
+    console.log('[ApplicationProgressDetail] goRevoke navigation succeeded to', path)
+  }).catch(err => {
+    console.error('[ApplicationProgressDetail] goRevoke router.push error:', err)
+    alert('無法前往撤銷申請頁，請稍後再試')
+  })
+}
 </script>
 
 <style scoped>
