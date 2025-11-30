@@ -24,7 +24,7 @@
               <td>{{ cls.unit }}</td>
               <td>{{ cls.capacity }}</td>
               <td>{{ cls.enrolled }}</td>
-              <td>{{ cls.age_from }} - {{ cls.age_to }}</td>
+              <td>{{ formatAge(cls.age_from) }} - {{ formatAge(cls.age_to) }}</td>
               <td>{{ cls.notes }}</td>
               <td class="action-cell">
                 <button class="btn small" @click="editClass(cls)">編輯</button>
@@ -48,12 +48,12 @@
           <div class="pagination-controls">
             <button class="btn small pagination-btn" :disabled="currentPage === 1 || totalPages <= 1" @click="prevPage">上一頁</button>
             <button
-              v-for="page in pageNumbers"
-              :key="page"
-              class="btn small pagination-btn"
-              :class="{ 'btn-active': page === currentPage }"
-              :disabled="totalPages <= 1"
-              @click="goToPage(page)"
+                v-for="page in pageNumbers"
+                :key="page"
+                class="btn small pagination-btn"
+                :class="{ 'btn-active': page === currentPage }"
+                :disabled="totalPages <= 1"
+                @click="goToPage(page)"
             >
               {{ page }}
             </button>
@@ -120,8 +120,8 @@ const fetchClasses = async (page = 1) => {
       unit: cls.className,
       capacity: cls.capacity,
       enrolled: cls.currentStudents ?? cls.enrolled ?? 0,
-      age_from: cls.minAgeDescription,
-      age_to: cls.maxAgeDescription,
+      age_from: cls.minAgeDescription ?? 0,
+      age_to: cls.maxAgeDescription ?? 0,
       notes: cls.additionalInfo ?? cls.notes ?? '',
       institutionId: cls.institutionName,
     }))
@@ -146,6 +146,38 @@ const isChildRoute = computed(() => route.name === 'AdminClassNew' || route.name
 // 導覽
 const goBack = () => { router.push({ name: 'AdminClassManager' }) }
 
+// 編輯班級
+const editClass = (cls) => {
+  router.push({
+    name: 'AdminClassEdit',
+    params: { id: cls.classID }
+  })
+}
+
+// 刪除班級
+const deleteClass = async (cls) => {
+  if (!confirm(`確定要刪除班級「${cls.unit}」嗎？`)) {
+    return
+  }
+
+  try {
+    const response = await fetch(`http://localhost:8080/classes/${cls.classID}`, {
+      method: 'DELETE'
+    })
+
+    if (response.ok) {
+      alert('班級刪除成功！')
+      // 重新載入當前頁面的資料
+      fetchClasses(currentPage.value)
+    } else {
+      alert('刪除失敗，請稍後再試')
+    }
+  } catch (error) {
+    console.error('刪除班級失敗:', error)
+    alert('刪除失敗，請檢查網路連線')
+  }
+}
+
 // 分頁控制：呼叫 fetchClasses
 const goToPage = (page) => { if (page >= 1 && page <= totalPages.value) fetchClasses(page) }
 const prevPage = () => { if (currentPage.value > 1) fetchClasses(currentPage.value - 1) }
@@ -156,6 +188,15 @@ watch(() => route.name, (newName) => { if (newName === 'AdminClassList') fetchCl
 
 // 掛載時讀取第一頁
 onMounted(() => { fetchClasses(1) })
+
+// 將月數轉換為「X歲Y月」格式
+function formatAge(months) {
+  const y = Math.floor(months / 12)
+  const m = months % 12
+  if (y > 0 && m > 0) return `${y}歲${m}月`
+  if (y > 0) return `${y}歲`
+  return `${m}月`
+}
 </script>
 
 <style scoped>

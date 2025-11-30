@@ -366,7 +366,16 @@ const routes = [
 
 const router = createRouter({
     history: createWebHistory(),
-    routes
+    routes,
+    scrollBehavior(to, from, savedPosition) {
+        // 若有儲存的滾動位置（如瀏覽器返回），則回到該位置
+        if (savedPosition) {
+            return savedPosition;
+        } else {
+            // 否則每次切換都回到頂部
+            return { left: 0, top: 35 };
+        }
+    }
 })//createWebHistory()是用HTML5的歷史模式 以免網址出現#
 
 // 路由守衛

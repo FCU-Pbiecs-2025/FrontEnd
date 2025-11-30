@@ -40,13 +40,13 @@
         </div>
 
         <div class="form-row">
-          <label>收托年齡起</label>
-          <input v-model="form.age_from" type="text" />
+          <label>收托年齡起（單位：月）</label>
+          <input v-model.number="form.age_from" type="number" min="0" max="216" />
         </div>
 
         <div class="form-row">
-          <label>收托年齡訖</label>
-          <input v-model="form.age_to" type="text" />
+          <label>收托年齡訖（單位：月）</label>
+          <input v-model.number="form.age_to" type="number" min="0" max="216" />
         </div>
 
         <div class="form-row">
@@ -82,8 +82,8 @@ const defaultForm = () => ({
   unit: '',
   capacity: 0,
   currentStudents: 0,
-  age_from: '',
-  age_to: '',
+  age_from: 0,
+  age_to: 0,
   additionalInfo: ''
 })
 const form = ref(defaultForm())
@@ -210,8 +210,8 @@ onMounted(async () => {
             unit: found.className,
             capacity: found.capacity,
             currentStudents: found.currentStudents || found.CurrentStudents || 0,
-            age_from: found.minAgeDescription,
-            age_to: found.maxAgeDescription,
+            age_from: Number(found.minAgeDescription) || 0,
+            age_to: Number(found.maxAgeDescription) || 0,
             additionalInfo: found.additionalInfo || found.AdditionalInfo || found.notes || ''
           }
 
@@ -272,14 +272,22 @@ const save = async () => {
     }
   }
 
+  // Validate and coerce age fields (months)
+  const coercedAgeFrom = Math.max(0, Math.floor(Number(form.value.age_from) || 0))
+  const coercedAgeTo = Math.max(0, Math.floor(Number(form.value.age_to) || 0))
+  if (coercedAgeFrom > coercedAgeTo) {
+    alert('收托年齡起 不能大於 收托年齡訖，請檢查輸入（單位：月）')
+    return
+  }
+
   // 準備要傳送給後端的資料
   const dataToSend = {
     classID: form.value.id, // 編輯時使用原有的classID，新增時為自動產生的 UUID
     className: form.value.unit,
     capacity: form.value.capacity,
     currentStudents: form.value.currentStudents || 0,
-    minAgeDescription: form.value.age_from,
-    maxAgeDescription: form.value.age_to,
+    minAgeDescription: coercedAgeFrom,
+    maxAgeDescription: coercedAgeTo,
     additionalInfo: form.value.additionalInfo || ''
   }
 
@@ -317,8 +325,8 @@ const save = async () => {
 
     if (response && response.ok) {
       alert(isEdit.value ? '班級更新成功！' : '班級新增成功！')
-      // 返回到班級管理主頁
-      router.replace({ name: 'AdminClassManager' })
+      // 返回到班級管理主頁，並帶上 updated 查詢參數以觸發列表刷新
+      router.replace({ name: 'AdminClassManager', query: { updated: Date.now() } })
     } else {
       const errorData = response ? await response.text() : 'no response'
       alert(`儲存失敗：${response ? response.status : ''} - ${errorData}`)

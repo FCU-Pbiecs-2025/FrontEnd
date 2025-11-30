@@ -37,8 +37,8 @@
               <tr v-for="cls in filteredClasses" :key="cls.classID">
                 <td>{{ cls.institutionName }}</td>
                 <td>{{ cls.className }}</td>
-                <td>{{ cls.minAgeDescription }}</td>
-                <td>{{ cls.maxAgeDescription }}</td>
+                <td>{{ formatAge(cls.minAgeDescription) }}</td>
+                <td>{{ formatAge(cls.maxAgeDescription) }}</td>
                 <td>{{ cls.capacity }}</td>
                 <td class="action-cell">
                   <button class="btn small" @click="editClass(cls)">編輯</button>
@@ -90,8 +90,8 @@
               <td>{{ cls.institutionName }}</td>
               <td>{{ cls.className }}</td>
               <td>{{ cls.capacity }}</td>
-              <td>{{ cls.minAgeDescription }}</td>
-              <td>{{ cls.maxAgeDescription }}</td>
+              <td>{{ formatAge(cls.minAgeDescription) }} - {{ formatAge(cls.maxAgeDescription) }}</td>
+              <td>{{ cls.additionalInfo || '' }}</td>
               <td class="action-cell">
                 <button class="btn small" @click="editClass(cls)">編輯</button>
                 <button class="btn small danger" @click="deleteClass(cls)">刪除</button>
@@ -124,7 +124,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
@@ -307,6 +307,24 @@ const nextPage = () => goToPage(currentPage.value + 1)
 onMounted(() => {
   fetchClasses(1)
 })
+
+// Watch for 'updated' query param to refresh the list when returning from edit/add
+watch(() => route.query.updated, (newVal, oldVal) => {
+  if (newVal && newVal !== oldVal) {
+    // Refresh the current page to show updates
+    fetchClasses(currentPage.value)
+  }
+})
+
+// 新增：將月數轉換為「X歲Y月」格式的顯示工具
+function formatAge(months) {
+  const m = Number(months) || 0
+  const y = Math.floor(m / 12)
+  const rem = m % 12
+  if (y > 0 && rem > 0) return `${y}歲${rem}月`
+  if (y > 0) return `${y}歲`
+  return `${rem}月`
+}
 </script>
 
 <style scoped>

@@ -46,6 +46,51 @@ export const deleteClassById = async (classId) => {
         throw error
     }
 }
+
+// 創建新班級
+export const createClass = async (classData) => {
+    try {
+        // 確保年齡欄位是整數
+        const data = {
+            ...classData,
+            minAgeDescription: Number(classData.minAgeDescription) || 0,
+            maxAgeDescription: Number(classData.maxAgeDescription) || 0
+        }
+        const response = await http.post('/classes', data)
+        return response.data
+    } catch (error) {
+        console.error('創建班級失敗:', error)
+        throw error
+    }
+}
+
+// 更新班級
+export const updateClass = async (classId, classData) => {
+    try {
+        // 確保年齡欄位是整數
+        const data = {
+            ...classData,
+            minAgeDescription: Number(classData.minAgeDescription) || 0,
+            maxAgeDescription: Number(classData.maxAgeDescription) || 0
+        }
+        const response = await http.put(`/classes/${classId}`, data)
+        return response.data
+    } catch (error) {
+        console.error('更新班級失敗:', error)
+        throw error
+    }
+}
+
+// 根據班級ID獲取單一班級資訊
+export const getClassById = async (classId) => {
+    try {
+        const response = await http.get(`/classes/${classId}`)
+        return response.data
+    } catch (error) {
+        console.error('獲取班級資訊失敗:', error)
+        throw error
+    }
+}
 // 根據機構ID獲取班級名稱列表
 export const getClassNamesByInstitutionId = async (id) => {
     try {
@@ -59,4 +104,3 @@ export const getClassNamesByInstitutionId = async (id) => {
         throw error
     }
 }
-

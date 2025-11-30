@@ -68,7 +68,7 @@
                   <td>{{ cls.className }}</td>
                   <td>{{ cls.capacity }}</td>
                   <td>{{ cls.currentStudents }}</td>
-                  <td>{{ cls.minAgeDescription }}<template v-if="cls.minAgeDescription || cls.maxAgeDescription"> - </template>{{ cls.maxAgeDescription }}</td>
+                  <td>{{ formatAgeRange(cls.minAgeDescription, cls.maxAgeDescription) }}</td>
                   <td>{{ cls.additionalInfo }}</td>
                 </tr>
                 </tbody>
@@ -101,6 +101,27 @@ const agencyRaw = ref({})
 const classList = ref([])
 const loading = ref(true)
 const error = ref(null)
+
+// 格式化年齡範圍顯示 (資料庫存的是月份)
+const formatAgeRange = (ageFromMonths, ageToMonths) => {
+  const fromMonths = Number(ageFromMonths) || 0
+  const toMonths = Number(ageToMonths) || 0
+
+  const formatAge = (months) => {
+    if (months < 12) return `${months}個月`
+
+    const years = Math.floor(months / 12)
+    const remainingMonths = months % 12
+    if (remainingMonths === 0) return `${years}歲`
+    return `${years}歲${remainingMonths}個月`
+  }
+
+  if (fromMonths === toMonths) {
+    return formatAge(fromMonths)
+  } else {
+    return `${formatAge(fromMonths)} - ${formatAge(toMonths)}`
+  }
+}
 
 // 圖片路徑處理函數 - 將 API 返回的路徑轉換為可訪問的 HTTP URL
 function getImageUrl(imagePath) {
@@ -195,8 +216,8 @@ const fetchClassData = async () => {
       className: cls.className || '',
       capacity: cls.capacity ?? 0,
       currentStudents: cls.currentStudents ?? 0,
-      minAgeDescription: cls.minAgeDescription || '',
-      maxAgeDescription: cls.maxAgeDescription || '',
+      minAgeDescription: Number(cls.minAgeDescription) || 0,
+      maxAgeDescription: Number(cls.maxAgeDescription) || 0,
       additionalInfo: cls.additionalInfo || '',
       institutionID: cls.institutionID || ''
     }))

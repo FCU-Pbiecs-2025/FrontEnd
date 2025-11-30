@@ -27,8 +27,8 @@
         <table class="banner-table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Banner</th>
+              <th>排序</th>
+              <th>圖片</th>
               <th>導向連結</th>
               <th>狀態</th>
               <th>操作</th>
