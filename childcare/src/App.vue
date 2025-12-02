@@ -160,7 +160,7 @@
           <button class="modal-close" @click="closeAccountModal" aria-label="關閉">×</button>
         </div>
 
-        
+
         <div v-if="showChangePassword && authStore.user?.role === 'admin'" class="password-change-form">
           <input type="password" v-model="newPassword" placeholder="新密碼" />
           <input type="password" v-model="confirmPassword" placeholder="確認新密碼" />

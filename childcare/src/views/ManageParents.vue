@@ -202,6 +202,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth.js'
 import { getUserFamilyInfo } from '../api/user.js'
+import { createParentInfo, getParentsByFamilyId } from '../api/parentInfo.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -248,59 +249,79 @@ function validateTWId(id) {
   return sum % 10 === 0
 }
 
+// 生成 UUID v4
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
+
 // 載入家長資料
 const loadParents = async () => {
   try {
-    // 確保用戶已登入，從 authStore 取得 userID
+    // 確保用戶已登入
     if (!authStore.isLoggedIn) {
       console.warn('用戶未登入')
       return
     }
 
-    const userID = authStore.user?.UserID
-    if (!userID) {
-      console.error('無法從 authStore 獲取 userID')
-      return
+    let parentsData = []
+
+    // 優先使用 FamilyInfoID 查詢（兼容多種命名）
+    let familyInfoId = authStore.user?.FamilyInfoID || authStore.user?.familyInfoID || authStore.user?.familyInfoId
+    console.log('🔍 [loadParents] authStore.user 完整內容:', authStore.user)
+    console.log('🔍 [loadParents] 取得的 FamilyInfoID:', familyInfoId)
+
+    if (familyInfoId) {
+      console.log('========== ManageParents: 使用 FamilyInfoID 查詢 ==========')
+      console.log('FamilyInfoID:', familyInfoId)
+
+      try {
+        console.log('========== 開始調用 getParentsByFamilyId API ==========')
+        parentsData = await getParentsByFamilyId(familyInfoId)
+        console.log('✅ 使用 getParentsByFamilyId 成功查詢到家長數:', parentsData.length)
+      } catch (error) {
+        console.warn('⚠️ getParentsByFamilyId 查詢失敗，切換為備用方案:', error.message)
+        parentsData = []
+      }
+    } else {
+      console.warn('⚠️ authStore 中未找到 FamilyInfoID，嘗試使用備用方案')
     }
 
-    console.log('========== ManageParents: 從 authStore 取得用戶信息 ==========')
-    console.log('authStore.user:', authStore.user)
-    console.log('取得的 userID:', userID)
+    // 備用方案：如果沒有 familyInfoId 或查詢失敗，使用 getUserFamilyInfo
+    if (!parentsData || parentsData.length === 0) {
+      console.log('========== 使用備用方案：getUserFamilyInfo API ==========')
+      const userID = authStore.user?.UserID
+      if (!userID) {
+        console.error('❌ 無法從 authStore 獲取 UserID')
+        console.log('authStore.user:', authStore.user)
+        parents.value = []
+        parentIdErrors.value = []
+        return
+      }
 
-    // 調用 API 獲取家庭信息
-    console.log('========== 開始調用 getUserFamilyInfo API ==========')
-    const response = await getUserFamilyInfo(userID)
+      console.log('UserID:', userID)
+      const response = await getUserFamilyInfo(userID)
 
-    if (!response || !response.data) {
-      console.error('❌ API 回應為空')
-      // 如果 API 失敗，使用預設資料
-      parents.value = [
-        {
-          id: 1,
-          name: '王父親',
-          idNumber: '',
-          relation: '父親',
-          gender: '男',
-          phone: '',
-          email: '',
-          job: '',
-          birthday: '',
-          householdAddress: '',
-          contactAddress: ''
-        }
-      ]
-      return
+      if (response && response.data && response.data.parents) {
+        console.log('✅ 使用 getUserFamilyInfo 成功查詢到家長數:', response.data.parents.length)
+        parentsData = response.data.parents
+      } else {
+        console.warn('⚠️ getUserFamilyInfo 回應中沒有家長資料')
+        parentsData = []
+      }
     }
 
-    const familyData = response.data
-    console.log('========== ManageParents: 家庭數據結構分析 ==========')
-    console.log('familyData 完整對象:', familyData)
-    console.log('familyData.parents 內容:', familyData.parents)
+    console.log('========== ManageParents: 家長資料查詢結果 ==========')
+    console.log('查詢到的家長數量:', parentsData.length)
+    console.log('完整資料:', parentsData)
 
     // 映射 API 返回的家長數據到組件變量
-    if (Array.isArray(familyData.parents) && familyData.parents.length > 0) {
+    if (Array.isArray(parentsData) && parentsData.length > 0) {
       console.log('========== 開始映射家長資料 ==========')
-      const mappedParents = familyData.parents.map((parent, idx) => {
+      const mappedParents = parentsData.map((parent, idx) => {
         const mappedParent = {
           id: idx + 1,
           parentID: parent.parentID || '',
@@ -323,44 +344,14 @@ const loadParents = async () => {
       parentIdErrors.value = new Array(mappedParents.length).fill('')
       console.log('✅ 已從 API 載入家長資料:', parents.value)
     } else {
-      console.warn('⚠️ 沒有家長資料或 parents 不是陣列')
-      // 使用預設資料
-      parents.value = [
-        {
-          id: 1,
-          name: '王父親',
-          idNumber: '',
-          relation: '父親',
-          gender: '男',
-          phone: '',
-          email: '',
-          job: '',
-          birthday: '',
-          householdAddress: '',
-          contactAddress: ''
-        }
-      ]
-      parentIdErrors.value = ['']
+      console.warn('⚠️ 沒有查詢到家長資料')
+      parents.value = []
+      parentIdErrors.value = []
     }
   } catch (error) {
     console.error('❌ 載入家長信息失敗:', error)
-    // 載入失敗時使用預設資料
-    parents.value = [
-      {
-        id: 1,
-        name: '王父親',
-        idNumber: '',
-        relation: '父親',
-        gender: '男',
-        phone: '',
-        email: '',
-        job: '',
-        birthday: '',
-        householdAddress: '',
-        contactAddress: ''
-      }
-    ]
-    parentIdErrors.value = ['']
+    parents.value = []
+    parentIdErrors.value = []
   }
 }
 
@@ -418,7 +409,7 @@ const deleteParent = (idx) => {
 }
 
 // 新增家長
-const addParent = () => {
+const addParent = async () => {
   if (!newParent.value.name) {
     alert('請填寫家長姓名')
     return
@@ -429,17 +420,69 @@ const addParent = () => {
     return
   }
 
-  // 新增至列表
-  const parentToAdd = {
-    id: parents.value.length + 1,
-    ...newParent.value
-  }
-  parents.value.push(parentToAdd)
-  parentIdErrors.value.push('')
+  try {
+    console.log('========== 開始新增家長資料到後端 ==========')
 
-  // 儲存並重置
-  saveToStorage()
-  closeAddForm()
+    // 生成家長 ID
+    const parentID = generateUUID()
+
+    // 從 authStore 取得 FamilyInfoID
+    const familyInfoId = authStore.user?.FamilyInfoID || authStore.user?.familyInfoID || authStore.user?.familyInfoId
+    console.log('🔑 [addParent] 從 authStore 取得的 FamilyInfoID:', familyInfoId)
+    console.log('🔑 [addParent] authStore.user 完整內容:', authStore.user)
+
+    // 映射前端資料到 API 格式（按照 API 文檔順序）
+    const parentInfoPayload = {
+      parentID: parentID,
+      familyInfoID: familyInfoId,  // API 要求第二個欄位
+      nationalID: newParent.value.idNumber,
+      name: newParent.value.name,
+      gender: newParent.value.gender === '男',
+      relationship: newParent.value.relation,
+      occupation: newParent.value.job,
+      phoneNumber: newParent.value.phone,
+      householdAddress: newParent.value.householdAddress,
+      mailingAddress: newParent.value.contactAddress,
+      email: newParent.value.email,
+      birthDate: newParent.value.birthday,
+      isSuspended: false,
+      suspendEnd: null
+    }
+
+    console.log('🔑 [addParent] familyInfoID:', familyInfoId)
+    console.log('📤 [addParent] 準備發送的家長資訊:', JSON.stringify(parentInfoPayload, null, 2))
+
+    // 調用 API 新增家長
+    const response = await createParentInfo(parentInfoPayload)
+
+    console.log('✅ API 回應成功:', response)
+
+    // 新增至本地列表（包含 API 返回的資訊，特別是 parentID）
+    const parentToAdd = {
+      id: parents.value.length + 1,
+      parentID: response.parentID || parentID,
+      name: newParent.value.name,
+      idNumber: newParent.value.idNumber,
+      relation: newParent.value.relation,
+      gender: newParent.value.gender,
+      phone: newParent.value.phone,
+      email: newParent.value.email,
+      job: newParent.value.job,
+      birthday: newParent.value.birthday,
+      householdAddress: newParent.value.householdAddress,
+      contactAddress: newParent.value.contactAddress
+    }
+    parents.value.push(parentToAdd)
+    parentIdErrors.value.push('')
+
+    // 儲存並重置
+    saveToStorage()
+    closeAddForm()
+    alert('✅ 家長資料已成功新增')
+  } catch (error) {
+    console.error('❌ 新增家長失敗:', error)
+    alert(`❌ 新增家長失敗: ${error.message}`)
+  }
 }
 
 // 關閉新增表單
