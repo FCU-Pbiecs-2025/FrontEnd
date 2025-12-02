@@ -159,33 +159,8 @@
           </div>
           <button class="modal-close" @click="closeAccountModal" aria-label="關閉">×</button>
         </div>
-        <div class="modal-body">
-          <div class="info-row" v-if="authStore.user?.name">
-            <span class="label">姓名</span>
-            <span class="value">{{ authStore.user.name }}</span>
-          </div>
-          <div class="info-row" v-if="authStore.user?.account">
-            <span class="label">帳號</span>
-            <span class="value">{{ authStore.user.account }}</span>
-          </div>
-          <div class="info-row" v-if="authStore.user?.email">
-            <span class="label">Email</span>
-            <span class="value">{{ authStore.user.email }}</span>
-          </div>
-          <div class="info-row" v-if="authStore.user?.phone">
-            <span class="label">電話</span>
-            <span class="value">{{ authStore.user.phone }}</span>
-          </div>
-          <div class="info-row" v-if="authStore.user?.role">
-            <span class="label">角色</span>
-            <span class="value">{{ authStore.user.role }}</span>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-secondary" @click="closeAccountModal">關閉</button>
-          <button class="btn-danger" @click="handleLogout">登出</button>
-          <button class="btn-secondary" v-if="authStore.user?.role === 'admin'" @click="showChangePassword = !showChangePassword">修改密碼</button>
-        </div>
+
+        
         <div v-if="showChangePassword && authStore.user?.role === 'admin'" class="password-change-form">
           <input type="password" v-model="newPassword" placeholder="新密碼" />
           <input type="password" v-model="confirmPassword" placeholder="確認新密碼" />
@@ -211,11 +186,9 @@ import Chatbot from "@/components/Chatbot.vue";
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from './store/auth.js'
 import Breadcrumbs from "@/components/Breadcrumbs.vue";
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch,computed } from 'vue'
 
 import bannersApi from './api/banners.js'
 
