@@ -168,31 +168,31 @@ const routes = [
                 path: 'citizen',
                 name: 'AdminCitizenAccount',
                 component: () => import('../views/AdminCitizenAccount.vue'),
-                meta: { breadcrumb: '民眾帳號' }
+                meta: { breadcrumb: '民眾帳號', requiresSuperAdmin: true }
             },
             {
                 path: 'detail/:id',
                 name: 'AdminAnnouncementDetail',
                 component: () => import('../views/AdminAnnouncementDetail.vue'),
-                meta: { breadcrumb: '公告詳情' }
+                meta: { breadcrumb: '公告詳情', requiresSuperAdmin: true }
             },
             {
                 path: 'backend',
                 name: 'AdminBackendAccount',
                 component: () => import('../views/AdminBackendAccount.vue'),
-                meta: { breadcrumb: '後台帳號' },
+                meta: { breadcrumb: '後台帳號', requiresSuperAdmin: true },
                 children: [
                     {
                         path: 'new',
                         name: 'AdminBackendNew',
                         component: () => import('../views/AdminBackendEdit.vue'),
-                        meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '新增後台帳號' }
+                        meta: { requiresAuth: true, requiresAdmin: true, requiresSuperAdmin: true, breadcrumb: '新增後台帳號' }
                     },
                     {
                         path: ':id/edit',
                         name: 'AdminBackendEdit',
                         component: () => import('../views/AdminBackendEdit.vue'),
-                        meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '編輯後台帳號' }
+                        meta: { requiresAuth: true, requiresAdmin: true, requiresSuperAdmin: true, breadcrumb: '編輯後台帳號' }
                     }
                 ]
             },
@@ -200,19 +200,19 @@ const routes = [
                 path: 'banner',
                 name: 'AdminBannerManager',
                 component: () => import('../views/AdminBannerManager.vue'),
-                meta: { breadcrumb: '首頁海報' },
+                meta: { breadcrumb: '首頁海報', requiresSuperAdmin: true },
                 children: [
                     {
                         path: 'new',
                         name: 'AdminBannerNew',
                         component: () => import('../views/AdminBannerEdit.vue'),
-                        meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '新增海報' }
+                        meta: { requiresAuth: true, requiresAdmin: true, requiresSuperAdmin: true, breadcrumb: '新增海報' }
                     },
                     {
                         path: ':id/edit',
                         name: 'AdminBannerEdit',
                         component: () => import('../views/AdminBannerEdit.vue'),
-                        meta: { requiresAuth: true, requiresAdmin: true, breadcrumb: '編輯海報' }
+                        meta: { requiresAuth: true, requiresAdmin: true, requiresSuperAdmin: true, breadcrumb: '編輯海報' }
                     }
                 ]
             },
@@ -220,19 +220,19 @@ const routes = [
                 path: 'announcement',
                 name: 'AdminAnnouncement',
                 component: () => import('../views/AdminAnnouncement.vue'),
-                meta: { breadcrumb: '系統公告' },
+                meta: { breadcrumb: '系統公告', requiresSuperAdmin: true },
                 children: [
                     {
                         path: 'create',
                         name: 'AdminAnnouncementCreate',
                         component: () => import('../views/AdminAnnouncementEdit.vue'),
-                        meta: { breadcrumb: '新增公告' }
+                        meta: { breadcrumb: '新增公告', requiresSuperAdmin: true }
                     },
                     {
                         path: 'edit/:id',
                         name: 'AdminAnnouncementEdit',
                         component: () => import('../views/AdminAnnouncementEdit.vue'),
-                        meta: { breadcrumb: '編輯公告' }
+                        meta: { breadcrumb: '編輯公告', requiresSuperAdmin: true }
                     }
                 ]
             },
@@ -240,7 +240,7 @@ const routes = [
                 path: 'guidelines',
                 name: 'AdminGuidelines',
                 component: () => import('../views/AdminGuidelines.vue'),
-                meta: { breadcrumb: '規範說明', requiresAuth: true, requiresAdmin: true }
+                meta: { breadcrumb: '規範說明', requiresAuth: true, requiresAdmin: true, requiresSuperAdmin: true }
             },
             {
                 path: 'institution',
@@ -346,7 +346,7 @@ const routes = [
                 path: 'lottery-draw',
                 name: 'AdminLotteryDraw',
                 component: () => import('../views/AdminLotteryDraw.vue'),
-                meta: { breadcrumb: '補位抽籤' }
+                meta: { breadcrumb: '補位抽籤', requiresSuperAdmin: true }
             },
             {
                 path: 'waitlist',
@@ -389,6 +389,12 @@ router.beforeEach((to, from, next) => {
             path: '/login',
             query: { redirect: to.fullPath }
         })
+        return
+    }
+
+    // 檢查是否需要 super_admin 權限
+    if (to.meta.requiresSuperAdmin && authStore.user?.role !== 'super_admin') {
+        next('/admin')
         return
     }
 

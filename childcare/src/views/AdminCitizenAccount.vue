@@ -137,7 +137,9 @@ const goToPage = async (page) => {
 
 // 管理帳號
 const manageAccount = (userID) => {
-  router.push({ path: '/member-center', query: { accountId: userID } })
+  if (!userID) return
+  const guid = String(userID).toUpperCase()
+  router.push({ name: 'ApplicationStatus', query: { userID: guid, refresh: Date.now() } })
 }
 
 // 返回

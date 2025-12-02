@@ -136,10 +136,13 @@ import { useRouter } from 'vue-router'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../store/auth.js'
 import { getUserFamilyInfo } from '../api/user.js'
+import { useApplicationsStore } from '../store/applications.js'
+import { getUserApplicationDetails, CASE_STATUS_MAP } from '../api/application.js'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const applicationsStore = useApplicationsStore()
 
 // 帳號管理（當 route query 帶 accountId 時顯示）
 const accountId = ref(route.query.accountId || '')
@@ -285,32 +288,67 @@ const cancelProfileEdit = () => {
   editProfileMode.value = false
 }
 
+// 將狀態映射為 CSS 類別
+function mapStatusToClass(status) {
+  if (!status) return 'processing'
+  const codeKey = String(status)
+  let resolved = status
+  if (CASE_STATUS_MAP && CASE_STATUS_MAP[codeKey]) {
+    resolved = CASE_STATUS_MAP[codeKey]
+  }
+  const statusMap = {
+    '審核中': 'processing',
+    '需要補件': 'supplement',
+    '已退件': 'rejected',
+    '候補中': 'waitingForAdmission',
+    '錄取候補中': 'waitingForAdmission',
+    '撤銷申請審核中': 'revokeProcessing',
+    '撤銷申請通過': 'revoked',
+    '已退托': 'withdrawn',
+    '已錄取': 'admitted',
+    'admitted': 'admitted',
+    '錄取': 'admitted'
+  }
+  return statusMap[resolved] || 'processing'
+}
+
 // 初始化會員中心資料
 onMounted(async () => {
-  // 確保用戶已登入，如果沒有登入則導向登入頁
-  if (!authStore.isLoggedIn) {
+  // 檢查是否為後台管理模式（有 userID 參數）
+  const isAdminMode = route.params.userID || route.query.userID
+
+  // 確保用戶已登入，如果沒有登入且非後台管理模式則導向登入頁
+  if (!authStore.isLoggedIn && !isAdminMode) {
     console.warn('用戶未登入，導向登入頁面')
     router.push('/login')
     return
   }
 
-  // 從 authStore 取得 userID
-  const userID = authStore.user?.UserID
-  console.log('========== 從 authStore 取得用戶信息 ==========')
+  // 優先使用路由參數中的 userID (用於後台管理)，否則使用當前登入用戶的 ID
+  let targetUserID = route.params.userID || route.query.userID || authStore.user?.UserID
+
+  // 將 userID 轉換為大寫以匹配資料庫格式（GUID）
+  if (targetUserID) {
+    targetUserID = targetUserID.toUpperCase()
+  }
+
+  console.log('========== 從路由或 authStore 取得用戶信息 ==========')
+  console.log('route.params.userID:', route.params.userID)
+  console.log('route.query.userID:', route.query.userID)
   console.log('authStore.user:', authStore.user)
-  console.log('取得的 userID:', userID)
+  console.log('轉換為大寫後的 targetUserID:', targetUserID)
 
   // 載入用戶的家庭信息（包括家長和幼兒資訊）
-  if (!userID) {
-    console.error('無法從 authStore 獲取 userID，家庭信息無法載入')
+  if (!targetUserID) {
+    console.error('無法取得 userID，家庭信息無法載入')
     return
   }
 
   try {
     console.log('========== 開始調用 getUserFamilyInfo API ==========')
-    console.log('將查詢的 userID:', userID)
+    console.log('將查詢的 targetUserID:', targetUserID)
 
-    const response = await getUserFamilyInfo(userID)
+    const response = await getUserFamilyInfo(targetUserID)
 
     console.log('========== API 回應完整信息 ==========')
     console.log('完整 response:', response)
@@ -450,72 +488,82 @@ onMounted(async () => {
 // 載入申請記錄
 const loadApplications = async () => {
   try {
-    // 這裡可以呼叫 API 獲取真實的申請記錄
-    // const response = await getUserApplications()
-    // applications.value = response.data
+    applicationsStore.setLoading(true)
+    applicationsStore.clearError()
 
-    // 示例資料 - 包含所有申請狀態
-    applications.value = [
-      {
-        id: 1,
-        caseNumber: 'CC2024010001',
-        title: '公共托育服務申請 - 審核中',
-        date: '2024-01-15',
-        details: '申請人: 王小明 | 幼兒: 王小美',
-        status: 'processing'
-      },
-      {
-        id: 2,
-        caseNumber: 'CC2024010002',
-        title: '公共托育服務申請- 需要補件',
-        date: '2024-01-12',
-        details: '申請人: 王小明 | 幼兒: 王小美',
-        status: 'supplement'
-      },
-      {
-        id: 3,
-        caseNumber: 'CC2024010003',
-        title: '公共托育服務申請 - 已退件',
-        date: '2024-01-10',
-        details: '申請人: 李大華 | 幼兒: 李小華',
-        status: 'rejected'
-      },
-      {
-        id: 4,
-        caseNumber: 'CC2024010004',
-        title: '公共托育服務申請 - 錄取候補中',
-        date: '2024-01-08',
-        details: '申請人: 張美麗 | 幼兒: 張小天',
-        status: 'waitingForAdmission',
-        queueNumber: 15
-      },
-      {
-        id: 5,
-        caseNumber: 'CC2024010005',
-        title: '公共托育服務申請 - 撤銷申請審核中',
-        date: '2024-01-05',
-        details: '申請人: 陳建國 | 幼兒: 陳小明',
-        status: 'revokeProcessing'
-      },
-      {
-        id: 6,
-        caseNumber: 'CC2024010006',
-        title: '公共托育服務申請 - 撤銷申請通過',
-        date: '2024-01-03',
-        details: '申請人: 林雅文 | 幼兒: 林小花',
-        status: 'revoked'
-      },
-      {
-        id: 8,
-        caseNumber: 'CC2023120008',
-        title: '公共托育服務申請 - 已退托',
-        date: '2023-12-20',
-        details: '申請人: 吳淑芬 | 幼兒: 吳小虎',
-        status: 'withdrawn'
-      }
-    ]
+    // 優先使用路由參數中的 userID (用於後台管理)，否則使用當前登入用戶的 ID
+    let targetUserID = route.params.userID || route.query.userID || authStore.user?.UserID
+
+    // 將 userID 轉換為大寫以匹配資料庫格式（GUID）
+    if (targetUserID) {
+      targetUserID = targetUserID.toUpperCase()
+    }
+
+    console.log('========== loadApplications 開始 ==========')
+    console.log('route.params.userID:', route.params.userID)
+    console.log('route.query.userID:', route.query.userID)
+    console.log('authStore.user?.UserID:', authStore.user?.UserID)
+    console.log('轉換為大寫後的 targetUserID:', targetUserID)
+
+    if (!targetUserID) {
+      console.warn('未找到使用者 ID，無法獲取申請資料')
+      applicationsStore.setApplications([])
+      applications.value = []
+      return
+    }
+
+    const response = await getUserApplicationDetails(targetUserID)
+
+    if (response && Array.isArray(response)) {
+      const formattedApplications = response.map((item, index) => {
+        const rawCase = item.applicationID || item.applicationId || item.caseNo || item.id || item.applicationNo || item.case_number || item.caseId
+        const caseNo = rawCase ? String(rawCase) : `CASE-${Date.now()}-${index}`
+        const rawStatus = item.status !== undefined && item.status !== null ? item.status : item.caseStatus
+        const statusClass = mapStatusToClass(rawStatus)
+
+        return {
+          caseNo: caseNo,
+          applicationID: item.applicationID || item.applicationId || null,
+          applicationDate: item.applicationDate || item.applyDate,
+          applyDate: item.applicationDate || item.applyDate,
+          caseNumber: item.caseNumber || '',
+          childname: item.childname || '',
+          birthDate: item.birthDate || '',
+          institutionID: item.institutionID || '',
+          institutionName: item.institutionName || '',
+          username: item.username || '',
+          cancellationID: item.cancellationID || '',
+          reason: item.reason || '',
+          status: item.status || item.caseStatus || item.state || '',
+          statusClass: statusClass,
+          currentOrder: item.currentOrder || item.queueNumber || null,
+          childNationalID: item.childNationalID || '',
+          queueNumber: item.currentOrder || item.queueNumber,
+          queueTotal: item.queueTotal,
+          estimatedWaitWeeks: item.estimatedWaitWeeks,
+          supplementItems: item.supplementItems,
+          supplementDeadline: item.supplementDeadline,
+          rejectionReason: item.rejectionReason || item.reason,
+          assignedInstitution: item.assignedInstitution
+        }
+      })
+
+      applicationsStore.setApplications(formattedApplications)
+      applications.value = formattedApplications
+    } else if (response) {
+      applicationsStore.setApplications([])
+      applications.value = []
+    } else {
+      applicationsStore.setApplications([])
+      applications.value = []
+    }
   } catch (error) {
     console.error('載入申請記錄失敗:', error)
+    applicationsStore.setError('無法載入申請資料，請稍後再試')
+    applicationsStore.setApplications([])
+    applications.value = []
+  } finally {
+    applicationsStore.setLoading(false)
   }
 }
 

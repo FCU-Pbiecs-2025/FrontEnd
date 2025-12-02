@@ -117,16 +117,27 @@ const fetchUserApplications = async () => {
     applicationsStore.setLoading(true)
     applicationsStore.clearError()
 
-    // 從 Pinia authStore 獲取使用者 ID
-    const userID = authStore.user?.UserID
+    // 優先使用路由參數中的 userID (用於後台管理)，否則使用當前登入用戶的 ID
+    let targetUserID = route.params.userID || route.query.userID || authStore.user?.UserID
 
-    if (!userID) {
+    // 將 userID 轉換為大寫以匹配資料庫格式（GUID）
+    if (targetUserID) {
+      targetUserID = targetUserID.toUpperCase()
+    }
+
+    console.log('========== ApplicationStatus fetchUserApplications 開始 ==========')
+    console.log('route.params.userID:', route.params.userID)
+    console.log('route.query.userID:', route.query.userID)
+    console.log('authStore.user?.UserID:', authStore.user?.UserID)
+    console.log('轉換為大寫後的 targetUserID:', targetUserID)
+
+    if (!targetUserID) {
       console.warn('未找到使用者 ID，無法獲取申請資料')
       applicationsStore.setApplications([])
       return
     }
 
-    const response = await getUserApplicationDetails(userID)
+    const response = await getUserApplicationDetails(targetUserID)
 
     // 將後端資料轉換為前端格式並存入 store
     if (response && Array.isArray(response)) {

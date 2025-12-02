@@ -4,10 +4,13 @@ import http from './http'
 
 /**
  * 取得待辦事項數量
+ * @param {{ institutionId?: number|string }} [params] - 可選查詢參數：機構ID（admin 帳號傳入以取得該機構統計；super_admin 不傳表示全部）
  * @returns {Promise<{pending: number, revoke: number}>} 待審核與撤銷申請數量
  */
-export function getTodoCounts() {
-  return http.get('/adminhome/todo-counts').then(res => res.data)
+export function getTodoCounts(params) {
+  // 僅在有有效參數時才帶上 query
+  const hasParams = params && Object.values(params).some(v => v !== undefined && v !== null && v !== '')
+  return http.get('/adminhome/todo-counts', hasParams ? { params } : undefined).then(res => res.data)
 }
 
 /**
@@ -30,4 +33,3 @@ export function getTodoCounts() {
 export function getAdminAnnouncements() {
   return http.get('/adminhome/announcements').then(res => res.data)
 }
-

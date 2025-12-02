@@ -23,7 +23,7 @@
         <span class="icon">☰</span>
       </button>
       <nav :class="['sidebar-menu', { 'is-open': sidebarOpen }]">
-        <div class="menu-section">
+        <div v-if="isSuperAdmin" class="menu-section">
           <div class="menu-title clickable" @click="toggleSection(0)">
             帳號管理
             <span class="arrow" :class="{open: openSections[0]}" />
@@ -42,9 +42,9 @@
           </div>
           <transition name="slide-fade">
             <ul v-show="openSections[1]">
-              <li @click="navigate('/admin/banner')">首頁海報</li>
-              <li :class="{active: isActive('/admin/announcement')}" @click="navigate('/admin/announcement')">系統公告</li>
-              <li :class="{active: isActive('/admin/guidelines') }" @click="navigate('/admin/guidelines')">規範說明</li>
+              <li v-if="isSuperAdmin" @click="navigate('/admin/banner')">首頁海報</li>
+              <li v-if="isSuperAdmin" :class="{active: isActive('/admin/announcement')}" @click="navigate('/admin/announcement')">系統公告</li>
+              <li v-if="isSuperAdmin" :class="{active: isActive('/admin/guidelines') }" @click="navigate('/admin/guidelines')">規範說明</li>
               <li :class="{active: isActive('/admin/institution')}" @click="navigate('/admin/institution')">機構管理</li>
               <!-- make 班級管理 navigable and active-aware -->
               <li :class="{active: isActive('/admin/class')}" @click="navigate('/admin/class')">班級管理</li>
@@ -67,7 +67,7 @@
           <div class="menu-title clickable" :class="{active: isActive('/admin/case-management')}" @click="navigate('/admin/case-management')">個案管理</div>
           <!-- 修正：候補清冊可點擊，補位抽籤指向對應路由 -->
           <div class="menu-title clickable" :class="{active: isActive('/admin/waitlist')}" @click="navigate('/admin/waitlist')">候補清冊</div>
-          <div class="menu-title clickable" :class="{active: isActive('/admin/lottery-draw')}" @click="navigate('/admin/lottery-draw')">補位抽籤</div>
+          <div v-if="isSuperAdmin" class="menu-title clickable" :class="{active: isActive('/admin/lottery-draw')}" @click="navigate('/admin/lottery-draw')">補位抽籤</div>
         </div>
       </nav>
     </aside>
@@ -137,6 +137,11 @@ import '@/styles/admin-responsive.css'
 // 導入後台首頁 API
 import { getTodoCounts } from '@/api/AdminHome'
 import { getBackendAnnouncements } from '@/api/announcements.js'
+import { useAuthStore } from '@/store/auth.js'
+
+const authStore = useAuthStore()
+const isSuperAdmin = computed(() => authStore.user?.role === 'super_admin')
+const institutionId = computed(() => authStore.user?.InstitutionID || null)
 
 const router = useRouter()
 const route = useRoute()
@@ -150,6 +155,7 @@ const openSections = ref([true, true, true])
 
 const toggleSection = idx => { openSections.value[idx] = !openSections.value[idx] }
 const toggleSidebar = () => { sidebarOpen.value = !sidebarOpen.value }
+const closeSidebar = () => { if (isMobile.value) sidebarOpen.value = false }
 
 // Do not auto-close the sidebar on navigation; keep it open for consistent navigation
 const navigate = (path) => {
@@ -222,30 +228,31 @@ async function fetchTodoCountsAndAnnouncements() {
   loading.value = true
   error.value = null
   try {
-    console.log('開始載入待辦事項和公告...')
-    console.log('當前日期:', new Date().toISOString().split('T')[0])
-    // 使用 AdminHome.js 中的 API 函式並行呼叫後端
+    // 依角色決定是否帶機構ID
+    const todoParams = isSuperAdmin.value ? undefined : (institutionId.value ? { institutionId: institutionId.value } : undefined)
+
     const [todosRes, annRes] = await Promise.all([
-      getTodoCounts(),
+      getTodoCounts(todoParams),
       getBackendAnnouncements()
     ])
 
-    console.log('API 回傳結果:')
-    console.log('- todosRes:', todosRes)
-    console.log('- annRes (raw):', annRes)
-    console.log('- annRes 類型:', typeof annRes)
-    console.log('- annRes 是否為陣列:', Array.isArray(annRes))
-    console.log('- annRes 長度:', annRes?.length)
-
     // 解析 todo-counts 格式: { pending: number, revoke: number }
-    // 更新 todoList 的 content 與 count
     if (todosRes && typeof todosRes === 'object') {
       const pending = Number(todosRes.pending || 0)
       const revoke = Number(todosRes.revoke || 0)
 
-      // 更新或插入兩種待辦項目
-      // 使用 buildTodoList 工廠，條件性加入抽籤通知
-      todoList.value = buildTodoList(pending, revoke)
+      // 標題根據角色描述對象：super_admin 顯示「全部」；admin 顯示「本機構」
+      const scopeLabel = isSuperAdmin.value ? '' : '（本機構）'
+      const list = [
+        { id: 'pending', title: `審核新申請${scopeLabel}`, content: `有 ${pending} 筆新申請待審核`, date: null, count: pending },
+        { id: 'revoke', title: `撤銷申請${scopeLabel}`, content: `有 ${revoke} 筆撤銷聲請待審`, date: null, count: revoke }
+      ]
+      if (isLotteryWindow()) {
+        if (!list.find(i => i.id === 'lottery')) {
+          list.push({ id: 'lottery', title: '抽籤通知', content: '7/31 即將進行抽籤', date: null })
+        }
+      }
+      todoList.value = list
     }
 
     // annRes 現在直接是陣列，符合 AnnouncementSummaryDTO 格式
