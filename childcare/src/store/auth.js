@@ -13,6 +13,7 @@ export const useAuthStore = defineStore('auth', {
       phone: '', // 電話
       role: '', // 角色
       InstitutionID: null, // 機構ID (不顯示在UI中)
+      FamilyInfoID: null, // 家庭資料ID
     },
     isAuthenticated: false
   }),
@@ -63,7 +64,8 @@ export const useAuthStore = defineStore('auth', {
             email: user.email || user.Email || '',
             phone: user.phoneNumber || user.PhoneNumber || user.phone || '',
             role: role, // 供路由守衛使用
-            InstitutionID: user.InstitutionID || user.institutionID || user.institutionId || null // 機構ID
+            InstitutionID: user.InstitutionID || user.institutionID || user.institutionId || null, // 機構ID
+            FamilyInfoID: user.FamilyInfoID || user.familyInfoID || user.familyinfoid || null // 家庭資料ID
           }
           this.isAuthenticated = true
           return { success: true }
@@ -97,6 +99,7 @@ export const useAuthStore = defineStore('auth', {
           phone: '',
           role: '',
           InstitutionID: null,
+          FamilyInfoID: null,
         }
         this.isAuthenticated = false
       }

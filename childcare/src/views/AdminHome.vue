@@ -228,8 +228,8 @@ async function fetchTodoCountsAndAnnouncements() {
   loading.value = true
   error.value = null
   try {
-    // 依角色決定是否帶機構ID
-    const todoParams = isSuperAdmin.value ? undefined : (institutionId.value ? { institutionId: institutionId.value } : undefined)
+    // 依角色決定是否帶機構ID（使用大寫 InstitutionID 符合資料庫欄位）
+    const todoParams = isSuperAdmin.value ? undefined : (institutionId.value ? { InstitutionID: institutionId.value } : undefined)
 
     const [todosRes, annRes] = await Promise.all([
       getTodoCounts(todoParams),
