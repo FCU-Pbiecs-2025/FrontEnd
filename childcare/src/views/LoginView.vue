@@ -6,22 +6,22 @@
         <div class="form-group">
           <label for="account">帳號</label>
           <input
-            id="account"
-            v-model="loginForm.account"
-            type="text"
-            placeholder="請輸入帳號"
-            required
+              id="account"
+              v-model="loginForm.account"
+              type="text"
+              placeholder="請輸入帳號"
+              required
           />
         </div>
 
         <div class="form-group">
           <label for="password">密碼</label>
           <input
-            id="password"
-            v-model="loginForm.password"
-            type="password"
-            placeholder="請輸入密碼"
-            required
+              id="password"
+              v-model="loginForm.password"
+              type="password"
+              placeholder="請輸入密碼"
+              required
           />
         </div>
 
@@ -35,13 +35,13 @@
           <label for="captcha">驗證碼</label>
           <div class="captcha-row">
             <input
-              id="captcha"
-              v-model="loginForm.captcha"
-              type="text"
-              placeholder="請輸入驗證碼"
-              maxlength="4"
-              required
-              class="captcha-input"
+                id="captcha"
+                v-model="loginForm.captcha"
+                type="text"
+                placeholder="請輸入驗證碼"
+                maxlength="4"
+                required
+                class="captcha-input"
             />
             <img :src="captchaImg" alt="驗證碼" class="captcha-img" @click="refreshCaptcha" title="點擊刷新驗證碼" />
             <button type="button" class="refresh-captcha-btn" @click="refreshCaptcha" title="刷新驗證碼">⟳</button>
@@ -123,10 +123,10 @@ onUnmounted(() => {
 const initReCaptchaV2 = async () => {
   try {
     const widgetId = await renderReCaptchaV2(
-      'login-recaptcha-container',
-      onRecaptchaV2Success,
-      'light',
-      'normal'
+        'login-recaptcha-container',
+        onRecaptchaV2Success,
+        'light',
+        'normal'
     )
     recaptchaWidgetId.value = widgetId
   } catch (error) {
@@ -201,24 +201,37 @@ const handleLogin = async () => {
       console.log('登入成功，用戶資料:', result.user)
 
       // 根據 permissionType 設定對應的 role
+      // 從多個可能的位置取得後端回傳的權限欄位，支援大小寫與放在 root 層或 user 層
+      const rawPerm = result.user?.PermissionType ?? result.user?.permissionType ?? result.PermissionType ?? result.permissionType
+      const permissionTypeNum = rawPerm != null && rawPerm !== '' ? Number(rawPerm) : null
+      console.log('解析到的 raw permission:', rawPerm, '轉換後:', permissionTypeNum)
+
       let role = 'general'
-      if (result.user.permissionType === 1) {
+      if (permissionTypeNum === 1) {
         role = 'super_admin'
-      } else if (result.user.permissionType === 2) {
+      } else if (permissionTypeNum === 2) {
         role = 'admin'
       }
 
       // 登入成功都存入 Pinia
       authStore.token = 'user-token'
+      // 保留後端回傳的原始欄位並將權限欄位統一為 PermissionType (number)
+      // Normalize user keys to lowercase (name, email, phone) to match App.vue usage
+      const apiUser = result.user || result || {}
       authStore.user = {
-        ...result.user,
-        role: role // 設定 role 供路由守衛使用
+        UserID: apiUser.UserID || apiUser.userID || apiUser.userId || apiUser.id || null,
+        PermissionType: permissionTypeNum,
+        name: apiUser.Name || apiUser.name || apiUser.accountName || apiUser.displayName || '',
+        account: apiUser.account || apiUser.Account || apiUser.userAccount || '',
+        email: apiUser.email || apiUser.Email || apiUser.mail || '',
+        phone: apiUser.phoneNumber || apiUser.PhoneNumber || apiUser.phone || apiUser.mobile || '',
+        role: role
       }
       authStore.isAuthenticated = true
       console.log('Pinia 狀態已更新，用戶角色:', role)
 
       // 權限判斷跳轉
-      const permissionType = result.user?.permissionType
+      const permissionType = permissionTypeNum
       console.log('權限類型:', permissionType)
       const redirect = router.currentRoute.value.query.redirect
       console.log('重定向參數:', redirect)
@@ -263,10 +276,13 @@ const handleTestLogin = async () => {
   // 設定假的登入狀態以通過路由守衛
   authStore.token = 'test-token'
   authStore.user = {
-    id: 'test-user',
+    UserID: 'test-user',
+    PermissionType: 3,
     name: '測試用戶',
+    account: 'test-user',
     email: 'test@example.com',
-    role: 'test'
+    phone: '',
+    role: 'general'
   }
   authStore.isAuthenticated = true
 
@@ -291,10 +307,13 @@ const handleAdminTestLogin = async () => {
   // 設定假的 admin 登入狀態
   authStore.token = 'admin-test-token'
   authStore.user = {
-    id: 'admin-test',
+    UserID: 'admin-test',
+    PermissionType: 1,
     name: '後台管理員',
+    account: 'admin-test',
     email: 'admin@example.com',
-    role: 'admin'
+    phone: '',
+    role: 'super_admin'
   }
   authStore.isAuthenticated = true
   // localStorage.setItem('token', 'admin-test-token')

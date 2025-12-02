@@ -113,9 +113,9 @@
         <div class="modal-footer">
           <button class="btn-secondary" @click="closeAccountModal">關閉</button>
           <button class="btn-danger" @click="handleLogout">登出</button>
-          <button class="btn-secondary" v-if="authStore.user?.role !== 'citizen' && authStore.user?.role !== 'test'" @click="showChangePassword = !showChangePassword">修改密碼</button>
+          <button class="btn-secondary" v-if="authStore.user?.role === 'admin'" @click="showChangePassword = !showChangePassword">修改密碼</button>
         </div>
-        <div v-if="showChangePassword && authStore.user?.role !== 'citizen' && authStore.user?.role !== 'test'" class="password-change-form">
+        <div v-if="showChangePassword && authStore.user?.role === 'admin'" class="password-change-form">
           <input type="password" v-model="newPassword" placeholder="新密碼" />
           <input type="password" v-model="confirmPassword" placeholder="確認新密碼" />
           <button class="btn-danger" @click="handleChangePassword">送出</button>
@@ -175,7 +175,7 @@ import Chatbot from "@/components/Chatbot.vue";
 import { useRouter } from 'vue-router'
 import { useAuthStore } from './store/auth.js'
 import Breadcrumbs from "@/components/Breadcrumbs.vue";
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import bannersApi from './api/banners.js'
 
 // 路由器實例
@@ -244,7 +244,7 @@ const passwordError = ref('')
 
 const showChangePassword = ref(false)
 
-const handleChangePassword = () => {
+const handleChangePassword = async () => {
   passwordError.value = '' // 重置錯誤訊息
 
   // 簡單的前端驗證
@@ -258,18 +258,20 @@ const handleChangePassword = () => {
     return
   }
 
-  // 呼叫後端 API 進行密碼修改
-  authStore.changePassword(newPassword.value)
-      .then(() => {
-        // 密碼修改成功後的處理
-        closeAccountModal()
-        router.push('/') // 可選：修改密碼後導向的頁面
-      })
-      .catch(err => {
-        // 處理錯誤
-        passwordError.value = '修改密碼失敗，請稍後再試'
-        console.error(err)
-      })
+  try {
+    // 呼叫後端 API 進行密碼修改
+    const result = await authStore.changePassword(newPassword.value)
+
+    // 密碼修改成功後的處理
+    alert(result.message || '密碼修改成功')
+    showChangePassword.value = false
+    newPassword.value = ''
+    confirmPassword.value = ''
+  } catch (err) {
+    // 處理錯誤
+    passwordError.value = err.message || '修改密碼失敗，請稍後再試'
+    console.error('Password change error:', err)
+  }
 }
 
 const carouselImages = ref([])
@@ -280,9 +282,9 @@ async function fetchCarousel() {
   try {
     const res = await bannersApi.active()
     const imgs = (res.data || [])
-      .map(item => (item && typeof item.imageName === 'string' ? item.imageName.trim() : ''))
-      .filter(name => !!name)
-      .map(name => bannersApi.imageUrl(name))
+        .map(item => (item && typeof item.imageName === 'string' ? item.imageName.trim() : ''))
+        .filter(name => !!name)
+        .map(name => bannersApi.imageUrl(name))
     // 加上 cache buster，避免瀏覽器快取舊圖
     const ts = Date.now()
     carouselImages.value = imgs.map(u => `${u}${u.includes('?') ? '&' : '?'}_=${ts}`)
@@ -349,8 +351,8 @@ function retryCarouselImage(event) {
 
     // unique and drop blanks
     const uniq = Array.from(new Set(candidates.filter(Boolean)))
-      // avoid retrying with exactly the same URL as current
-      .filter(u => u !== currentUrl)
+        // avoid retrying with exactly the same URL as current
+        .filter(u => u !== currentUrl)
 
     if (idx >= uniq.length) {
       console.warn('Carousel image failed. Tried all candidates for:', name, '\nCandidates:', uniq)
@@ -369,6 +371,24 @@ function retryCarouselImage(event) {
     console.debug('retryCarouselImage failed', e)
   }
 }
+
+// 角色正規化：監聽 PermissionType 變化，自動同步 user.role
+watch(
+  () => authStore.user ? (authStore.user.PermissionType ?? authStore.user.permissionType) : null,
+  (perm) => {
+    if (perm == null) return
+    const num = Number(perm)
+    let role = 'general'
+    if (num === 1) role = 'super_admin'
+    else if (num === 2) role = 'admin'
+    // 僅在不同時更新，避免不必要的響應
+    if (authStore.user.role !== role) {
+      authStore.user.role = role
+      console.debug('[RoleSync] Synced role from PermissionType:', perm, '=>', role)
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>

@@ -95,7 +95,12 @@ const loadAccounts = async (offset = 0) => {
     const response = await getUsersWithOffset(offset, pageSize.value)
 
     // 過濾只顯示 permissionType=3 的一般使用者
-    const citizenAccounts = response.content.filter(user => user.permissionType === 3)
+    // 從多個可能的欄位名稱讀取權限，並轉成 number 再比較
+    const citizenAccounts = response.content.filter(user => {
+      const raw = user.PermissionType ?? user.permissionType ?? null
+      const p = raw != null && raw !== '' ? Number(raw) : null
+      return p === 3
+    })
 
     // 轉換資料格式並添加狀態文字
     allAccounts.value = citizenAccounts.map(user => ({

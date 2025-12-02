@@ -12,26 +12,26 @@
           <div class="query-row">
             <div class="search-area">
               <label class="type-label">選擇公托社區：</label>
-              <select v-model="selectedInstitution" class="date-input" @change="loadLotteryData">
-                <option value="">全部機構</option>
-                <option v-for="inst in institutions" :key="inst.id" :value="inst.id">
-                  {{ inst.name }}
+              <select v-model="selectedInstitution" class="date-input" @change="loadLotteryData" :disabled="institutionsLoading">
+                <option value="" disabled>{{ institutionsLoading ? '載入中...' : '--- 請選擇機構 ---' }}</option>
+                <option v-for="inst in institutions" :key="inst.institutionID" :value="inst.institutionID">
+                  {{ inst.institutionName }}
                 </option>
               </select>
+              <div v-if="institutionsError" class="error-msg">{{ institutionsError }}</div>
             </div>
           </div>
         </div>
         <div class="btn-query">
-          <button class="btn primary" @click="performDraw" :disabled="!hasWaitingList">進行抽籤</button>
-          <button class="btn query" @click="exportResults" :disabled="lotteryResults.length === 0">結果公告</button>
+          <button class="btn primary" @click="performDraw" :disabled="!canPerformLottery" :title="!selectedInstitution ? '請先選擇機構' : '執行抽籤'">
+            進行抽籤
+          </button>
+        </div>
+        <div v-if="!selectedInstitution" class="hint-msg">
+          ℹ️ 提示：請先選擇特定機構才能執行抽籤
         </div>
       </div>
 
-      <!-- 提示訊息 -->
-      <div class="info-banner" v-if="selectedInstitution && purchasedList.length === 0">
-        <span class="icon-info">ℹ️</span>
-        <span>機構總結：尚無資料</span>
-      </div>
 
       <!-- 抽籤前不顯示表格，抽籤後只顯示結果表格 -->
       <div v-if="showResultModal">
@@ -49,16 +49,19 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in lotteryResults" :key="item.id">
-                <td class="class-cell">{{ item.className }}</td>
+              <tr v-for="item in lotteryResults" :key="item.ApplicationID">
+                <td class="class-cell">{{ getClassNameById(item.ClassID) || '-' }}</td>
                 <td class="applicant-cell">
-                  <div>{{ item.applicantName }}</div>
-                  <div class="id-number">{{ item.applicantId }}</div>
+                  <div>{{ item.Name }}</div>
+                  <div class="id-number">{{ item.NationalID }}</div>
                 </td>
-                <td class="child-cell">{{ item.childName }}</td>
-                <td class="id-cell">{{ item.childId }}</td>
-                <td class="number-cell">{{ item.sequence }}</td>
-                <td class="order-cell">{{ item.order || '-' }}</td>
+                <td class="child-cell">{{ item.Name || '-' }}</td>
+                <td class="id-cell">{{ item.NationalID || '-' }}</td>
+                <td class="number-cell">{{ item.LotteryOrder || '-' }}</td>
+                <td class="order-cell">
+                  <span v-if="item.Status && item.Status.includes('已錄取')">已錄取</span>
+                  <span v-else>{{ item.CurrentOrder || '-' }}</span>
+                </td>
               </tr>
               <tr v-if="lotteryResults.length === 0">
                 <td colspan="6" class="empty-tip">目前沒有抽籤結果</td>
@@ -86,17 +89,17 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { getInstitutionsSimpleAll } from '@/api/Institution.js'
+import { performLottery, getWaitlistByInstitution, getWaitlistStatistics } from '@/api/waitlist.js'
 
 const router = useRouter()
 
 // 機構列表
-const institutions = ref([
-  { id: 1, name: '新竹市西區公托社區中心' },
-  { id: 2, name: '新竹市東區公托社區中心' },
-  { id: 3, name: '新竹市北區公托社區中心' }
-])
+const institutions = ref([])
+const institutionsLoading = ref(false)
+const institutionsError = ref('')
 
 const selectedInstitution = ref('')
 const showDrawModal = ref(false)
@@ -104,128 +107,174 @@ const showResultModal = ref(false)
 const isDrawing = ref(false)
 const drawTime = ref('')
 
-// 購機名單（已分配名額）
+// 購機名單（已分配名額）- 已錄取者
 const purchasedList = ref([])
 
-// 候補名單（待抽籤）
+// 候補名單（待抽籤）- 候補中的申請人
 const waitingList = ref([])
 
-// 抽籤結果
+// 抽籤結果（包含已錄取和候補）
 const lotteryResults = ref([])
 
-// 是否有候補名單
-const hasWaitingList = computed(() => waitingList.value.length > 0)
+// 統計資訊
+const statistics = ref(null)
+
+// 是否可以執行抽籤（需要選擇機構）
+const canPerformLottery = computed(() => selectedInstitution.value !== '')
 
 // 獲取機構名稱
 const getInstitutionName = (id) => {
-  const inst = institutions.value.find(i => i.id === id)
-  return inst ? inst.name : ''
+  if (!id) return '全部機構'
+  const inst = institutions.value.find(i => i.institutionID === id)
+  return inst ? inst.institutionName : ''
 }
 
-// 載入抽籤資料
-const loadLotteryData = () => {
-  // 無論選擇哪個機構（包含全部機構），都要有測試資料
-  purchasedList.value = [
-    {
-      id: 1,
-      className: '小班A',
-      applicantName: '王小明',
-      applicantId: 'A123456789',
-      childName: '王大寶',
-      childId: 'B234567890',
-      sequence: 1,
-      order: 1
-    },
-    {
-      id: 2,
-      className: '小班A',
-      applicantName: '李小華',
-      applicantId: 'C345678901',
-      childName: '李二寶',
-      childId: 'D456789012',
-      sequence: 2,
-      order: 2
+// 獲取班級名稱
+const getClassNameById = (classId) => {
+  if (!classId) return '-'
+  // 這裡可以根據實際需求從班級列表中查詢，目前先返回 ClassID
+  return classId.toString().substring(0, 8) + '...'
+}
+
+// 獲取身分別名稱
+const getIdentityTypeName = (identityType) => {
+  const typeMap = {
+    1: '第一序位',
+    2: '第二序位',
+    3: '第三序位'
+  }
+  return typeMap[identityType] || '第三序位'
+}
+
+// 載入機構列表
+const loadInstitutions = async () => {
+  try {
+    institutionsLoading.value = true
+    institutionsError.value = ''
+    console.log('開始載入機構列表...')
+    const response = await getInstitutionsSimpleAll()
+    console.log('機構API回應:', response)
+
+    if (Array.isArray(response)) {
+      institutions.value = response
+      console.log('載入機構列表成功，共', institutions.value.length, '個機構')
+    } else {
+      console.error('機構API回應格式錯誤:', response)
+      institutionsError.value = 'API 回應格式錯誤'
+      institutions.value = []
     }
-  ];
-  waitingList.value = [
-    {
-      id: 101,
-      className: '小班A',
-      applicantName: '張小花',
-      applicantId: 'E567890123',
-      childName: '張三寶',
-      childId: 'F678901234',
-      sequence: 3,
-      order: null
-    },
-    {
-      id: 102,
-      className: '小班A',
-      applicantName: '陳小美',
-      applicantId: 'G789012345',
-      childName: '陳四寶',
-      childId: 'H890123456',
-      sequence: 4,
-      order: null
-    },
-    {
-      id: 103,
-      className: '小班B',
-      applicantName: '林小強',
-      applicantId: 'I901234567',
-      childName: '林五寶',
-      childId: 'J012345678',
-      sequence: 5,
-      order: null
-    }
-  ];
-  lotteryResults.value = [];
+  } catch (error) {
+    console.error('載入機構列表失敗:', error)
+    institutionsError.value = '載入機構列表失敗: ' + (error.message || '未知錯誤')
+    // 如果API失敗，使用備用的靜態資料
+    institutions.value = [
+      { institutionID: '1', institutionName: '新竹市西區公托社區中心' },
+      { institutionID: '2', institutionName: '新竹市東區公托社區中心' },
+      { institutionID: '3', institutionName: '新竹市北區公托社區中心' }
+    ]
+    console.log('使用備用機構資料')
+  } finally {
+    institutionsLoading.value = false
+  }
+}
+
+// 載入抽籤資料（查詢候補名單和統計）
+const loadLotteryData = async () => {
+  if (!selectedInstitution.value) {
+    purchasedList.value = []
+    waitingList.value = []
+    lotteryResults.value = []
+    statistics.value = null
+    return
+  }
+
+  try {
+    console.log('載入機構資料:', selectedInstitution.value)
+
+    // 同時查詢候補名單和統計資訊
+    const [waitlistData, statsData] = await Promise.all([
+      getWaitlistByInstitution(selectedInstitution.value),
+      getWaitlistStatistics(selectedInstitution.value)
+    ])
+
+    console.log('候補名單資料:', waitlistData)
+    console.log('統計資訊:', statsData)
+
+    // 將候補名單顯示在表格中
+    waitingList.value = waitlistData || []
+    statistics.value = statsData
+
+    // 清空已錄取名單和抽籤結果（這些資料在抽籤後才有）
+    purchasedList.value = []
+    lotteryResults.value = []
+
+  } catch (error) {
+    console.error('載入抽籤資料失敗:', error)
+    alert('載入資料失敗：' + (error.message || '未知錯誤'))
+    purchasedList.value = []
+    waitingList.value = []
+    lotteryResults.value = []
+    statistics.value = null
+  }
 }
 
 // 執行抽籤
 const performDraw = async () => {
-  // 新增確認提醒
-  const confirmMsg = `確定要進行補位抽籤嗎？\n機構：${getInstitutionName(selectedInstitution.value)}\n請確認後再執行。`
+  if (!selectedInstitution.value || selectedInstitution.value === '') {
+    alert('⚠️ 請先選擇特定機構\n\n抽籤功能需要針對單一機構進行，\n無法同時對「全部機構」執行抽籤。\n\n請從下拉選單中選擇一個機構後再執行抽籤。')
+    return
+  }
+
+  // 確認提醒
+  const confirmMsg = `確定要進行補位抽籤嗎？\n機構：${getInstitutionName(selectedInstitution.value)}\n\n⚠️ 注意：\n1. 抽籤將依照第一、第二、第三序位順序進行\n2. 抽籤結果將直接更新資料庫\n3. 請確認所有申請人資料已審核完畢\n\n請確認後再執行。`
   if (!window.confirm(confirmMsg)) {
     return
   }
+
   isDrawing.value = true
 
-  // 模擬抽籤過程（2秒）
-  await new Promise(resolve => setTimeout(resolve, 2000))
+  try {
+    console.log('開始執行抽籤，機構 ID:', selectedInstitution.value)
 
-  // 隨機打亂候補名單並分配排序
-  const shuffled = [...waitingList.value]
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    // 呼叫後端抽籤 API
+    const result = await performLottery(selectedInstitution.value, true)
+
+    console.log('抽籤完成，結果:', result)
+
+    // 記錄抽籤時間
+    const now = new Date()
+    drawTime.value = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+
+    // 顯示抽籤結果
+    if (result.success) {
+      // 合併已錄取和候補名單作為抽籤結果
+      lotteryResults.value = [
+        ...(result.acceptedList || []),
+        ...(result.waitlistList || [])
+      ]
+
+      showResultModal.value = true
+
+
+      // 重新載入資料
+      await loadLotteryData()
+    } else {
+      alert('抽籤失敗：' + (result.message || '未知錯誤'))
+    }
+
+  } catch (error) {
+    console.error('抽籤執行失敗:', error)
+    alert('抽籤執行失敗：' + (error.response?.data?.message || error.message || '未知錯誤'))
+  } finally {
+    isDrawing.value = false
   }
-
-  // 分配排序號碼
-  shuffled.forEach((item, index) => {
-    item.order = index + 1
-  })
-
-  waitingList.value = shuffled
-  lotteryResults.value = shuffled
-
-  // 記錄抽籤時間
-  const now = new Date()
-  drawTime.value = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-
-  isDrawing.value = false
-  showResultModal.value = true
 }
 
-// 匯出結果
-const exportResults = () => {
-  if (lotteryResults.value.length === 0) {
-    alert('目前沒有抽籤結果可匯出')
-    return
-  }
 
-  alert('匯出功能開發中...')
-}
+// 組件掛載時載入機構列表
+onMounted(() => {
+  loadInstitutions()
+})
 </script>
 
 <style scoped>
@@ -248,7 +297,6 @@ const exportResults = () => {
 .btn-query { display:flex; gap:10px; justify-content:center; margin-top:10px }
 .btn { padding:7px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:600 }
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff }
-.btn.query { background:#e6f2ff; color:#2e6fb7; border:1px solid #b3d4fc }
 
 /* 表格 */
 .table-section { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:0; margin-bottom:24px; box-shadow:0 2px 8px rgba(16,24,40,0.04) }
@@ -261,8 +309,8 @@ const exportResults = () => {
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
 
 /* 提示訊息 */
-.info-banner { display:flex; align-items:center; gap:12px; padding:10px 14px; background:#fff8e1; border:1px solid #ffe58a; border-radius:8px; margin-bottom:16px; color:#8b6a00 }
-.icon-info { font-size:1.2rem }
+.error-msg { color:#dc3545; font-size:0.875rem; margin-top:4px; margin-left:8px }
+.hint-msg { color:#666; font-size:0.875rem; margin-top:8px; text-align:center; font-style:italic }
 
 /* Modal 與動畫（維持原樣式，略） */
 /* ...existing code... */

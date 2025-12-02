@@ -129,11 +129,14 @@ const loadAccountFromAPI = async (userId) => {
     }
 
     // 映射 API 資料到表單
+    // Normalize permission field and map to role
+    const rawPerm = userData.PermissionType ?? userData.permissionType ?? null
+    const permNum = rawPerm != null && rawPerm !== '' ? Number(rawPerm) : null
     account.value = {
       id: userData.account || '',
       password: userData.password || '', // 顯示密碼（加密後的）
       org: orgName,
-      role: mapPermissionTypeToRole(userData.permissionType),
+      role: mapPermissionTypeToRole(permNum),
       right: userData.accountStatus === 1 ? 'enable' : 'suspended',
       // 保存完整的 API 資料以便儲存時使用
       _apiData: userData

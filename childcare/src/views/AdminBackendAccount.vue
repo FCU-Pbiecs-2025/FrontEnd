@@ -152,13 +152,18 @@ const loadBackendAccounts = async (offset = 0) => {
 
     // 過濾只顯示 permissionType=1 或 2 的管理員和機構人員
     const backendAccounts = response.content.filter(user =>
-      user.permissionType === 1 || user.permissionType === 2
+      // 支援大小寫與不同欄位名稱，將 raw 欄位轉為 number
+      (() => {
+        const raw = user.PermissionType ?? user.permissionType ?? null
+        const p = raw != null && raw !== '' ? Number(raw) : null
+        return p === 1 || p === 2
+      })()
     )
 
     // 轉換資料格式並添加文字
     allAdmins.value = backendAccounts.map(user => ({
       ...user,
-      roleText: getPermissionTypeName(user.permissionType),
+      roleText: getPermissionTypeName(user.PermissionType ?? user.permissionType ?? null),
       statusText: getAccountStatusName(user.accountStatus)
     }))
 
