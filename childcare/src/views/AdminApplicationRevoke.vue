@@ -91,9 +91,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { fetchRevokedApplications, searchRevokedApplications } from '@/api/revokes'
+import { useAuthStore } from '@/store/auth.js'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 const filters = ref({ type: '', revokeId: '', applicant: '' })
 
 // 原始完整資料列表（當前分頁的資料，由後端載入）
@@ -127,7 +129,21 @@ async function loadData() {
   try {
     isLoading.value = true
     isSearching.value = false
-    const { items: list, totalPages: tp, totalElements: te } = await fetchRevokedApplications(currentPage.value - 1, PAGE_SIZE)
+
+    // 判斷使用者角色，如果是 admin 則只查詢該機構的資料
+    const userRole = authStore.user?.role
+    const institutionID = authStore.user?.InstitutionID
+
+    let result
+    if (userRole === 'admin' && institutionID) {
+      // admin 使用者：使用 searchRevokedApplications 並帶入 institutionID
+      result = await searchRevokedApplications('', '', currentPage.value - 1, PAGE_SIZE, institutionID)
+    } else {
+      // super_admin 或其他：使用原本的 fetchRevokedApplications
+      result = await fetchRevokedApplications(currentPage.value - 1, PAGE_SIZE)
+    }
+
+    const { items: list, totalPages: tp, totalElements: te } = result
 
     fullList.value = list
     totalPages.value = tp
@@ -165,10 +181,25 @@ async function search(page = 1) {
   try {
     isLoading.value = true
     isSearching.value = true
+
+    // 判斷使用者角色
+    const userRole = authStore.user?.role
+    const userInstitutionID = authStore.user?.InstitutionID
+
     // 後端期望 cancellationID 與 nationalID
     const cancellationID = filters.value.revokeId.trim()
     const nationalID = filters.value.applicant.trim()
-    const { items: list, totalPages: tp, totalElements: te } = await searchRevokedApplications(cancellationID, nationalID, page - 1, PAGE_SIZE)
+
+    // 如果是 admin 使用者，強制帶入 institutionID
+    const institutionID = (userRole === 'admin' && userInstitutionID) ? userInstitutionID : null
+
+    const { items: list, totalPages: tp, totalElements: te } = await searchRevokedApplications(
+      cancellationID,
+      nationalID,
+      page - 1,
+      PAGE_SIZE,
+      institutionID
+    )
 
     // 搜尋結果為後端回傳的分頁清單
     items.value = list

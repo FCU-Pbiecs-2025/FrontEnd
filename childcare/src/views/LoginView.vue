@@ -55,15 +55,6 @@
         <button type="submit" :disabled="isLoading || (useReCaptchaV2 && !isRecaptchaValid)" class="login-btn">
           {{ isLoading ? '登入中...' : '登入' }}
         </button>
-
-        <!-- 測試登入按鈕 -->
-        <button type="button" class="test-login-btn" @click="handleTestLogin">
-          測試登入
-        </button>
-        <!-- 後台帳號測試登入按鈕 -->
-        <button type="button" class="admin-test-login-btn" @click="handleAdminTestLogin">
-          後台帳號測試登入
-        </button>
       </form>
       <div class="login-links">
         <button class="link-btn" @click="goToForgotPassword">忘記密碼？</button>
@@ -271,58 +262,6 @@ const handleLogin = async () => {
   }
 }
 
-// 測試登入處理函數
-const handleTestLogin = async () => {
-  // 設定假的登入狀態以通過路由守衛
-  authStore.token = 'test-token'
-  authStore.user = {
-    UserID: 'test-user',
-    PermissionType: 3,
-    name: '測試用戶',
-    account: 'test-user',
-    email: 'test@example.com',
-    phone: '',
-    role: 'general'
-  }
-  authStore.isAuthenticated = true
-
-  // 將資訊存到 localStorage - disabled
-  // localStorage.setItem('token', 'test-token')
-  // localStorage.setItem('user', JSON.stringify({
-  //   id: 'test-user',
-  //   name: '測試用戶',
-  //   email: 'test@example.com',
-  //   role: 'test'
-  // }))
-
-  // 只有有 redirect 參數才跳轉，否則停留原頁
-  const redirect = router.currentRoute.value.query.redirect
-  if (redirect) {
-    router.push(redirect)
-  }
-}
-
-// 後台帳號測試登入處理函數
-const handleAdminTestLogin = async () => {
-  // 設定假的 admin 登入狀態
-  authStore.token = 'admin-test-token'
-  authStore.user = {
-    UserID: 'admin-test',
-    PermissionType: 1,
-    name: '後台管理員',
-    account: 'admin-test',
-    email: 'admin@example.com',
-    phone: '',
-    role: 'super_admin'
-  }
-  authStore.isAuthenticated = true
-  // localStorage.setItem('token', 'admin-test-token')
-  // localStorage.setItem('user', JSON.stringify(authStore.user))
-  // 回到原始頁面（若有），否則到後台首頁
-  const redirect = router.currentRoute.value.query.redirect
-  router.push(redirect || '/admin')
-}
-
 const refreshCaptcha = () => {
   captchaImg.value = generateCaptcha()
   loginForm.captcha = ''
@@ -410,50 +349,6 @@ const goToRegister = () => {
 }
 
 .login-btn:disabled {
-  background-color: #6c757d;
-  cursor: not-allowed;
-}
-
-.test-login-btn {
-  width: 100%;
-  padding: 0.75rem;
-  background-color: #28a745;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  margin-top: 0.5rem;
-}
-
-.test-login-btn:hover:not(:disabled) {
-  background-color: #218838;
-}
-
-.test-login-btn:disabled {
-  background-color: #6c757d;
-  cursor: not-allowed;
-}
-
-.admin-test-login-btn {
-  width: 100%;
-  padding: 0.75rem;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  margin-top: 0.5rem;
-}
-
-.admin-test-login-btn:hover:not(:disabled) {
-  background-color: #0056b3;
-}
-
-.admin-test-login-btn:disabled {
   background-color: #6c757d;
   cursor: not-allowed;
 }

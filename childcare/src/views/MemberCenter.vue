@@ -75,13 +75,16 @@
             @keydown.space.prevent="goToProgress(item)"
           >
             <div class="application-info">
-              <h4 class="application-title">{{ item.caseNumber || 'N/A' }}</h4>
-              <p class="application-date">申請日期: {{ item.date }}</p>
-              <p v-if="item.details" class="application-details">{{ item.details }}</p>
+              <h4 class="application-title">{{ item.caseNumber || item.caseNo }}</h4>
+              <p class="application-date">申請日期: {{ item.applyDate || item.date }}</p>
+              <p class="application-details">案件編號: {{ item.caseNumber || '—' }}</p>
+              <p class="application-details">申請人: {{ item.username || '—' }}</p>
+              <p class="application-details">幼兒姓名: {{ item.childname || '—' }}</p>
+              <p class="application-details">申請機構: {{ item.institutionName || '—' }}</p>
+              <p v-if="item.reason" class="application-details">原因: {{ item.reason }}</p>
               <p v-else class="application-details muted">無詳細說明</p>
-
-              <p v-if="item.status === 'waitingForAdmission' && item.queueNumber" class="queue-info">
-                目前序位：<span class="queue-number">第 {{ item.queueNumber }} 位</span>
+              <p v-if="(item.status === '錄取候補中' || item.status === 'waitingForAdmission') && item.currentOrder" class="queue-info">
+                目前序位：<span class="queue-number">第 {{ item.currentOrder }} 位</span>
               </p>
             </div>
 
@@ -634,14 +637,36 @@ const getStatusLabel = (statusClass, rawStatus) => {
 // 兼容舊代碼：保留 getStatusText 作為簡單 wrapper
 const getStatusText = (status) => getStatusLabel(status, status)
 
-// 前往統一的申請進度詳情頁（使用 caseNumber 優先，否則使用 id）
-const goToProgress = (application) => {
-  const caseNo = application.caseNumber || application.id || ''
-  if (!caseNo) {
-    alert('找不到案號，無法檢視詳情')
+// 前往統一的申請進度詳情頁（與 ApplicationStatus.vue 一致，使用 applicationID）
+const goToProgress = async (application) => {
+  console.log('點擊項目:', application)
+
+  // 將選中的申請資料存入 store
+  applicationsStore.setSelectedApplication(application)
+  console.log('已將申請資料存入 store:', application)
+
+  // 嘗試多個可能的欄位來取得案件識別（優先使用 applicationID）
+  const selectedCase = application.applicationID || application.applicationId || application.caseNo || application.id || application.caseId || application.caseNumber || null
+  console.log('選取的案件識別:', selectedCase)
+
+  if (!selectedCase) {
+    console.error('無法從項目中取得任何案件識別欄位', application)
+    alert('案件識別不存在，無法查看詳細資料')
     return
   }
-  router.push({ name: 'ApplicationProgressDetail', params: { caseNo } })
+
+  const caseParam = String(selectedCase)
+  const pathPush = `/application-status/progress/${encodeURIComponent(caseParam)}`
+
+  console.log('使用 path 跳轉到:', pathPush)
+
+  try {
+    await router.push(pathPush)
+    console.log('路由跳轉成功')
+  } catch (e) {
+    console.error('路由跳轉失敗:', e)
+    alert('無法跳轉到詳細頁，請查看 console 以獲取更多資訊')
+  }
 }
 
 // 儲存家長資料

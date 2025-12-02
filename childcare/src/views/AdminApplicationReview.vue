@@ -8,7 +8,8 @@
 
       <div class="query-card">
         <div class="query-container">
-          <div class="query-row">
+          <!-- 只有 super_admin 才顯示機構篩選 -->
+          <div class="query-row" v-if="authStore.user?.role === 'super_admin'">
             <div class="search-area">
               <label class="type-label">機構名稱：</label>
               <select v-model="filters.institution" class="date-input" style="width:180px">
@@ -101,8 +102,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getApplicationsByOffset, searchApplications, getApplicationById } from '@/api/application.js';
+import { useAuthStore } from '@/store/auth.js';
 
 const router = useRouter()
+const authStore = useAuthStore()
 const filters = ref({ institution: '', applicationId: '', applicant: '' })
 
 // 分頁設定
@@ -118,7 +121,24 @@ const items = ref([]);
 async function fetchApplications() {
   try {
     const offset = (currentPage.value - 1) * PAGE_SIZE;
-    const data = await getApplicationsByOffset(offset, PAGE_SIZE);
+
+    // 判斷使用者角色，如果是 admin 則只查詢該機構的資料
+    const userRole = authStore.user?.role;
+    const institutionID = authStore.user?.InstitutionID;
+
+    let data;
+    if (userRole === 'admin' && institutionID) {
+      // admin 使用者：使用 searchApplications 並帶入 institutionID
+      const searchParams = {
+        institutionID: institutionID,
+        institutionName: '',
+        applicationID: ''
+      };
+      data = await searchApplications(searchParams);
+    } else {
+      // super_admin 或其他：使用原本的 getApplicationsByOffset
+      data = await getApplicationsByOffset(offset, PAGE_SIZE);
+    }
 
     if (data && data.content && Array.isArray(data.content)) {
       // 只保留 participantType === '0' 的所有資料（不去重）
@@ -152,11 +172,27 @@ async function fetchApplications() {
 
 async function searchApplicationsByFilters() {
   try {
+    const userRole = authStore.user?.role;
+    const userInstitutionID = authStore.user?.InstitutionID;
+
     const params = {
       institutionID: filters.value.institution,
       institutionName: '',
       applicationID: filters.value.applicationId
     };
+
+    // 如果是 admin 使用者且沒有指定機構篩選，則強制使用該使用者的機構ID
+    if (userRole === 'admin' && userInstitutionID) {
+      if (!params.institutionID) {
+        params.institutionID = userInstitutionID;
+      }
+      // 如果 admin 試圖查詢其他機構的資料，也強制改為自己的機構
+      else if (params.institutionID !== userInstitutionID) {
+        console.warn('Admin 使用者只能查詢自己機構的資料，已自動切換為當前機構');
+        params.institutionID = userInstitutionID;
+      }
+    }
+
     const data = await searchApplications(params);
     if (data && data.content && Array.isArray(data.content)) {
       const filtered = data.content.filter(item => String(item.participantType) === '0');

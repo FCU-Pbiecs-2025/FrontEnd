@@ -206,7 +206,7 @@ function isLotteryWindow(date = new Date()) {
 function buildTodoList(pending = 0, revoke = 0) {
   const list = [
     { id: 'pending', title: '審核新申請', content: `有 ${pending} 筆新申請待審核`, date: null, count: pending },
-    { id: 'revoke', title: '撤銷申請', content: `有 ${revoke} 筆撤銷聲請待審`, date: null, count: revoke }
+    { id: 'revoke', title: '撤銷申請', content: `有 ${revoke} 筆撤銷申請待審核`, date: null, count: revoke }
   ]
   if (isLotteryWindow()) {
     // 避免重複插入：若已有相同 id 則不插入

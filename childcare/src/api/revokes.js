@@ -39,11 +39,12 @@ export async function fetchRevokedApplications(page = 0, size = 10) {
 }
 
 // 新增：搜尋撤銷申請（server-side 分頁）
-export async function searchRevokedApplications(cancellationID = '', nationalID = '', page = 0, size = 10) {
+export async function searchRevokedApplications(cancellationID = '', nationalID = '', page = 0, size = 10, institutionID = null) {
   const offset = page * size
   const params = { offset, size }
   if (cancellationID) params.cancellationID = cancellationID
   if (nationalID) params.nationalID = nationalID
+  if (institutionID) params.institutionID = institutionID
   const res = await http.get('/revoke/applications/search', { params })
   const data = res?.data || {}
   const content = Array.isArray(data.content) ? data.content : []
