@@ -18,7 +18,7 @@
       <div class="title-row">
         <div class="title-left">
           <img src="https://img.icons8.com/ios/48/2e6fb7/treatment-plan.png" class="icon" alt="icon" />
-          <span class="main-title">個案管理編輯 - {{ childNationalId }}</span>
+          <span class="main-title">個案管理編輯</span>
         </div>
         <!-- Always show title-right so we can display identity for all statuses; queue number remains WAITING-only -->
         <div class="title-right">
@@ -76,7 +76,7 @@
 
 
 
-      <div v-if="caseData.status === WAITING" class="wait-extra">
+      <div v-if="caseData.status === '錄取候補中'" class="wait-extra">
         <div class="admit-setup">
           <div class="form-row">
             <label class="info-label">申請單位：</label>
@@ -196,29 +196,18 @@
           <div class="grid one-col">
             <div class="row"><span class="label">申請之身份別：</span><span>{{ caseData.identityType || '—' }}</span></div>
           </div>
-          <ul class="file-list" v-if="(caseData.files?.length || 0) > 0">
-            <li v-for="(f, idx) in caseData.files" :key="idx" class="file-item">
-              <span class="thumb" v-if="isImageFile(f) && fileHref(f)">
-                <img :src="fileHref(f)" alt="preview" />
-              </span>
-              <span class="file-name">{{ f.name }}</span>
-              <div class="file-actions">
-                <button
-                  v-if="canPreview(f)"
-                  type="button"
-                  class="btn small ghost"
-                  @click="openPreview(f)"
-                >預覽</button>
-                <a
-                  class="btn small primary"
-                  :href="fileHref(f) || fallbackDownloadUrl()"
-                  :download="downloadName(f)"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >下載</a>
-              </div>
-            </li>
-          </ul>
+
+          <!-- 顯示附件檔名列表 -->
+          <div v-if="getAttachmentFiles().length > 0" class="attachment-list">
+            <h4>附件檔案</h4>
+            <ul>
+              <li v-for="(file, idx) in getAttachmentFiles()" :key="idx" class="attachment-item">
+                <a href="javascript:void(0)" @click="openFilePreview(file)" class="file-link">
+                  📎 {{ file.name }}
+                </a>
+              </li>
+            </ul>
+          </div>
           <div v-else class="empty-text">無附件</div>
         </div>
       </div>
@@ -231,10 +220,9 @@
             <button class="preview-close" @click="closePreview">×</button>
           </div>
           <div class="preview-body">
-            <img v-if="isImageFile(preview.file) && fileHref(preview.file)" :src="fileHref(preview.file)" alt="image" />
-            <iframe v-else-if="isPdfFile(preview.file) && fileHref(preview.file)" :src="fileHref(preview.file)" title="pdf" />
+            <img v-if="preview.file && preview.file.url" :src="preview.file.url" alt="preview" />
             <div v-else class="preview-fallback">
-              無法預覽此檔案，請使用下載功能。
+              無法預覽此檔案。
             </div>
           </div>
         </div>
@@ -242,10 +230,10 @@
 
       <!-- Bottom actions -->
       <div class="bottom-row">
-        <template v-if="caseData.status === WAITING">
+        <template v-if="caseData.status === '錄取候補中'">
           <button class="btn primary" @click="admit" :disabled="!admitAgency || !admitClass">錄取</button>
         </template>
-        <template v-else-if="caseData.status === ADMITTED">
+        <template v-else-if="caseData.status === '已錄取'">
           <button class="btn danger" @click="revoke">退托</button>
         </template>
         <button class="btn ghost" @click="goBack">返回</button>
@@ -256,24 +244,26 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
+import { IDENTITY_TYPE_MAP, CASE_STATUS_MAP } from '@/api/application'
 import { useRouter, useRoute } from 'vue-router'
-import { getApplicationCaseByChildrenId } from '@/api/applicationCase.js'
+import { getApplicationCaseByParticipantID } from '@/api/applicationCase.js'
+import { getClassByInstitutionId } from '@/api/class.js'
 
 const router = useRouter()
 const route = useRoute()
 
-// Status constants (centralized mapping requested)
-const PROCESSING = '審核中'
-const SUPPLEMENT = '需要補件'
-const REJECTED = '已退件'
-const WAITING = '錄取候補中' // waitingForAdmission
-const REVOKE_PROCESSING = '撤銷申請審核中'
-const REVOKED = '撤銷申請通過'
-const ADMITTED = '已錄取'
-const WITHDRAWN = '已退托'
+// Status constants (from CASE_STATUS_MAP)
+const PROCESSING = CASE_STATUS_MAP['1']      // '審核中'
+const SUPPLEMENT = CASE_STATUS_MAP['2']      // '需要補件'
+const REJECTED = CASE_STATUS_MAP['3']        // '已退件'
+const WAITING = CASE_STATUS_MAP['4']         // '錄取候補中'
+const REVOKE_PROCESSING = CASE_STATUS_MAP['5'] // '撤銷申請審核中'
+const REVOKED = CASE_STATUS_MAP['6']         // '撤銷申請通過'
+const WITHDRAWN = CASE_STATUS_MAP['7']       // '已退托'
+const ADMITTED = CASE_STATUS_MAP['8']        // '已錄取'
 
 const caseId = ref(route.params.id)
-const childNationalId = ref(route.params.childNationalId || '')
+const applicationId = ref(route.params.participantID || '')
 const caseData = ref({})
 const isLoading = ref(false)
 const loadError = ref('')
@@ -290,16 +280,34 @@ const admitClass = ref('')
 const appliedAgency = computed(() => (caseData.value?.selectedAgency || caseData.value?.institution || ''))
 watch(appliedAgency, (val) => { admitAgency.value = val || '' })
 
-// mock agency -> classes mapping
-const agencyClasses = ref({
-  '幸福幼兒園': ['小班', '中班', '大班'],
-  '快樂托育中心': ['小班', '中班']
-})
+// 班級列表 - 使用 API 動態加載
+const classList = ref([])
+
 const classOptions = computed(() => {
-  if (!admitAgency.value) return []
-  return agencyClasses.value[admitAgency.value] || []
+  if (!classList.value || classList.value.length === 0) return []
+  return classList.value.map(c => c.className || c.name)
 })
-watch(admitAgency, () => { admitClass.value = '' })
+
+// 當機構改變時，加載該機構的班級
+watch(admitAgency, async () => {
+  admitClass.value = ''
+  classList.value = []
+
+  if (!admitAgency.value) return
+
+  try {
+    // 這裡需要機構 ID，暫時使用 mock 的機構 ID 映射
+    // 實際應該從 caseData 中獲取機構 ID
+    const institutionId = caseData.value?.institutionId || ''
+    if (institutionId) {
+      const response = await getClassByInstitutionId(institutionId)
+      classList.value = response.data || response || []
+      console.log('[Watch admitAgency] Loaded classes:', classList.value)
+    }
+  } catch (error) {
+    console.error('[Watch admitAgency] Failed to load classes:', error)
+  }
+})
 
 // 退托說明（僅供 ADMITTED 使用）
 const withdrawNote = ref('')
@@ -330,124 +338,66 @@ const preview = ref({ visible: false, file: null })
 const openPreview = (f) => { preview.value.visible = true; preview.value.file = f }
 const closePreview = () => { preview.value.visible = false; preview.value.file = null }
 
-// Mock dataset (replace by API later)
-const mockCases = {
-  'C1001': {
-    id: 'C1001',
-    applyDate: '2025/10/01',
-    status: WAITING,
-    institution: '幸福幼兒園',
-    identityType: '中低收入戶',
-    queueNo: 12,
-    applicant: { name: '王小明', birth: '1990-03-12', id: 'A123456789', homeAddress: '臺中市西屯區...', mailAddress: '臺中市西屯區...', mobile: '0912-345-678', email: 'test@example.com' },
-    parent1: { name: '王爸爸', birth: '1985-07-10', id: 'B123456789', parentType: '父親', homeAddress: '臺中市...', contactAddress: '臺中市...', mobile: '0911-111-111', email: 'dad@example.com', company: 'OOO公司', gender: '男', isLeave: false, leaveStart: '', leaveEnd: '' },
-    parent2: { name: '李媽媽', birth: '1987-01-20', id: 'C123456789', parentType: '母親', homeAddress: '臺中市...', contactAddress: '臺中市...', mobile: '0922-222-222', email: 'mom@example.com', company: 'XXX公司', gender: '女', isLeave: true, leaveStart: '2025-08-01', leaveEnd: '2026-01-31' },
-    selectedAgency: '幸福幼兒園',
-    selectedClass: '小班',
-    withdrawNote: null,
-    children: [{ name: '小寶', gender: '男', age: '3', birth: '2022-03-15' }],
-    files: [ { name: '身份證明.pdf', url: '' }, { name: '戶口名簿.jpg', url: '/vite.svg', type: 'image/svg+xml' } ]
-  },
-  'C1002': {
-    id: 'C1002',
-    applyDate: '2025/10/05',
-    status: ADMITTED,
-    institution: '快樂托育中心',
-    identityType: '一般',
-    queueNo: null,
-    applicant: { name: '陳小華', birth: '1992-12-01', id: 'D223456789', homeAddress: '臺中市北區......................................', mailAddress: '臺中市北區...', mobile: '0933-333-333', email: 'user@example.com' },
-    parent1: { name: '陳爸爸', birth: '1989-05-12', id: 'E123456789', parentType: '父親', homeAddress: '臺中市...', contactAddress: '臺中市...', mobile: '0910-000-000', email: 'pa@example.com', company: 'ABC', gender: '男', isLeave: false },
-    parent2: { name: '陳媽媽', birth: '1990-07-30', id: 'F123456789', parentType: '母親', homeAddress: '臺中市...', contactAddress: '臺中市...', mobile: '0910-999-999', email: 'ma@example.com', company: 'DEF', gender: '女', isLeave: false },
-    selectedAgency: '快樂托育中心',
-    selectedClass: '中班',
-    // 新增：預填退托原因（供 UI 顯示與編輯）
-    withdrawNote: '',
-    children: [{ name: '小美', gender: '女', age: '4', birth: '2021-07-20' }],
-    files: [ { name: '證明文件.pdf', url: '' }, { name: '證件影本.png', url: '/vite.svg', type: 'image/svg+xml' } ]
-  },
+// 獲取幼兒圖片 URL
+const getChildImageUrl = (child) => {
+  if (!caseData.value) return ''
+  const a = caseData.value
+  const path =
+    a.AttachmentPath ||
+    a.attachmentPath ||
+    a.AttachmentPath1 ||
+    a.attachmentPath1 ||
+    a.AttachmentPath2 ||
+    a.attachmentPath2 ||
+    a.AttachmentPath3 ||
+    a.attachmentPath3
+  if (!path) return ''
+  // 若後端已回傳完整 URL，直接使用；若已是 /identity-files 開頭，補上網域
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path
+  }
+  if (path.startsWith('/')) {
+    return `http://localhost:8080${path}`
+  }
+  // 其餘情況視為 /identity-files 底下的檔名
+  return `http://localhost:8080/identity-files/${path}`
+}
 
-  // 以下為新增的 mock cases，覆蓋各種非錄取/非候補狀態，僅供檢視（不會顯示錄取/退托按鈕）
-  'C1003': {
-    id: 'C1003',
-    applyDate: '2025/09/20',
-    status: PROCESSING,
-    institution: '彩虹托育所',
-    identityType: '一般',
-    queueNo: null,
-    applicant: { name: '吳媽媽', birth: '1988-04-10', id: 'G123456789', homeAddress: '臺中市南屯區...', mailAddress: '', mobile: '0928-111-222', email: 'wu@example.com' },
-    parent1: { name: '吳先生', birth: '1985-04-01', id: 'H123456789', parentType: '父親', homeAddress: '臺中市...', contactAddress: '臺中市...', mobile: '0913-222-333', email: 'husband@example.com', company: '服務業', gender: '男', isLeave: false },
-    parent2: null,
-    selectedAgency: '彩虹托育所',
-    selectedClass: '',
-    withdrawNote: null,
-    children: [{ name: '小亮', gender: '男', age: '2', birth: '2023-06-10' }],
-    files: []
-  },
-  'C1004': {
-    id: 'C1004',
-    applyDate: '2025/08/12',
-    status: SUPPLEMENT,
-    institution: '小太陽幼兒園',
-    identityType: '低收入戶',
-    queueNo: null,
-    applicant: { name: '林小英', birth: '1991-11-22', id: 'I223456789', homeAddress: '臺中市西區...', mailAddress: 'lin@example.com', mobile: '0955-444-555', email: 'lin@example.com' },
-    parent1: { name: '林爸爸', birth: '1965-02-14', id: 'J123456789', parentType: '父親', homeAddress: '臺中市...', contactAddress: '臺中市...', mobile: '0988-666-777', email: 'father@example.com', company: '製造業', gender: '男', isLeave: false },
-    parent2: { name: '林媽媽', birth: '1968-09-30', id: 'K123456789', parentType: '母親', homeAddress: '臺中市...', contactAddress: '臺中市...', mobile: '0987-777-888', email: 'mother@example.com', company: '家庭主婦', gender: '女', isLeave: false },
-    selectedAgency: '小太陽幼兒園',
-    selectedClass: '小班',
-    withdrawNote: null,
-    children: [{ name: '小光', gender: '男', age: '1', birth: '2024-01-05' }],
-    files: [ { name: '戶口名簿.pdf', url: '' } ]
-  },
-  'C1005': {
-    id: 'C1005',
-    applyDate: '2025/07/01',
-    status: REJECTED,
-    institution: '安心托育',
-    identityType: '一般',
-    queueNo: null,
-    applicant: { name: '張小姐', birth: '1994-06-06', id: 'L123456789', homeAddress: '臺中市北區...', mailAddress: '', mobile: '0944-555-666', email: 'zhang@example.com' },
-    parent1: { name: '張爸爸', birth: '1970-03-03', id: 'M123456789', parentType: '父親', homeAddress: '臺中市...', contactAddress: '', mobile: '0919-000-111', email: '', company: '', gender: '男', isLeave: false },
-    parent2: null,
-    selectedAgency: '',
-    selectedClass: '',
-    withdrawNote: null,
-    children: [{ name: '小安', gender: '女', age: '0', birth: '2025-07-10' }],
-    files: []
-  },
-  'C1006': {
-    id: 'C1006',
-    applyDate: '2025/06/15',
-    status: REJECTED,
-    institution: '快樂托育中心',
-    identityType: '一般',
-    queueNo: null,
-    applicant: { name: '劉先生', birth: '1980-01-01', id: 'N123456789', homeAddress: '臺中市東區...', mailAddress: 'liu@example.com', mobile: '0966-111-222', email: 'liu@example.com' },
-    parent1: { name: '劉媽媽', birth: '1982-02-02', id: 'O123456789', parentType: '母親', homeAddress: '臺中市...', contactAddress: '臺中市...', mobile: '0900-123-456', email: 'momliu@example.com', company: '金融', gender: '女', isLeave: false },
-    parent2: null,
-    selectedAgency: '快樂托育中心',
-    selectedClass: '',
-    withdrawNote: null,
-    children: [{ name: '小星', gender: '男', age: '5', birth: '2019-04-01' }],
-    files: [ { name: '證明.pdf', url: '' } ]
-  },
-  'C1007': {
-    id: 'C1007',
-    applyDate: '2025/05/20',
-    status: REVOKED,
-    institution: '愛心幼兒園',
-    identityType: '中低收入戶',
-    queueNo: null,
-    applicant: { name: '高太太', birth: '1990-10-10', id: 'P123456789', homeAddress: '臺中市...', mailAddress: 'gao@example.com', mobile: '0977-222-333', email: 'gao@example.com' },
-    parent1: { name: '高先生', birth: '1988-08-08', id: 'Q123456789', parentType: '父親', homeAddress: '臺中市...', contactAddress: '', mobile: '0955-333-444', email: '', company: 'IT', gender: '男', isLeave: false },
-    parent2: null,
-    selectedAgency: '',
-    selectedClass: '',
-    withdrawNote: null,
-    children: [{ name: '小心', gender: '女', age: '2', birth: '2023-08-20' }],
-    files: []
+// 獲取所有附件檔案列表
+const getAttachmentFiles = () => {
+  const files = []
+  const pathFields = [
+    { path: caseData.value.attachmentPath, name: '附件1' },
+    { path: caseData.value.attachmentPath1, name: '附件2' },
+    { path: caseData.value.attachmentPath2, name: '附件3' },
+    { path: caseData.value.attachmentPath3, name: '附件4' }
+  ]
+
+  pathFields.forEach((field, idx) => {
+    if (field.path) {
+      files.push({
+        path: field.path,
+        name: field.name,
+        index: idx,
+        url: getChildImageUrl({ AttachmentPath: field.path })
+      })
+    }
+  })
+
+  return files
+}
+
+// 打開檔案預覽
+const openFilePreview = (file) => {
+  preview.value.visible = true
+  preview.value.file = {
+    name: file.name,
+    url: file.url,
+    type: 'image/jpeg'
   }
 }
+
+// Mock dataset (replace by API later)
 
 // 轉換 API 數據為前端格式
 const transformApiData = (apiData) => {
@@ -465,11 +415,6 @@ const transformApiData = (apiData) => {
     '已錄取': '已錄取'
   }
 
-  const IDENTITY_TYPE_MAP = {
-    0: '一般民眾',
-    1: '低收入戶',
-    2: '中低收入戶'
-  }
 
   // 提取申請人信息 (來自 user 欄位)
   const userData = apiData.user || {}
@@ -530,12 +475,7 @@ const transformApiData = (apiData) => {
     id: child.nationalID || ''
   }))
 
-  // 提取附件信息
-  const files = (apiData.files || []).map((file, idx) => ({
-    name: typeof file === 'string' ? file : (file.name || `attachment_${idx}`),
-    url: typeof file === 'string' ? `/applications/case-files/${apiData.applicationID}/${file}` : (file.url || ''),
-    type: 'application/octet-stream'
-  }))
+
 
   // 取得狀態 (從幼兒的 status 欄位)
   const childStatus = childrenArray.length > 0 ? (childrenArray[0].status || '') : ''
@@ -546,6 +486,7 @@ const transformApiData = (apiData) => {
     applyDate: apiData.applyDate || '',
     status: mappedStatus,
     institution: apiData.institutionName || '',
+    institutionId: apiData.institutionId || '',
     identityType: IDENTITY_TYPE_MAP[apiData.identityType] || '',
     queueNo: apiData.currentOrder || null,
     applicant,
@@ -555,7 +496,10 @@ const transformApiData = (apiData) => {
     selectedAgency: apiData.institutionName || '',
     selectedClass: apiData.selectedClass || '',
     withdrawNote: childrenArray.length > 0 ? (childrenArray[0].reason || '') : '',
-    files
+    attachmentPath: apiData.attachmentPath || '',
+    attachmentPath1: apiData.attachmentPath1 || '',
+    attachmentPath2: apiData.attachmentPath2 || '',
+    attachmentPath3: apiData.attachmentPath3 || ''
   }
 }
 
@@ -565,7 +509,7 @@ onMounted(async () => {
     loadError.value = ''
     // 1. 優先呼叫 API 取得資料
     try {
-      const apiData = await getApplicationCaseByChildrenId(childNationalId.value)
+      const apiData = await getApplicationCaseByParticipantID(applicationId.value)
       if (apiData) {
         caseData.value = transformApiData(apiData)
         if (caseData.value.status === WAITING) {
@@ -580,7 +524,53 @@ onMounted(async () => {
       // API 404 或失敗才 fallback
       console.warn('[onMounted] API 查詢失敗，fallback localStorage/mock', apiError)
     }
-    // 2. localStorage/sessionStorage fallback
+    // 2. sessionStorage 中的列表數據 fallback
+    let listItemData = null
+    try {
+      const sessionItem = sessionStorage.getItem('caseManagementItem')
+      if (sessionItem) {
+        listItemData = JSON.parse(sessionItem)
+        console.log('[onMounted] Retrieved item from sessionStorage:', listItemData)
+      }
+    } catch (e) {
+      console.warn('[onMounted] sessionStorage retrieval failed:', e)
+    }
+
+    if (listItemData) {
+      // 根據列表數據構建案件對象
+      caseData.value = {
+        id: listItemData.id,
+        applyDate: listItemData.applyDate,
+        status: listItemData.status,
+        institution: listItemData.institution,
+        identityType: listItemData.identityType,
+        queueNo: listItemData.queueNo,
+        participant: {
+          name: listItemData.applicantName || '',
+          id: listItemData.participantID || ''
+        },
+        children: [{
+          name: listItemData.childName || '',
+          birth: listItemData.childBirth || ''
+        }],
+        selectedAgency: listItemData.institution,
+        selectedClass: '',
+        attachmentPath: listItemData.attachmentPath || '',
+        attachmentPath1: listItemData.attachmentPath1 || '',
+        attachmentPath2: listItemData.attachmentPath2 || '',
+        attachmentPath3: listItemData.attachmentPath3 || ''
+
+      }
+      if (caseData.value.status === WAITING) {
+        admitAgency.value = appliedAgency.value || ''
+        admitClass.value = caseData.value.selectedClass || ''
+      }
+      try { sessionStorage.removeItem('caseManagementItem') } catch (e) {}
+      isLoading.value = false
+      return
+    }
+
+    // 3. localStorage/sessionStorage fallback
     let payload = null
     const sessionData = sessionStorage.getItem('caseManagementSelection')
     if (sessionData) {
@@ -591,7 +581,7 @@ onMounted(async () => {
         payload = JSON.parse(localData)
       }
     }
-    if (payload && payload.caseData && (payload.caseData.childNationalId === childNationalId.value || payload.childNationalId === childNationalId.value)) {
+    if (payload && payload.caseData && (payload.caseData.participantID === participantID.value || payload.participantID === participantID.value)) {
       caseData.value = JSON.parse(JSON.stringify(payload.caseData))
       if (caseData.value.status === WAITING) {
         admitAgency.value = appliedAgency.value || ''
@@ -603,18 +593,8 @@ onMounted(async () => {
       isLoading.value = false
       return
     }
-    // 3. mock fallback
-    const mockData = Object.values(mockCases).find(c => c.children && c.children.some(child => child.id === childNationalId.value))
-    if (mockData) {
-      caseData.value = JSON.parse(JSON.stringify(mockData))
-      if (caseData.value.status === WAITING) {
-        admitAgency.value = appliedAgency.value || ''
-        admitClass.value = caseData.value.selectedClass || ''
-      }
-      withdrawNote.value = caseData.value.withdrawNote ?? ''
-    } else {
-      loadError.value = '無法加載案件數據'
-    }
+    // 3. 其他 fallback
+    loadError.value = '無法加載案件數據'
   } catch (error) {
     console.error('[onMounted] 加載數據失敗:', error)
     router.push('/admin/case-management')
@@ -772,4 +752,18 @@ onMounted(async () => {
 .children-summary { margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .children-summary li { list-style: none; color: #334e5c; }
 .children-summary .sep { color: #98a2b3; margin: 0 6px; }
+
+/* 幼兒圖片樣式 */
+.child-image-section { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-top: 16px; }
+.child-image-item { display: flex; flex-direction: column; align-items: center; }
+.child-image { width: 100%; max-width: 200px; height: auto; border-radius: 8px; border: 1px solid #e6e6ea; box-shadow: 0 2px 8px rgba(16,24,40,0.04); }
+.image-placeholder { width: 100%; max-width: 200px; height: 200px; display: flex; align-items: center; justify-content: center; background: #f3f4f6; border: 1px dashed #d8dbe0; border-radius: 8px; color: #666; font-size: 0.9rem; }
+
+/* 附件列表樣式 */
+.attachment-list { margin-top: 16px; }
+.attachment-list h4 { color: #2e6fb7; font-size: 1rem; margin: 0 0 12px 0; font-weight: 600; }
+.attachment-list ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.attachment-item { padding: 10px 12px; background: #f0f9ff; border: 1px solid #bfdbfe; border-radius: 6px; }
+.file-link { color: #2563eb; text-decoration: none; cursor: pointer; font-weight: 500; transition: all 0.2s ease; }
+.file-link:hover { color: #1d4ed8; text-decoration: underline; }
 </style>

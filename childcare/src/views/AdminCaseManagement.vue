@@ -92,7 +92,7 @@
               <td class="title-cell">{{ item.queueNo ?? '—' }}</td>
               <td class="title-cell">{{ item.status }}</td>
               <td class="action-cell">
-                <RouterLink :to="{ name: 'AdminCaseManagementEdit', params: { childNationalId: item.childNationalId } }" class="btn small" :disabled="!item.childNationalId">管理</RouterLink>
+                <button class="btn small" @click="goToEditPage(item)" :disabled="!item.participantID">管理</button>
               </td>
             </tr>
             <tr v-if="resultItems.length === 0">
@@ -197,6 +197,7 @@ const loadCasesList = async (options = {}) => {
       childName: item.childName,
       childBirth: item.childBirthDate,
       childNationalId: item.childNationalId,
+      participantID: item.participantID,
       queueNo: item.currentOrder
     }))
 
@@ -300,6 +301,7 @@ const doQuery = async () => {
       childName: item.childName,
       childBirth: item.childBirthDate,
       childNationalId: item.childNationalId,
+      participantID: item.participantID,
       queueNo: item.currentOrder
     }))
 
@@ -384,13 +386,29 @@ const openCaseDetail = async (item) => {
 
   // 導航到編輯頁面
   router.push({
-    path: `/admin/case-management/${item.id}/edit`,
+    path: `/admin/case-management/${item.participantID}/edit`,
     state: { caseManagementSelection: payload }
   })
 }
 
 const goBack = () => {
   resetQuery()
+}
+
+const goToEditPage = (item) => {
+  // 保存案件信息到 sessionStorage，供 AdminCaseManagementEdit 使用
+  try {
+    sessionStorage.setItem('caseManagementItem', JSON.stringify(item))
+    console.log('[goToEditPage] Saved item to sessionStorage:', item)
+  } catch (e) {
+    console.error('sessionStorage set failed:', e)
+  }
+
+  // 導航到編輯頁面
+  router.push({
+    name: 'AdminCaseManagementEdit',
+    params: { participantID: item.participantID }
+  })
 }
 </script>
 
