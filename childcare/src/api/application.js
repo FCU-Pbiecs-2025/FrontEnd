@@ -140,128 +140,6 @@ export const getCaseDetails = async (userID, caseNo) => {
  * @param caseNumber 案件流水號篩選（可選）
  * @param identityType 身分別篩選（可選）
  * @return 包含分頁資訊和案件列表的回應
- *
- * {
- *     "totalElements": 6,
- *     "content": [
- *         {
- *             "caseNumber": 1764571014066,
- *             "participantID": "d0e85fa5-56f7-43fa-ba0c-bbd320d50d68",
- *             "applicationDate": "2025-12-01",
- *             "institutionName": "新竹縣東正社區公共托育家園",
- *             "childNationalId": "E567890123",
- *             "childName": "李小寶",
- *             "childBirthDate": "2021-03-15",
- *             "currentOrder": null,
- *             "reviewStatus": "審核中",
- *             "className": null,
- *             "applicantNationalName": "李美玲",
- *             "applicantNationalId": "C345678901",
- *             "identityType": "1",
- *             "caseStatus": "審核中"
- *         },
- *         {
- *             "caseNumber": 1764571012981,
- *             "participantID": "33bf0cbf-e2e7-4d63-9ff9-9166c5e446be",
- *             "applicationDate": "2025-12-01",
- *             "institutionName": "新竹縣東正社區公共托育家園",
- *             "childNationalId": "E567890123",
- *             "childName": "李小寶",
- *             "childBirthDate": "2021-03-15",
- *             "currentOrder": null,
- *             "reviewStatus": "審核中",
- *             "className": null,
- *             "applicantNationalName": "李美玲",
- *             "applicantNationalId": "C345678901",
- *             "identityType": "1",
- *             "caseStatus": "審核中"
- *         },
- *         {
- *             "caseNumber": 1764427013142,
- *             "participantID": "1fee23ea-cec6-49b2-9f43-d5fd8ea2ed1f",
- *             "applicationDate": "2025-11-29",
- *             "institutionName": "新竹縣公設民營松柏托嬰中心",
- *             "childNationalId": "E567890123",
- *             "childName": "李小寶",
- *             "childBirthDate": "2021-03-15",
- *             "currentOrder": null,
- *             "reviewStatus": "通過",
- *             "className": null,
- *             "applicantNationalName": "李美玲",
- *             "applicantNationalId": "C345678901",
- *             "identityType": "3",
- *             "caseStatus": "通過"
- *         },
- *         {
- *             "caseNumber": 1764427242183,
- *             "participantID": "4286bfa6-fcfd-40d4-afb2-2c16e4dd5eec",
- *             "applicationDate": "2025-11-29",
- *             "institutionName": "新竹縣東正社區公共托育家園",
- *             "childNationalId": "E567890123",
- *             "childName": "李小寶",
- *             "childBirthDate": "2021-03-15",
- *             "currentOrder": null,
- *             "reviewStatus": "審核中",
- *             "className": null,
- *             "applicantNationalName": "李美玲",
- *             "applicantNationalId": "C345678901",
- *             "identityType": "2",
- *             "caseStatus": "審核中"
- *         },
- *         {
- *             "caseNumber": 1764427118154,
- *             "participantID": "f5d3966d-43d6-4f93-990a-a096a4b8cc86",
- *             "applicationDate": "2025-11-29",
- *             "institutionName": "新竹縣東正社區公共托育家園",
- *             "childNationalId": "E567890123",
- *             "childName": "李小寶",
- *             "childBirthDate": "2021-03-15",
- *             "currentOrder": null,
- *             "reviewStatus": "通過",
- *             "className": null,
- *             "applicantNationalName": "李美玲",
- *             "applicantNationalId": "C345678901",
- *             "identityType": "1",
- *             "caseStatus": "通過"
- *         },
- *         {
- *             "caseNumber": 1004,
- *             "participantID": "112e7e08-136d-4439-82ad-d1f355942af3",
- *             "applicationDate": "2024-04-05",
- *             "institutionName": "新竹縣公設民營嘉豐托嬰中心",
- *             "childNationalId": "H890123456",
- *             "childName": "林小美",
- *             "childBirthDate": "2022-01-05",
- *             "currentOrder": 3,
- *             "reviewStatus": "撤銷申請審核中",
- *             "className": "小班",
- *             "applicantNationalName": "李美玲",
- *             "applicantNationalId": "C345678901",
- *             "identityType": "2",
- *             "caseStatus": "撤銷申請審核中"
- *         },
- *         {
- *             "caseNumber": 1004,
- *             "participantID": "112e7e08-136d-4439-82ad-d1f355942af3",
- *             "applicationDate": "2024-04-05",
- *             "institutionName": "新竹縣公設民營嘉豐托嬰中心",
- *             "childNationalId": "Q789012345",
- *             "childName": "林小強",
- *             "childBirthDate": "2023-03-12",
- *             "currentOrder": 4,
- *             "reviewStatus": "審核中",
- *             "className": "小班",
- *             "applicantNationalName": "李美玲",
- *             "applicantNationalId": "C345678901",
- *             "identityType": "2",
- *             "caseStatus": "審核中"
- *         }
- *     ],
- *     "hasNext": false,
- *     "size": 10,
- *     "offset": 0,
- *     "totalPages": 1
- * }
  */
 export const getApplicationsCasesList = async (options = {}) => {
     try {
@@ -301,7 +179,6 @@ export const getApplicationsCasesList = async (options = {}) => {
         if (options.identityType) {
             params.identityType = options.identityType;
         }
-
 
         const query = new URLSearchParams(params).toString();
         const url = query ? `/applications/cases/list?${query}` : '/applications/cases/list';
@@ -348,13 +225,79 @@ export const submitApplicationCase = async (caseData, files = {}) => {
 
     try {
         console.log('========== 📋 [API] 開始提交申請案件 ==========');
-        console.log('完整 caseData:', JSON.stringify(caseData, null, 2));
+        console.log('原始 caseData:', JSON.stringify(caseData, null, 2));
+
+        // 轉換 caseData 格式，將前端格式轉換為後端期望的格式
+        const transformedCaseData = {
+            caseNumber: caseData.caseNumber,
+            applyDate: caseData.applyDate,
+            identityType: caseData.identityType,
+            institutionId: caseData.institutionId,
+            institutionName: caseData.institutionName,
+            selectedClass: caseData.selectedClass || null,
+            currentOrder: caseData.currentOrder || null,
+            reviewDate: caseData.reviewDate || null,
+            applicationID: caseData.applicationID || null,
+            // 轉換 User 為 user，並統一使用小寫駝峰命名
+            user: {
+                userID: caseData.User?.userID || caseData.User?.UserID || caseData.userID,
+                name: caseData.User?.Name,
+                gender: caseData.User?.Gender === 'F' ? true : false,
+                nationalID: caseData.User?.NationalID,
+                birthDate: caseData.User?.BirthDate,
+                mailingAddress: caseData.User?.MailingAddress,
+                email: caseData.User?.email,
+                phoneNumber: caseData.User?.PhoneNumber
+            },
+            // 轉換 parents 格式
+            parents: caseData.parents.map(parent => ({
+                participantType: parent.participantType,
+                nationalID: parent.nationalID,
+                name: parent.name,
+                gender: parent.gender === 'F' ? true : false,
+                relationShip: parent.relationShip,
+                occupation: parent.occupation,
+                phoneNumber: parent.phoneNumber,
+                householdAddress: parent.householdAddress,
+                mailingAddress: parent.mailingAddress,
+                email: parent.email,
+                birthDate: parent.birthDate,
+                isSuspended: parent.isSuspended || false,
+                suspendEnd: parent.suspendEnd || null
+            })),
+            // 轉換 children 格式
+            children: caseData.children.map(child => ({
+                participantType: child.participantType,
+                nationalID: child.nationalID,
+                name: child.name,
+                gender: child.gender === 'F' ? true : false,
+                relationShip: child.relationShip,
+                occupation: child.occupation,
+                phoneNumber: child.phoneNumber,
+                householdAddress: child.householdAddress,
+                mailingAddress: child.mailingAddress,
+                email: child.email,
+                birthDate: child.birthDate,
+                isSuspended: child.isSuspended || false,
+                suspendEnd: child.suspendEnd || null,
+                status: child.status,
+                reason: child.reason,
+                classID: child.classID,
+                reviewDate: child.reviewDate
+            })),
+            attachmentPath: caseData.attachmentPath,
+            attachmentPath1: caseData.attachmentPath1,
+            attachmentPath2: caseData.attachmentPath2,
+            attachmentPath3: caseData.attachmentPath3
+        };
+
+        console.log('轉換後 caseData:', JSON.stringify(transformedCaseData, null, 2));
 
         // 建立 FormData 對象
         const formData = new FormData();
 
         // 添加 JSON 案件資訊（作為 Blob，設置正確的 Content-Type）
-        const caseDataJson = JSON.stringify(caseData);
+        const caseDataJson = JSON.stringify(transformedCaseData);
         const caseDataBlob = new Blob([caseDataJson], { type: 'application/json' });
         // ✅ 關鍵修改：後端期望參數名稱為 'caseDto' 而不是 'caseData'
         formData.append('caseDto', caseDataBlob, 'caseDto.json');
@@ -373,7 +316,7 @@ export const submitApplicationCase = async (caseData, files = {}) => {
         console.log('📊 FormData 內容:');
         console.log('  - caseDto: JSON Blob (' + caseDataBlob.size + ' bytes)');
         console.log('  - 附件數:', fileCount);
-        console.log('  - UserID:', caseData.UserID);
+        console.log('  - userID:', transformedCaseData.user.userID);
 
         console.log('🚀 發送 POST 到: http://localhost:8080/applications/case/submit');
         console.log('   (透過 Vite proxy: /api/applications/case/submit)');
@@ -427,3 +370,4 @@ export const uploadApplicationAttachments = async (applicationId, files) => {
         throw error;
     }
 };
+
