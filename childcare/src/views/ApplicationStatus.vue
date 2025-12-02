@@ -22,8 +22,9 @@
           @keydown="onKeydown($event, item)"
         >
           <div class="application-info">
-            <h4 class="application-title">{{ item.caseNo }} </h4>
+            <h4 class="application-title">{{ item.caseNumber || item.caseNo }} </h4>
             <p class="application-date">申請日期: {{ item.applyDate }}</p>
+            <p class="application-details">案件編號: {{ item.caseNumber || '—' }}</p>
             <p class="application-details">申請人: {{ item.username || '—' }}</p>
             <p class="application-details">幼兒姓名: {{ item.childname || '—' }}</p>
             <p class="application-details">申請機構: {{ item.institutionName || '—' }}</p>
@@ -143,6 +144,7 @@ const fetchUserApplications = async () => {
           applicationID: item.applicationID || item.applicationId || null,
           applicationDate: item.applicationDate || item.applyDate,
           applyDate: item.applicationDate || item.applyDate,
+          caseNumber: item.caseNumber || '', // 新增案件編號欄位
           childname: item.childname || '',
           birthDate: item.birthDate || '',
           institutionID: item.institutionID || '',

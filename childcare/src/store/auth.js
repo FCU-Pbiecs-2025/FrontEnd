@@ -12,6 +12,7 @@ export const useAuthStore = defineStore('auth', {
       email: '', // 電子郵件
       phone: '', // 電話
       role: '', // 角色
+      InstitutionID: null, // 機構ID (不顯示在UI中)
     },
     isAuthenticated: false
   }),
@@ -61,7 +62,8 @@ export const useAuthStore = defineStore('auth', {
             account: user.account || user.Account || '',
             email: user.email || user.Email || '',
             phone: user.phoneNumber || user.PhoneNumber || user.phone || '',
-            role: role // 供路由守衛使用
+            role: role, // 供路由守衛使用
+            InstitutionID: user.InstitutionID || user.institutionID || user.institutionId || null // 機構ID
           }
           this.isAuthenticated = true
           return { success: true }
@@ -94,6 +96,7 @@ export const useAuthStore = defineStore('auth', {
           email: '',
           phone: '',
           role: '',
+          InstitutionID: null,
         }
         this.isAuthenticated = false
       }

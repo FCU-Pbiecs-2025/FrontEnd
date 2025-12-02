@@ -1,90 +1,161 @@
 <template>
   <div class="app-container">
-    <!-- Header -->
-    <header>
-      <nav class="header-nav">
-        <div class="header-left" @click="goToPage('Home')" style="cursor:pointer;">
-          <img class="logo" src="./imgs/moon.png" alt="logo" />
-          <div class="vertical-stack">
-            <span class="title-second">新竹縣政府 社會處</span>
-            <span class="system-title">社區公共托育家園</span>
+    <template v-if="showMainLayout">
+      <!-- Header -->
+      <header>
+        <nav class="header-nav">
+          <div class="header-left" @click="goToPage('Home')" style="cursor:pointer;">
+            <img class="logo" src="./imgs/moon.png" alt="logo" />
+            <div class="vertical-stack">
+              <span class="title-second">新竹縣政府 社會處</span>
+              <span class="system-title">社區公共托育家園</span>
+            </div>
+          </div>
+
+          <!-- 漢堡選單按鈕 (小螢幕顯示) -->
+          <button class="hamburger-btn" @click="toggleMenu" aria-label="選單">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+
+          <!-- 導航選單 -->
+          <div class="nav-menu" :class="{ 'nav-menu-open': isMenuOpen }">
+            <div class="nav-item" @click="handleNavClick('News')" style="cursor:pointer;">
+              <span>最新消息</span>
+              <small class="nav-translation">News</small>
+              <div class="nav-option"></div>
+            </div>
+            <div class="nav-item" @click="handleNavClick('AgencySearch')" style="cursor:pointer;">
+              <span>查詢托育機構</span>
+              <small class="nav-translation">Search Agencies</small>
+              <div class="nav-option"></div>
+            </div>
+            <div class="nav-item" @click="handleNavClick('Qualification')" style="cursor:pointer;">
+              <span>公托資格說明</span>
+              <small class="nav-translation">Qualifications</small>
+              <div class="nav-option"></div>
+            </div>
+            <div class="nav-item" @click="handleNavClick('MemberCenter')" style="cursor:pointer;">
+              <span>會員中心</span>
+              <small class="nav-translation">Member Center</small>
+              <div class="nav-option"></div>
+            </div>
+            <!-- 後台管理入口，僅 admin 或 super_admin 角色顯示 -->
+            <div
+                v-if="['admin', 'super_admin'].includes(authStore.user?.role)"
+                class="nav-item"
+                @click="handleNavClick('AdminHome')"
+                style="cursor:pointer;"
+            >
+              <span>後台管理</span>
+              <small class="nav-translation">Admin</small>
+              <div class="nav-option"></div>
+            </div>
+          </div>
+
+          <!-- 登入/登出與用戶名稱包在同一個區塊，固定在 header 右上角 -->
+          <div v-if="authStore.isLoggedIn && authStore.user" class="user-actions">
+            <div class="user-info">
+              <div class="user-avatar">{{ authStore.user.name ? authStore.user.name.charAt(0) : '' }}</div>
+            </div>
+            <!-- 替換原本的登出按鈕為下拉樣式按鈕，點擊打開帳號資訊彈窗 -->
+            <button class="account-btn" type="button" @click="openAccountModal">
+              <svg class="caret" width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M6 9l6 6 6-6" stroke="#e35d6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- 未登入時顯示登入按鈕 -->
+          <div v-else class="login-actions">
+            <button class="login-btn" @click="handleNavClick('Login')">登入</button>
+            <button class="login-btn">註冊</button>
+          </div>
+        </nav>
+      </header>
+
+      <!-- 選單遮罩層 (點擊關閉選單) -->
+      <div v-if="isMenuOpen" class="menu-overlay" @click="closeMenu"></div>
+
+      <!-- 帳號資訊 Modal -->
+      <div v-if="showAccountModal" class="modal-overlay" @click="closeAccountModal">
+        <div class="modal" @click.stop>
+          <div class="modal-header">
+            <div class="avatar-lg">{{ authStore.user?.name ? authStore.user.name.charAt(0) : '' }}</div>
+            <div class="title-group">
+              <h3 class="modal-title">帳號資訊</h3>
+              <p class="modal-subtitle">以下是您的帳號詳細資料</p>
+            </div>
+            <button class="modal-close" @click="closeAccountModal" aria-label="關閉">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="info-row" v-if="authStore.user?.name">
+              <span class="label">姓名</span>
+              <span class="value">{{ authStore.user.name }}</span>
+            </div>
+            <div class="info-row" v-if="authStore.user?.account">
+              <span class="label">帳號</span>
+              <span class="value">{{ authStore.user.account }}</span>
+            </div>
+            <div class="info-row" v-if="authStore.user?.email">
+              <span class="label">Email</span>
+              <span class="value">{{ authStore.user.email }}</span>
+            </div>
+            <div class="info-row" v-if="authStore.user?.phone">
+              <span class="label">電話</span>
+              <span class="value">{{ authStore.user.phone }}</span>
+            </div>
+            <div class="info-row" v-if="authStore.user?.role">
+              <span class="label">角色</span>
+              <span class="value">{{ authStore.user.role }}</span>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" @click="closeAccountModal">關閉</button>
+            <button class="btn-danger" @click="handleLogout">登出</button>
+            <button class="btn-secondary" v-if="authStore.user?.role === 'admin'" @click="showChangePassword = !showChangePassword">修改密碼</button>
+          </div>
+          <div v-if="showChangePassword && authStore.user?.role === 'admin'" class="password-change-form">
+            <input type="password" v-model="newPassword" placeholder="新密碼" />
+            <input type="password" v-model="confirmPassword" placeholder="確認新密碼" />
+            <button class="btn-danger" @click="handleChangePassword">送出</button>
+            <div v-if="passwordError" class="error">{{ passwordError }}</div>
           </div>
         </div>
+      </div>
 
-        <!-- 漢堡選單按鈕 (小螢幕顯示) -->
-        <button class="hamburger-btn" @click="toggleMenu" aria-label="選單">
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-
-        <!-- 導航選單 -->
-        <div class="nav-menu" :class="{ 'nav-menu-open': isMenuOpen }">
-          <div class="nav-item" @click="handleNavClick('News')" style="cursor:pointer;">
-            <span>最新消息</span>
-            <small class="nav-translation">News</small>
-            <div class="nav-option"></div>
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Restore carousel only on Home route -->
+        <div v-if="$route.name === 'Home'" class="carousel-wrapper">
+          <button class="carousel-btn left" @click="prevSlide">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <polyline points="20,8 12,16 20,24" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+          </button>
+          <div class="carousel-image-box">
+            <template v-if="carouselImages.length > 0">
+              <img ref="carouselImg" :src="carouselImages[currentSlide]" alt="輪播圖" class="carousel-image" @error="retryCarouselImage" />
+            </template>
+            <template v-else>
+              <div class="no-image-placeholder">暫無圖片</div>
+            </template>
           </div>
-          <div class="nav-item" @click="handleNavClick('AgencySearch')" style="cursor:pointer;">
-            <span>查詢托育機構</span>
-            <small class="nav-translation">Search Agencies</small>
-            <div class="nav-option"></div>
-          </div>
-          <div class="nav-item" @click="handleNavClick('Qualification')" style="cursor:pointer;">
-            <span>公托資格說明</span>
-            <small class="nav-translation">Qualifications</small>
-            <div class="nav-option"></div>
-          </div>
-          <div class="nav-item" @click="handleNavClick('MemberCenter')" style="cursor:pointer;">
-            <span>會員中心</span>
-            <small class="nav-translation">Member Center</small>
-            <div class="nav-option"></div>
-          </div>
-          <!-- 後台管理入口，僅 admin 或 super_admin 角色顯示 -->
-          <div
-              v-if="['admin', 'super_admin'].includes(authStore.user?.role)"
-              class="nav-item"
-              @click="handleNavClick('AdminHome')"
-              style="cursor:pointer;"
-          >
-            <span>後台管理</span>
-            <small class="nav-translation">Admin</small>
-            <div class="nav-option"></div>
-          </div>
-        </div>
-
-        <!-- 登入/登出與用戶名稱包在同一個區塊，固定在 header 右上角 -->
-        <div v-if="authStore.isLoggedIn && authStore.user" class="user-actions">
-          <div class="user-info">
-            <div class="user-avatar">{{ authStore.user.name ? authStore.user.name.charAt(0) : '' }}</div>
-          </div>
-          <!-- 替換原本的登出按鈕為下拉樣式按鈕，點擊打開帳號資訊彈窗 -->
-          <button class="account-btn" type="button" @click="openAccountModal">
-            <svg class="caret" width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M6 9l6 6 6-6" stroke="#e35d6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <button class="carousel-btn right" @click="nextSlide">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <polyline points="12,8 20,16 12,24" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
             </svg>
           </button>
         </div>
 
-        <!-- 未登入時顯示登入按鈕 -->
-        <div v-else class="login-actions">
-          <button class="login-btn" @click="handleNavClick('Login')">登入</button>
-          <button class="login-btn">註冊</button>
-        </div>
-      </nav>
-    </header>
 
-    <!-- 選單遮罩層 (點擊關閉選單) -->
-    <div v-if="isMenuOpen" class="menu-overlay" @click="closeMenu"></div>
+        <!-- Router View - 顯示不同頁面的內容 -->
 
-    <!-- 帳號資訊 Modal -->
-    <div v-if="showAccountModal" class="modal-overlay" @click="closeAccountModal">
-      <div class="modal" @click.stop>
-        <div class="modal-header">
-          <div class="avatar-lg">{{ authStore.user?.name ? authStore.user.name.charAt(0) : '' }}</div>
-          <div class="title-group">
-            <h3 class="modal-title">帳號資訊</h3>
-            <p class="modal-subtitle">以下是您的帳號詳細資料</p>
+        <div class="content-area">
+          <Breadcrumbs/>
+          <div>
+            <router-view />
           </div>
           <button class="modal-close" @click="closeAccountModal" aria-label="關閉">×</button>
         </div>
@@ -121,66 +192,39 @@
           <button class="btn-danger" @click="handleChangePassword">送出</button>
           <div v-if="passwordError" class="error">{{ passwordError }}</div>
         </div>
-      </div>
-    </div>
 
-    <!-- Main Content -->
-    <main class="main-content">
-      <!-- Restore carousel only on Home route -->
-      <div v-if="$route.name === 'Home'" class="carousel-wrapper">
-        <button class="carousel-btn left" @click="prevSlide">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <polyline points="20,8 12,16 20,24" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          </svg>
-        </button>
-        <div class="carousel-image-box">
-          <template v-if="carouselImages.length > 0">
-            <img ref="carouselImg" :src="carouselImages[currentSlide]" alt="輪播圖" class="carousel-image" @error="retryCarouselImage" />
-          </template>
-          <template v-else>
-            <div class="no-image-placeholder">暫無圖片</div>
-          </template>
-        </div>
-        <button class="carousel-btn right" @click="nextSlide">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <polyline points="12,8 20,16 12,24" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          </svg>
-        </button>
-      </div>
+      </main>
 
-
-      <!-- Router View - 顯示不同頁面的內容 -->
-
-      <div class="content-area">
-        <Breadcrumbs/>
-        <div>
-          <router-view />
-        </div>
-
-      </div>
-
-    </main>
-
-    <!-- Footer -->
-    <footer>
-      <p>Copyright © 2019 <span>新竹縣政府社會處</span> All Rights Reserved.</p>
-      <p>建議最佳瀏覽解析度 1920×1080　手機瀏覽解析度建議414×736或360×640</p>
-    </footer>
-    <Chatbot />
+      <!-- Footer -->
+      <footer>
+        <p>Copyright © 2019 <span>新竹縣政府社會處</span> All Rights Reserved.</p>
+        <p>建議最佳瀏覽解析度 1920×1080　手機瀏覽解析度建議414×736或360×640</p>
+      </footer>
+      <Chatbot />
+    </template>
+    <router-view v-else />
   </div>
 </template>
 
 <script setup>
 import Chatbot from "@/components/Chatbot.vue";
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from './store/auth.js'
 import Breadcrumbs from "@/components/Breadcrumbs.vue";
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+
 import bannersApi from './api/banners.js'
 
 // 路由器實例
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
+
+const showMainLayout = computed(() => route.name !== 'AdminLogin')
 
 // 漢堡選單狀態
 const isMenuOpen = ref(false)

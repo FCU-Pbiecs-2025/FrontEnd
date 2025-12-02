@@ -5,8 +5,9 @@ import http from './http.js';
 // 身分別代碼映射表
 export const IDENTITY_TYPE_MAP = {
   0: '一般民眾',
-  1: '低收入戶',
-  2: '中低收入戶'
+  1: '第一序位',
+  2: '第二序位',
+  3: '第三序位'
 };
 
 // 案件狀態代碼映射表
@@ -126,20 +127,142 @@ export const getCaseDetails = async (userID, caseNo) => {
     }
 };
 
-// 取得案件列表（分頁查詢）
-// GET /applications/cases/list
-// 根據條件查詢多個案件的摘要信息，支持分頁、狀態篩選、機構篩選
-// @param {Object} options - 查詢選項
-// @param {number} options.offset - 分頁起始位置（0-based），預設值：0
-// @param {number} options.size - 每頁筆數，最大不超過 100，預設值：10
-// @param {string} options.status - 審核狀態篩選
-// @param {string} options.institutionId - 機構UUID篩選
-// @param {string} options.applicationId - 案件ID篩選
-// @param {string} options.classId - 班級ID篩選
-// @param {string} options.applicantNationalId - 申請人身分證字號篩選
-// @param {number} options.caseNumber - 案件流水號篩選
-// @param {string} options.identityType - 身分別篩選（0=一般戶、1=低收入戶、2=中低收入戶）
-// @returns {Promise<Object>} 回應數據，包含 content、offset、size、totalElements、totalPages、hasNext
+/**
+ * 取得案件列表（分頁）
+ *個案管理列表 以及 其查詢卡片使用
+ * @param offset 分頁起始位置（預設: 0）
+ * @param size 每頁筆數（預設: 10）
+ * @param status 審核狀態篩選（可選）
+ * @param institutionId 機構ID篩選（可選）
+ * @param applicationId 案件ID篩選（可選）
+ * @param classId 班級ID篩選（可選）
+ * @param applicantNationalId 申請人身分證字號篩選（可選）
+ * @param caseNumber 案件流水號篩選（可選）
+ * @param identityType 身分別篩選（可選）
+ * @return 包含分頁資訊和案件列表的回應
+ *
+ * {
+ *     "totalElements": 6,
+ *     "content": [
+ *         {
+ *             "caseNumber": 1764571014066,
+ *             "participantID": "d0e85fa5-56f7-43fa-ba0c-bbd320d50d68",
+ *             "applicationDate": "2025-12-01",
+ *             "institutionName": "新竹縣東正社區公共托育家園",
+ *             "childNationalId": "E567890123",
+ *             "childName": "李小寶",
+ *             "childBirthDate": "2021-03-15",
+ *             "currentOrder": null,
+ *             "reviewStatus": "審核中",
+ *             "className": null,
+ *             "applicantNationalName": "李美玲",
+ *             "applicantNationalId": "C345678901",
+ *             "identityType": "1",
+ *             "caseStatus": "審核中"
+ *         },
+ *         {
+ *             "caseNumber": 1764571012981,
+ *             "participantID": "33bf0cbf-e2e7-4d63-9ff9-9166c5e446be",
+ *             "applicationDate": "2025-12-01",
+ *             "institutionName": "新竹縣東正社區公共托育家園",
+ *             "childNationalId": "E567890123",
+ *             "childName": "李小寶",
+ *             "childBirthDate": "2021-03-15",
+ *             "currentOrder": null,
+ *             "reviewStatus": "審核中",
+ *             "className": null,
+ *             "applicantNationalName": "李美玲",
+ *             "applicantNationalId": "C345678901",
+ *             "identityType": "1",
+ *             "caseStatus": "審核中"
+ *         },
+ *         {
+ *             "caseNumber": 1764427013142,
+ *             "participantID": "1fee23ea-cec6-49b2-9f43-d5fd8ea2ed1f",
+ *             "applicationDate": "2025-11-29",
+ *             "institutionName": "新竹縣公設民營松柏托嬰中心",
+ *             "childNationalId": "E567890123",
+ *             "childName": "李小寶",
+ *             "childBirthDate": "2021-03-15",
+ *             "currentOrder": null,
+ *             "reviewStatus": "通過",
+ *             "className": null,
+ *             "applicantNationalName": "李美玲",
+ *             "applicantNationalId": "C345678901",
+ *             "identityType": "3",
+ *             "caseStatus": "通過"
+ *         },
+ *         {
+ *             "caseNumber": 1764427242183,
+ *             "participantID": "4286bfa6-fcfd-40d4-afb2-2c16e4dd5eec",
+ *             "applicationDate": "2025-11-29",
+ *             "institutionName": "新竹縣東正社區公共托育家園",
+ *             "childNationalId": "E567890123",
+ *             "childName": "李小寶",
+ *             "childBirthDate": "2021-03-15",
+ *             "currentOrder": null,
+ *             "reviewStatus": "審核中",
+ *             "className": null,
+ *             "applicantNationalName": "李美玲",
+ *             "applicantNationalId": "C345678901",
+ *             "identityType": "2",
+ *             "caseStatus": "審核中"
+ *         },
+ *         {
+ *             "caseNumber": 1764427118154,
+ *             "participantID": "f5d3966d-43d6-4f93-990a-a096a4b8cc86",
+ *             "applicationDate": "2025-11-29",
+ *             "institutionName": "新竹縣東正社區公共托育家園",
+ *             "childNationalId": "E567890123",
+ *             "childName": "李小寶",
+ *             "childBirthDate": "2021-03-15",
+ *             "currentOrder": null,
+ *             "reviewStatus": "通過",
+ *             "className": null,
+ *             "applicantNationalName": "李美玲",
+ *             "applicantNationalId": "C345678901",
+ *             "identityType": "1",
+ *             "caseStatus": "通過"
+ *         },
+ *         {
+ *             "caseNumber": 1004,
+ *             "participantID": "112e7e08-136d-4439-82ad-d1f355942af3",
+ *             "applicationDate": "2024-04-05",
+ *             "institutionName": "新竹縣公設民營嘉豐托嬰中心",
+ *             "childNationalId": "H890123456",
+ *             "childName": "林小美",
+ *             "childBirthDate": "2022-01-05",
+ *             "currentOrder": 3,
+ *             "reviewStatus": "撤銷申請審核中",
+ *             "className": "小班",
+ *             "applicantNationalName": "李美玲",
+ *             "applicantNationalId": "C345678901",
+ *             "identityType": "2",
+ *             "caseStatus": "撤銷申請審核中"
+ *         },
+ *         {
+ *             "caseNumber": 1004,
+ *             "participantID": "112e7e08-136d-4439-82ad-d1f355942af3",
+ *             "applicationDate": "2024-04-05",
+ *             "institutionName": "新竹縣公設民營嘉豐托嬰中心",
+ *             "childNationalId": "Q789012345",
+ *             "childName": "林小強",
+ *             "childBirthDate": "2023-03-12",
+ *             "currentOrder": 4,
+ *             "reviewStatus": "審核中",
+ *             "className": "小班",
+ *             "applicantNationalName": "李美玲",
+ *             "applicantNationalId": "C345678901",
+ *             "identityType": "2",
+ *             "caseStatus": "審核中"
+ *         }
+ *     ],
+ *     "hasNext": false,
+ *     "size": 10,
+ *     "offset": 0,
+ *     "totalPages": 1
+ * }
+ */
 export const getApplicationsCasesList = async (options = {}) => {
     try {
         const params = {};
@@ -178,6 +301,7 @@ export const getApplicationsCasesList = async (options = {}) => {
         if (options.identityType) {
             params.identityType = options.identityType;
         }
+
 
         const query = new URLSearchParams(params).toString();
         const url = query ? `/applications/cases/list?${query}` : '/applications/cases/list';

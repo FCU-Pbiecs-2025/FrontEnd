@@ -20,9 +20,13 @@
           <h2>撤銷申請資訊</h2>
 
           <div class="info-card">
-            <div class="info-row">
+            <!-- <div class="info-row">
               <span class="label">申請案號：</span>
               <span class="value">{{ applicationId || '—' }}</span>
+            </div> -->
+            <div class="info-row">
+              <span class="label">案件編號：</span>
+              <span class="value">{{ caseNumber || '—' }}</span>
             </div>
             <div class="info-row">
               <span class="label">申請人：</span>
@@ -97,6 +101,7 @@ const applicationRecord = computed(() => {
 })
 
 const applicationId = computed(() => applicationRecord.value?.applicationID || applicationRecord.value?.caseNo)
+const caseNumber = computed(() => applicationRecord.value?.caseNumber) // 新增案件編號
 const applicantName = computed(() => applicationRecord.value?.username)
 const childName = computed(() => applicationRecord.value?.childname)
 const queueNumber = computed(() => applicationRecord.value?.currentOrder ?? applicationRecord.value?.queueNumber)
@@ -132,6 +137,7 @@ const loadApplicationInfo = async () => {
     if (norm) {
       const mapped = {
         caseNo: norm.caseNo || norm.applicationID || norm.applicationId || routeCaseNo,
+        caseNumber: norm.caseNumber || null, // 新增案件編號欄位
         applicationID: norm.applicationID || norm.applicationId || norm.caseNo || null,
         applicationDate: norm.applicationDate || norm.applyDate,
         applyDate: norm.applicationDate || norm.applyDate,

@@ -27,14 +27,15 @@
         <div v-if="!childActive" class="detail-card">
           <h2>案件摘要</h2>
           <div class="summary-grid">
-            <div class="field"><span class="label">申請案號</span><span class="value">{{ application.caseNo }}</span></div>
+            <!-- <div class="field"><span class="label">申請案號</span><span class="value">{{ application.caseNo }}</span></div> -->
+            <div class="field"><span class="label">案件編號</span><span class="value">{{ application.caseNumber || '—' }}</span></div>
             <div class="field"><span class="label">申請日期</span><span class="value">{{ application.applyDate || application.applicationDate }}</span></div>
             <div class="field"><span class="label">申請人姓名</span><span class="value">{{ application.applicantName || '—' }}</span></div>
             <div class="field"><span class="label">申請幼兒姓名</span><span class="value">{{ application.childName || '—' }}</span></div>
             <div class="field"><span class="label">幼兒出生日期</span><span class="value">{{ application.childBirth || '—' }}</span></div>
             <div class="field"><span class="label">幼兒月齡</span><span class="value">{{ childMonthsLabel }}</span></div>
             <div class="field"><span class="label">申請機構</span><span class="value">{{ application.institutionName || application.assignedInstitution?.name || application.targetInstitution || '—' }}</span></div>
-            <div class="field" v-if="application.cancellationID"><span class="label">撤銷案號</span><span class="value">{{ application.cancellationID }}</span></div>
+            <!-- <div class="field" v-if="application.cancellationID"><span class="label">撤銷案號</span><span class="value">{{ application.cancellationID }}</span></div> -->
           </div>
 
           <div class="status-row">
@@ -123,6 +124,7 @@ const fetchCaseDetails = async (effectiveCaseNo) => {
     // 將 store 資料轉換為詳情頁需要的格式
     application.value = {
       caseNo: selectedApplication.caseNo,
+      caseNumber: selectedApplication.caseNumber, // 新增案件編號
       applyDate: selectedApplication.applyDate || selectedApplication.applicationDate,
       status: selectedApplication.status,
       statusClass: selectedApplication.statusClass,
@@ -182,6 +184,7 @@ const fetchCaseDetails = async (effectiveCaseNo) => {
       if (!item) return null
       return {
         caseNo: item.caseNo || item.applicationID || item.applicationId || item.id || item.applicationNo || item.caseId || item.applicationID || null,
+        caseNumber: item.caseNumber || null, // 新增案件編號欄位
         applyDate: item.applyDate || item.applicationDate || item.submittedAt || null,
         status: item.status || item.caseStatus || item.state || null,
         statusClass: item.statusClass || mapStatusToClass(item.status || item.caseStatus || item.state),
