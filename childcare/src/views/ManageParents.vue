@@ -212,6 +212,9 @@ const parents = ref([])
 const editIdx = ref(null)
 const showAddForm = ref(false)
 
+// 儲存 familyInfoId（從 authStore 或查詢結果中取得）
+const currentFamilyInfoId = ref(null)
+
 // 新增家長表單資料
 const newParent = ref({
   name: '',
@@ -272,7 +275,12 @@ const loadParents = async () => {
     // 優先使用 FamilyInfoID 查詢（兼容多種命名）
     let familyInfoId = authStore.user?.FamilyInfoID || authStore.user?.familyInfoID || authStore.user?.familyInfoId
     console.log('🔍 [loadParents] authStore.user 完整內容:', authStore.user)
-    console.log('🔍 [loadParents] 取得的 FamilyInfoID:', familyInfoId)
+    console.log('🔍 [loadParents] 從 authStore 取得的 FamilyInfoID:', familyInfoId)
+
+    // 儲存到組件層級
+    if (familyInfoId) {
+      currentFamilyInfoId.value = familyInfoId
+    }
 
     if (familyInfoId) {
       console.log('========== ManageParents: 使用 FamilyInfoID 查詢 ==========')
@@ -317,6 +325,20 @@ const loadParents = async () => {
     console.log('========== ManageParents: 家長資料查詢結果 ==========')
     console.log('查詢到的家長數量:', parentsData.length)
     console.log('完整資料:', parentsData)
+
+    // 🔑 從查詢結果中提取 familyInfoID（備用方案）
+    let extractedFamilyInfoId = null
+    if (Array.isArray(parentsData) && parentsData.length > 0 && parentsData[0].familyInfoID) {
+      extractedFamilyInfoId = parentsData[0].familyInfoID
+      console.log('🔑 [loadParents] 從查詢結果中提取的 familyInfoID:', extractedFamilyInfoId)
+
+      // 如果 authStore 中沒有 FamilyInfoID，則從這裡更新
+      if (!familyInfoId && extractedFamilyInfoId) {
+        familyInfoId = extractedFamilyInfoId
+        currentFamilyInfoId.value = extractedFamilyInfoId
+        console.log('✅ [loadParents] 已從查詢結果更新 familyInfoId 和 currentFamilyInfoId:', familyInfoId)
+      }
+    }
 
     // 映射 API 返回的家長數據到組件變量
     if (Array.isArray(parentsData) && parentsData.length > 0) {
@@ -426,10 +448,20 @@ const addParent = async () => {
     // 生成家長 ID
     const parentID = generateUUID()
 
-    // 從 authStore 取得 FamilyInfoID
-    const familyInfoId = authStore.user?.FamilyInfoID || authStore.user?.familyInfoID || authStore.user?.familyInfoId
-    console.log('🔑 [addParent] 從 authStore 取得的 FamilyInfoID:', familyInfoId)
-    console.log('🔑 [addParent] authStore.user 完整內容:', authStore.user)
+    // 使用組件層級的 currentFamilyInfoId（優先），否則從 authStore 取得
+    const familyInfoId = currentFamilyInfoId.value ||
+                         authStore.user?.FamilyInfoID ||
+                         authStore.user?.familyInfoID ||
+                         authStore.user?.familyInfoId
+
+    console.log('🔑 [addParent] 使用的 FamilyInfoID:', familyInfoId)
+    console.log('🔑 [addParent] currentFamilyInfoId.value:', currentFamilyInfoId.value)
+    console.log('🔑 [addParent] authStore.user.FamilyInfoID:', authStore.user?.FamilyInfoID)
+
+    if (!familyInfoId) {
+      alert('❌ 無法取得家庭資訊 ID，請重新登入')
+      return
+    }
 
     // 映射前端資料到 API 格式（按照 API 文檔順序）
     const parentInfoPayload = {
