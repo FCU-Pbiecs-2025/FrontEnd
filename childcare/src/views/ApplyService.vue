@@ -80,10 +80,6 @@
               <label>生日</label>
               <input v-model="form.applicant.birth" type="date" :disabled="sameAsMember.applicant" />
             </div>
-            <div class="form-row">
-              <label>身分證</label>
-              <input v-model="form.applicant.id" type="text" :disabled="sameAsMember.applicant" />
-            </div>
 <!--            新增性別欄位-->
             <div class="form-row">
               <label>性別</label>
@@ -325,7 +321,6 @@
           <label class="agency-label">申請之就讀機構</label>
           <select @change="onAgencyChange" class="agency-select">
             <option value="">請選擇申請之就讀機構</option>
-            <option value="市政府">市政府</option>
             <option v-for="inst in agencyOptions" :key="inst.institutionName" :value="inst.institutionName">
               {{ inst.institutionName }}
             </option>

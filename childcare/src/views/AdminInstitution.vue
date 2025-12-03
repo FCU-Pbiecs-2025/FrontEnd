@@ -46,7 +46,6 @@
                 <td class="action-cell">
                   <div style="display: flex; gap: 8px;">
                     <button class="btn small" style="min-width: 60px; height: 36px;" @click="edit(item)">編輯</button>
-                    <button class="btn small danger" style="min-width: 60px; height: 36px;" @click="remove(item)">刪除</button>
                   </div>
                 </td>
               </tr>

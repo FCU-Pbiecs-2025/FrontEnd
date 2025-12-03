@@ -44,7 +44,6 @@
               <td class="status-cell">{{ item.statusText }}</td>
               <td class="action-cell">
                 <button class="btn small" @click="manageAdmin(item.userID)">編輯</button>
-                <button class="btn small danger" @click="removeAdmin(item.userID)">刪除</button>
               </td>
             </tr>
             <tr v-if="displayAdmins.length === 0">

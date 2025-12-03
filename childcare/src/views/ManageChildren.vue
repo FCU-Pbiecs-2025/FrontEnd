@@ -208,16 +208,6 @@ const loadChildren = async () => {
 
     if (!response || !response.data) {
       console.error('❌ API 回應為空')
-      // 如果 API 失敗，使用預設資料
-      children.value = [
-        {
-          id: 1,
-          name: '王小寶',
-          idNumber: '',
-          gender: '男',
-          birthday: '2022-05-01'
-        }
-      ]
       return
     }
 

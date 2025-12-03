@@ -310,14 +310,49 @@ const loadParents = async () => {
         return
       }
 
-      console.log('UserID:', userID)
+      console.log('📤 [ManageParents] 調用 getUserFamilyInfo，UserID:', userID)
       const response = await getUserFamilyInfo(userID)
 
-      if (response && response.data && response.data.parents) {
-        console.log('✅ 使用 getUserFamilyInfo 成功查詢到家長數:', response.data.parents.length)
-        parentsData = response.data.parents
+      console.log('========== 📥 getUserFamilyInfo API 回應完整資訊 ==========')
+      console.log('完整 response 對象:', response)
+      console.log('response.status:', response?.status)
+      console.log('response.statusText:', response?.statusText)
+      console.log('response.data:', response?.data)
+
+      if (response?.data) {
+        console.log('========== response.data 詳細結構 ==========')
+        console.log('所有 key:', Object.keys(response.data))
+        console.log('userID:', response.data.userID)
+        console.log('name:', response.data.name)
+        console.log('email:', response.data.email)
+        console.log('phoneNumber:', response.data.phoneNumber)
+        console.log('mailingAddress:', response.data.mailingAddress)
+        console.log('familyInfoID:', response.data.familyInfoID)
+        console.log('institutionID:', response.data.institutionID)
+        console.log('nationalID:', response.data.nationalID)
+        console.log('parents 陣列:', response.data.parents)
+        console.log('children 陣列:', response.data.children)
+      }
+
+      if (response && response.data) {
+        // 🔑 優先從 response.data 根層級提取 familyInfoID（即使 parents 陣列為空也能取得）
+        if (response.data.familyInfoID) {
+          const extractedFamilyInfoId = response.data.familyInfoID
+          currentFamilyInfoId.value = extractedFamilyInfoId
+          console.log('🔑 [loadParents] 從 response.data 根層級提取的 familyInfoID:', extractedFamilyInfoId)
+          console.log('✅ [loadParents] 已保存 familyInfoId 到 currentFamilyInfoId:', currentFamilyInfoId.value)
+        }
+
+        // 取得家長陣列資料
+        if (response.data.parents) {
+          console.log('✅ 使用 getUserFamilyInfo 成功查詢到家長數:', response.data.parents.length)
+          parentsData = response.data.parents
+        } else {
+          console.warn('⚠️ getUserFamilyInfo 回應中沒有家長資料')
+          parentsData = []
+        }
       } else {
-        console.warn('⚠️ getUserFamilyInfo 回應中沒有家長資料')
+        console.warn('⚠️ getUserFamilyInfo 回應為空')
         parentsData = []
       }
     }
@@ -325,18 +360,18 @@ const loadParents = async () => {
     console.log('========== ManageParents: 家長資料查詢結果 ==========')
     console.log('查詢到的家長數量:', parentsData.length)
     console.log('完整資料:', parentsData)
+    console.log('🔑 當前 currentFamilyInfoId.value:', currentFamilyInfoId.value)
 
-    // 🔑 從查詢結果中提取 familyInfoID（備用方案）
-    let extractedFamilyInfoId = null
-    if (Array.isArray(parentsData) && parentsData.length > 0 && parentsData[0].familyInfoID) {
-      extractedFamilyInfoId = parentsData[0].familyInfoID
-      console.log('🔑 [loadParents] 從查詢結果中提取的 familyInfoID:', extractedFamilyInfoId)
-
-      // 如果 authStore 中沒有 FamilyInfoID，則從這裡更新
-      if (!familyInfoId && extractedFamilyInfoId) {
-        familyInfoId = extractedFamilyInfoId
+    // 🔑 如果還沒有從 response.data 取得，才從 parentsData 陣列中提取
+    if (!currentFamilyInfoId.value) {
+      let extractedFamilyInfoId = null
+      if (Array.isArray(parentsData) && parentsData.length > 0 && parentsData[0].familyInfoID) {
+        extractedFamilyInfoId = parentsData[0].familyInfoID
         currentFamilyInfoId.value = extractedFamilyInfoId
-        console.log('✅ [loadParents] 已從查詢結果更新 familyInfoId 和 currentFamilyInfoId:', familyInfoId)
+        console.log('🔑 [loadParents] 從 parents 陣列中提取的 familyInfoID:', extractedFamilyInfoId)
+        console.log('✅ [loadParents] 已保存 familyInfoId 到 currentFamilyInfoId:', currentFamilyInfoId.value)
+      } else {
+        console.warn('⚠️ [loadParents] 無法從任何來源提取 familyInfoID')
       }
     }
 
