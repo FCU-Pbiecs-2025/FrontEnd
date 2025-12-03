@@ -50,8 +50,15 @@
       <!-- 登入判斷 -->
       <div v-if="!authStore.isLoggedIn" class="login-section">
         <div class="notice-card">
-          <h3>⚠️ 重要提醒：</h3>
-          <div class="review-comment">登入後即可進行申請</div>
+          <h3>⚠️ 申請前準備</h3>
+          <div class="review-comment">
+            <p>申請托育服務前，請依照以下步驟完成準備：</p>
+            <ol style="margin: 12px 0; padding-left: 20px;">
+              <li>登入您的帳號</li>
+              <li>前往「會員中心」填寫家長及幼兒資料</li>
+              <li>確認資料填寫完整後，即可開始進行申請</li>
+            </ol>
+          </div>
         </div>
         <LoginView />
       </div>
@@ -296,9 +303,23 @@
         <h2 class="upload-title">上傳身份附件</h2>
         <div class="notice-card">
           <h3>⚠️ 重要提醒</h3>
-          <p class="review-comment">請上傳您的身份證明文件（如身分證、戶口名簿等），支援 JPG、PNG、PDF 格式，單檔不超過 5MB</p>
+          <p class="review-comment">
+            <span v-if="!identityTypeSelect">請先選擇申請之身分別，查看所需文件清單</span>
+            <span v-else>
+              <strong>{{ requiredDocuments.title }}：</strong><br />
+              <ul style="margin: 8px 0; padding-left: 20px;">
+                <li v-for="(doc, idx) in requiredDocuments.documents" :key="idx">
+                  {{ doc }}
+                </li>
+              </ul>
+              支援 JPG、PNG、PDF 格式，單檔不超過 5MB，最多上傳 4 個檔案
+            </span>
+          </p>
         </div>
-        <input type="file" class="upload-input" multiple @change="handleFileChange" />
+        <input type="file" class="upload-input" multiple @change="handleFileChange" :disabled="uploadedFiles.length >= 4" />
+        <div v-if="uploadedFiles.length > 0" class="file-count-info">
+          {{ fileValidationMsg }}
+        </div>
         <ul class="file-list" v-if="uploadedFiles.length">
           <li v-for="(item, idx) in uploadedFiles" :key="item.file.name + item.file.size + item.file.lastModified" class="file-item">
             <span v-if="item.previewUrl">
@@ -646,11 +667,103 @@ onMounted(async () => {
 
 const uploadedFiles = ref([])
 
+// 計算屬性：根據身分別動態生成所需文件提示
+const requiredDocuments = computed(() => {
+  const identityNumber = convertIdentityTypeToNumber(identityTypeSelect.value)
+
+  let title = '所需文件'
+  let documents = []
+
+  if (identityNumber === 1) {
+    // 第一序位 - 一般民眾
+    title = '所需文件'
+    documents = [
+      '戶口名簿正本',
+      '身分別證明文件正本'
+    ]
+  } else if (identityNumber === 2) {
+    // 第二序位
+    const identityDesc = identityTypeSelect.value
+    if (identityDesc.includes('該公共托育機構員工')) {
+      // 機構員工之子女
+      documents = [
+        '戶口名簿正本',
+        '托育機構就職證明文件'
+      ]
+    } else if (identityDesc.includes('提供辦理該公共托育機構場地之學校教職員工')) {
+      // 學校教職員工之子女
+      documents = [
+        '戶口名簿正本',
+        '托育機構就職證明文件'
+      ]
+    }
+  } else if (identityNumber === 3) {
+    // 第三序位 - 設籍本縣一般家庭嬰幼兒
+    documents = [
+      '戶口名簿正本'
+    ]
+  }
+
+  return {
+    title,
+    documents,
+    identityNumber
+  }
+})
+
+// 計算屬性：驗證訊息（含檔案限制說明）
+const fileValidationMsg = computed(() => {
+  const remaining = 4 - uploadedFiles.value.length
+  if (remaining <= 0) {
+    return '已達上傳檔案上限（最多4個）'
+  }
+  return `已上傳 ${uploadedFiles.value.length} 個檔案，還可上傳 ${remaining} 個`
+})
+
+// 檔案驗證函數
+const validateFile = (file) => {
+  // 檢查文件類型
+  const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf']
+  const fileExtension = file.name.split('.').pop().toLowerCase()
+  const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf']
+
+  if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+    return {
+      valid: false,
+      message: `${file.name} 不是支援的格式。請上傳 JPG、PNG 或 PDF 檔案。`
+    }
+  }
+
+  // 檢查文件大小（5MB = 5242880 bytes）
+  if (file.size > 5242880) {
+    return {
+      valid: false,
+      message: `${file.name} 檔案過大。單個檔案不能超過 5MB。`
+    }
+  }
+
+  return { valid: true, message: '' }
+}
+
 function handleFileChange(e) {
   const files = Array.from(e.target.files)
+
   files.forEach(file => {
+    // 檢查是否已達上限
+    if (uploadedFiles.value.length >= 4) {
+      alert('已達上傳檔案上限（最多4個）')
+      return
+    }
+
+    // 驗證檔案
+    const validation = validateFile(file)
+    if (!validation.valid) {
+      alert(validation.message)
+      return
+    }
+
     // 檢查是否已存在
-    if (!uploadedFiles.value.some(f => f.name === file.name && f.size === file.size && f.lastModified === file.lastModified)) {
+    if (!uploadedFiles.value.some(f => f.file.name === file.name && f.file.size === file.size && f.file.lastModified === file.lastModified)) {
       let previewUrl = ''
       if (file.type.startsWith('image/')) {
         previewUrl = URL.createObjectURL(file)
@@ -1498,6 +1611,30 @@ function goHome(){
   text-align: center;
 }
 
+.upload-input {
+  display: block;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 2px dashed #F9AFAE;
+  border-radius: 8px;
+  background: #FFF8F6;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+.upload-input:hover:not(:disabled) {
+  border-color: #f5a1a1;
+  background: #fff0ee;
+}
+
+.upload-input:disabled {
+  background: #f5f5f5;
+  border-color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .upload-tip {
   display: flex;
   align-items: flex-start;
@@ -1911,6 +2048,26 @@ function goHome(){
   color: #856404;
   line-height: 1.6;
   margin: 0;
+}
+
+.review-comment ul {
+  list-style: disc;
+  margin: 8px 0 0 0 !important;
+}
+
+.review-comment li {
+  margin: 4px 0;
+}
+
+.file-count-info {
+  color: #F9AFAE;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #FFF8F6;
+  border-radius: 6px;
+  border-left: 4px solid #F9AFAE;
 }
 
 /* 身分別選擇樣式 */

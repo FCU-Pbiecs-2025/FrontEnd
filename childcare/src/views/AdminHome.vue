@@ -586,7 +586,7 @@ const goAdminAnnouncementDetail = (id) => {
   .sidebar-overlay {
     display: block;
     position: fixed;
-    top: 130px; /* App.vue header 高度 */
+    top: 100px; /* App.vue header 高度 */
     left: 0;
     right: 0;
     bottom: 0;
@@ -597,7 +597,7 @@ const goAdminAnnouncementDetail = (id) => {
   /* 側邊欄手機版樣式 */
   .admin-sidebar.mobile-mode {
     position: fixed;
-    top: 130px;
+    top: 100px;
     left: 0;
     bottom: 0;
     height: calc(100vh - 130px);

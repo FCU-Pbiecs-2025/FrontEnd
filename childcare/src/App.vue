@@ -70,7 +70,8 @@
           <!-- 未登入時顯示登入按鈕 -->
           <div v-else class="login-actions">
             <button class="login-btn" @click="handleNavClick('Login')">登入</button>
-            <button class="login-btn">註冊</button>
+            <p class="login-separator">/</p>
+            <button class="login-btn" @click="handleNavClick('RegisterTerms')">註冊</button>
           </div>
         </nav>
       </header>
@@ -175,9 +176,11 @@
         <p>Copyright © 2019 <span>新竹縣政府社會處</span> All Rights Reserved.</p>
         <p>建議最佳瀏覽解析度 1920×1080　手機瀏覽解析度建議414×736或360×640</p>
       </footer>
-      <Chatbot />
     </template>
     <router-view v-else />
+
+    <!-- Chatbot - 僅在非後台頁面時顯示 -->
+    <Chatbot v-if="showMainLayout && !isAdminPage" />
   </div>
 </template>
 
@@ -198,6 +201,14 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const showMainLayout = computed(() => route.name !== 'AdminLogin')
+
+// 檢查是否為後台頁面或後台登入頁面
+const isAdminPage = computed(() => {
+  const routePath = route.path
+  const isAdminPath = routePath.startsWith('/admin')
+  const isAdminLogin = route.name === 'AdminLogin'
+  return isAdminPath || isAdminLogin
+})
 
 // 漢堡選單狀態
 const isMenuOpen = ref(false)
@@ -658,6 +669,20 @@ footer {
   transition: background-color 0.2s;
 }
 
+.login-separator {
+  background: none;
+  color: #e35d6a;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 8px;
+  font-size: 14px;
+  font-weight: 300;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 
 
 .account-btn {
@@ -911,11 +936,6 @@ footer {
     display: flex;
     position: absolute;
     top: 0px;
-    right: 20px; /* 在 user-actions 左側留出空間 */
-  }
-
-  /* 當未登入時（沒有 user-actions），漢堡按鈕移到最右側 */
-  .header-nav:not(:has(.user-actions)) .hamburger-btn {
     right: 20px;
   }
 
@@ -969,7 +989,18 @@ footer {
   .header-nav {
     position: relative;
   }
+
   .user-actions {
+    position: absolute;
+    top: -50px;
+    right: 0px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    z-index: 110;
+  }
+
+  .login-actions {
     position: absolute;
     top: -50px;
     right: 0px;

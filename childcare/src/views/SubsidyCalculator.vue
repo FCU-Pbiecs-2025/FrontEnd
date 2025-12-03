@@ -245,19 +245,45 @@ function calcSubsidy() {
 }
 select {
   width: 100%;
-  padding: 12px 10px;
+  padding: 12px 16px;
+  padding-right: 40px;
   height: 48px;
-  border: 1.5px solid #bdbdbd;
-  border-radius: 8px;
-  font-size: 18px;
-  background: #f5f5f5;
-  color: #666;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 16px;
+  background: linear-gradient(to right, #fff 95%, transparent 95%);
+  background-color: #fff;
+  color: #333;
   outline: none;
-  transition: border 0.2s;
+  transition: all 0.3s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  font-weight: 500;
+  letter-spacing: 0.5px;
 }
+
+select::-ms-expand {
+  display: none;
+}
+
+select::placeholder {
+  color: #999;
+}
+
+select:hover {
+  border-color: #2176d2;
+  box-shadow: 0 2px 8px rgba(33, 118, 210, 0.1);
+}
+
 select:focus {
-  border: 1.5px solid #2176d2;
+  border-color: #2176d2;
+  box-shadow: 0 0 0 4px rgba(33, 118, 210, 0.1);
+  background: linear-gradient(to right, #fff 95%, transparent 95%);
 }
+
+
 .btn-row {
   display: flex;
   justify-content: center;

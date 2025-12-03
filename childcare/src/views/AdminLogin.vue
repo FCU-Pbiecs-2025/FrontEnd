@@ -16,7 +16,6 @@
         </div>
         <p v-if="error" class="error-message">{{ error }}</p>
         <button type="submit" class="login-btn">登入</button>
-        <button type="button" @click="testAdminLogin" class="test-login-btn">測試登入</button>
       </form>
     </div>
   </div>
@@ -77,14 +76,7 @@ export default {
       }
     }
 
-    const testAdminLogin = () => {
-      authStore.user = { role: 'admin', name: '測試管理員' }
-      authStore.token = 'test-token'
-      authStore.isAuthenticated = true
-      router.replace('/admin')
-    }
-
-    return { username, password, error, handleLogin, testAdminLogin }
+    return { username, password, error, handleLogin }
   }
 }
 </script>
@@ -191,27 +183,5 @@ input:focus {
   color: #dc3545;
   margin-bottom: 1rem;
   font-size: 0.9rem;
-}
-
-.test-login-btn {
-  width: 100%;
-  padding: 12px;
-  background-color: #5f8ba8; /* 主題藍色 */
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 1.1rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
-  margin-top: 0.5rem;
-}
-
-.test-login-btn:hover {
-  background-color: #4d708a;
-}
-
-.test-login-btn:active {
-  transform: scale(0.98);
 }
 </style>

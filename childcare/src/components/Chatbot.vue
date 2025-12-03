@@ -3,9 +3,56 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
+import { onMounted, onBeforeUnmount, watch } from 'vue';
+import { useRoute } from 'vue-router';
+
+const route = useRoute();
+
+// 檢查是否為後台頁面的函數
+const isAdminRelatedPage = () => {
+  const isAdminPath = route.path.startsWith('/admin');
+  const isAdminLogin = route.name === 'AdminLogin';
+  return isAdminPath || isAdminLogin;
+};
+
+// 移除聊天機器人的函數
+const removeChatbot = () => {
+  // 移除 script
+  const script = document.getElementById('OydbPowUUbPfBaYp');
+  if (script) {
+    script.remove();
+  }
+
+  // 移除 style
+  const styles = document.querySelectorAll('style');
+  styles.forEach(style => {
+    if (style.textContent && style.textContent.includes('dify-chatbot-bubble-button')) {
+      style.remove();
+    }
+  });
+
+  // 移除聊天框元素
+  const bubble = document.getElementById('dify-chatbot-bubble-button');
+  const window_ = document.getElementById('dify-chatbot-bubble-window');
+  if (bubble) bubble.remove();
+  if (window_) window_.remove();
+
+  // 清除配置
+  if (window.difyChatbotConfig) {
+    delete window.difyChatbotConfig;
+  }
+  if (window.difyChatbot) {
+    delete window.difyChatbot;
+  }
+};
 
 onMounted(() => {
+  // 檢查是否為後台頁面或後台登入頁
+  if (isAdminRelatedPage()) {
+    console.log('Chatbot: Skipped loading on admin page');
+    return;
+  }
+
   window.difyChatbotConfig = {
     token: 'OydbPowUUbPfBaYp',
     inputs: {},
@@ -109,10 +156,19 @@ onMounted(() => {
     }
   `;
   document.head.appendChild(style);
-
-
-
 });
+
+onBeforeUnmount(() => {
+  // 組件卸載前移除聊天機器人
+  removeChatbot();
+});
+
+// 監聽路由變化，如果進入後台頁面則移除聊天機器人
+watch(() => route.path, (newPath) => {
+  if (isAdminRelatedPage()) {
+    removeChatbot();
+  }
+}, { immediate: false });
 </script>
 
 <style scoped>
