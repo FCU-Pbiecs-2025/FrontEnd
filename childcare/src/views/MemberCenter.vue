@@ -138,7 +138,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../store/auth.js'
-import { getUserFamilyInfo } from '../api/user.js'
+import { getUserFamilyInfo, updateUserProfile } from '../api/user.js'
 import { useApplicationsStore } from '../store/applications.js'
 import { getUserApplicationDetails, CASE_STATUS_MAP } from '../api/application.js'
 
@@ -259,37 +259,12 @@ const userProfile = ref({
   occupation: ''
 })
 
-const editProfile = () => {
-  editableUser.value = {
-    name: userProfile.value.name || '',
-    email: userProfile.value.email || '',
-    phone: userProfile.value.phone || '',
-    address: userProfile.value.address || ''
-  }
-  editProfileMode.value = true
-}
+// 儲存 familyInfoId（從 API 返回的資料中提取）
+const currentFamilyInfoId = ref(null)
 
-const saveProfile = () => {
-  // 更新 userProfile
-  userProfile.value.name = editableUser.value.name
-  userProfile.value.email = editableUser.value.email
-  userProfile.value.phone = editableUser.value.phone
-  userProfile.value.address = editableUser.value.address
 
-  // 同時更新 authStore
-  if (authStore.user) {
-    authStore.user.name = editableUser.value.name
-    authStore.user.email = editableUser.value.email
-    authStore.user.phone = editableUser.value.phone
-    authStore.user.address = editableUser.value.address
-  }
-  editProfileMode.value = false
-  alert('個人資料已儲存')
-}
 
-const cancelProfileEdit = () => {
-  editProfileMode.value = false
-}
+
 
 // 將狀態映射為 CSS 類別
 function mapStatusToClass(status) {
@@ -309,8 +284,6 @@ function mapStatusToClass(status) {
     '撤銷申請通過': 'revoked',
     '已退托': 'withdrawn',
     '已錄取': 'admitted',
-    'admitted': 'admitted',
-    '錄取': 'admitted'
   }
   return statusMap[resolved] || 'processing'
 }
@@ -391,6 +364,34 @@ onMounted(async () => {
       name: familyData.name,
       email: familyData.email
     })
+
+    // 🔑 從 API 返回的資料中提取 familyInfoID
+    console.log('========== 開始提取 familyInfoID ==========')
+    let extractedFamilyInfoId = null
+
+    // 優先從 familyData 根層級提取
+    if (familyData.familyInfoID) {
+      extractedFamilyInfoId = familyData.familyInfoID
+      console.log('🔑 [MemberCenter] 從 familyData 根層級提取的 familyInfoID:', extractedFamilyInfoId)
+    }
+    // 如果根層級沒有，嘗試從第一個家長記錄中提取
+    else if (Array.isArray(familyData.parents) && familyData.parents.length > 0 && familyData.parents[0].familyInfoID) {
+      extractedFamilyInfoId = familyData.parents[0].familyInfoID
+      console.log('🔑 [MemberCenter] 從第一個家長記錄中提取的 familyInfoID:', extractedFamilyInfoId)
+    }
+    // 如果家長記錄也沒有，嘗試從第一個幼兒記錄中提取
+    else if (Array.isArray(familyData.children) && familyData.children.length > 0 && familyData.children[0].familyInfoID) {
+      extractedFamilyInfoId = familyData.children[0].familyInfoID
+      console.log('🔑 [MemberCenter] 從第一個幼兒記錄中提取的 familyInfoID:', extractedFamilyInfoId)
+    }
+
+    // 保存到組件級別的 ref
+    if (extractedFamilyInfoId) {
+      currentFamilyInfoId.value = extractedFamilyInfoId
+      console.log('✅ [MemberCenter] 已保存 familyInfoId 到 currentFamilyInfoId:', currentFamilyInfoId.value)
+    } else {
+      console.warn('⚠️ [MemberCenter] 無法從 API 返回的資料中提取 familyInfoID')
+    }
 
     // ========== 提取並映射用戶個人資料 ==========
     console.log('========== 開始映射用戶個人資料 ==========')
@@ -714,6 +715,114 @@ function addChild() {
   })
   showAddChild.value = false
   newChild.value = { idNumber: '', name: '', birthday: '', gender: '男' }
+}
+
+// 編輯個人資料
+const editProfile = () => {
+  // 將當前 userProfile 複製到 editableUser
+  editableUser.value = {
+    name: userProfile.value.name,
+    email: userProfile.value.email,
+    phone: userProfile.value.phone,
+    address: userProfile.value.address
+  }
+  editProfileMode.value = true
+}
+
+// 儲存個人資料
+const saveProfile = async () => {
+  try {
+    console.log('========== 開始更新使用者資料 ==========')
+
+    // 取得當前使用者 ID
+    const userID = route.params.userID || route.query.userID || authStore.user?.UserID
+
+    if (!userID) {
+      console.error('❌ 無法取得使用者 ID，無法更新')
+      return
+    }
+
+    // 🔑 優先從組件級別的 currentFamilyInfoId 取得（從 API 返回的資料中提取）
+    let familyInfoId = currentFamilyInfoId.value
+
+    console.log('🔍 [saveProfile] familyInfoId 來源診斷:')
+    console.log('  - currentFamilyInfoId.value (從 API 提取):', currentFamilyInfoId.value)
+    console.log('  - applicationsStore.familyInfoId:', applicationsStore.familyInfoId)
+    console.log('  - authStore.user?.FamilyInfoID:', authStore.user?.FamilyInfoID)
+    console.log('  - authStore.user?.familyInfoID:', authStore.user?.familyInfoID)
+
+    // 如果組件級別的 currentFamilyInfoId 沒有值，嘗試其他來源
+    if (!familyInfoId) {
+      // 第二優先：applicationsStore
+      familyInfoId = applicationsStore.familyInfoId
+      if (familyInfoId) {
+        console.log('⚠️ [saveProfile] currentFamilyInfoId 為空，改用 applicationsStore.familyInfoId')
+      }
+    }
+
+    // 如果還是沒有，嘗試 authStore
+    if (!familyInfoId) {
+      familyInfoId = authStore.user?.FamilyInfoID ||
+                     authStore.user?.familyInfoID ||
+                     authStore.user?.familyInfoId
+      if (familyInfoId) {
+        console.log('⚠️ [saveProfile] 前兩個來源皆為空，改用 authStore')
+      }
+    }
+
+    // 最終診斷結果
+    if (familyInfoId) {
+      console.log('✅ [saveProfile] 成功取得 familyInfoId:', familyInfoId)
+    } else {
+      console.warn('⚠️ [saveProfile] ❌ familyInfoId 沒有帶入值！')
+      console.warn('   - 無法從 currentFamilyInfoId (API 提取) 取得')
+      console.warn('   - 無法從 applicationsStore 取得')
+      console.warn('   - 無法從 authStore 取得')
+      alert('❌ 無法取得家庭資訊 ID (familyInfoId 沒有帶入值)，請重新整理頁面或重新登入')
+      return
+    }
+
+    // 準備更新資料（只包含基本資料：姓名、信箱、電話、地址）
+    const profileData = {
+      name: editableUser.value.name,
+      email: editableUser.value.email,
+      phoneNumber: editableUser.value.phone,
+      mailingAddress: editableUser.value.address
+    }
+
+    console.log('📤 準備發送的使用者基本資料:', JSON.stringify(profileData, null, 2))
+
+    // 調用 API 更新使用者基本資料
+    const response = await updateUserProfile(userID, profileData)
+
+    console.log('✅ API 更新成功:', response.data)
+
+    // 更新本地顯示的資料
+    userProfile.value.name = editableUser.value.name
+    userProfile.value.email = editableUser.value.email
+    userProfile.value.phone = editableUser.value.phone
+    userProfile.value.address = editableUser.value.address
+
+    // 更新 authStore 中的使用者資料
+    if (authStore.user) {
+      authStore.user.name = editableUser.value.name
+      authStore.user.email = editableUser.value.email
+      authStore.user.phone = editableUser.value.phone
+      authStore.user.address = editableUser.value.address
+    }
+
+    editProfileMode.value = false
+    console.log('✅ 使用者資料已更新')
+  } catch (error) {
+    console.error('❌ 更新使用者資料失敗:', error)
+  }
+}
+
+// 取消編輯個人資料
+const cancelProfileEdit = () => {
+  editProfileMode.value = false
+  // 清空編輯資料
+  editableUser.value = { name: '', email: '', phone: '', address: '' }
 }
 
 // 管理家長資料

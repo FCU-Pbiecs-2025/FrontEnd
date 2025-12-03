@@ -130,6 +130,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth.js'
 import { getUserFamilyInfo } from '../api/user.js'
+import { createChildInfo, updateChildInfo, deleteChildInfo } from '../api/childInfo.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -138,6 +139,9 @@ const authStore = useAuthStore()
 const children = ref([])
 const editIdx = ref(null)
 const showAddForm = ref(false)
+
+// 儲存 familyInfoId（從 authStore 或查詢結果中取得）
+const currentFamilyInfoId = ref(null)
 
 // 新增幼兒表單資料（僅四欄位）
 const newChild = ref({
@@ -168,6 +172,15 @@ function validateTWId(id) {
   let sum = 0
   for (let i = 0; i < weights.length; i++) sum += nums[i] * weights[i]
   return sum % 10 === 0
+}
+
+// 生成 UUID v4
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
 }
 
 // 載入幼兒資料（僅四欄位）
@@ -212,6 +225,14 @@ const loadChildren = async () => {
     console.log('========== ManageChildren: 家庭數據結構分析 ==========')
     console.log('familyData 完整對象:', familyData)
     console.log('familyData.children 內容:', familyData.children)
+
+    // 🔑 從查詢結果中提取 familyInfoID（備用方案）
+    let extractedFamilyInfoId = null
+    if (familyData.familyInfoID) {
+      extractedFamilyInfoId = familyData.familyInfoID
+      console.log('🔑 [loadChildren] 從查詢結果中提取的 familyInfoID:', extractedFamilyInfoId)
+      currentFamilyInfoId.value = extractedFamilyInfoId
+    }
 
     // 映射 API 返回的幼兒數據到組件變量
     if (Array.isArray(familyData.children) && familyData.children.length > 0) {
@@ -285,7 +306,7 @@ const editChild = (idx) => {
 }
 
 // 儲存幼兒資料（含驗證）
-const saveChild = (idx) => {
+const saveChild = async (idx) => {
   if (!children.value[idx].name) {
     alert('請填寫幼兒姓名')
     return
@@ -295,9 +316,45 @@ const saveChild = (idx) => {
     alert(childIdErrors.value[idx])
     return
   }
-  saveToStorage()
-  editIdx.value = null
-  alert('幼兒資料已儲存')
+
+  try {
+    console.log('========== 開始更新幼兒資料 ==========')
+
+    const child = children.value[idx]
+    const childID = child.childID
+
+    if (!childID) {
+      console.error('❌ 缺少幼兒 ID，無法更新')
+      return
+    }
+
+    // 映射前端資料到 API 格式
+    const updatePayload = {
+      childID: childID,
+      familyInfoID: currentFamilyInfoId.value ||
+                    authStore.user?.FamilyInfoID ||
+                    authStore.user?.familyInfoID ||
+                    authStore.user?.familyInfoId,
+      nationalID: child.idNumber,
+      name: child.name,
+      gender: child.gender === '男',
+      birthDate: child.birthday,
+      householdAddress: ''
+    }
+
+    console.log('📤 [saveChild] 準備發送的幼兒資訊:', JSON.stringify(updatePayload, null, 2))
+
+    // 調用 API 更新幼兒
+    const response = await updateChildInfo(childID, updatePayload)
+
+    console.log('✅ API 更新成功:', response)
+
+    saveToStorage()
+    editIdx.value = null
+    console.log('✅ 幼兒資料已更新')
+  } catch (error) {
+    console.error('❌ 更新幼兒失敗:', error)
+  }
 }
 
 // 取消編輯
@@ -307,7 +364,7 @@ const cancelEdit = () => {
 }
 
 // 新增幼兒（含驗證）
-const addChild = () => {
+const addChild = async () => {
   if (!newChild.value.name) {
     alert('請填寫幼兒姓名')
     return
@@ -317,21 +374,99 @@ const addChild = () => {
     alert(newChildIdError.value)
     return
   }
-  const child = { ...newChild.value, id: Date.now() }
-  children.value.push(child)
-  childIdErrors.value.push('')
-  saveToStorage()
-  closeAddForm()
-  alert('幼兒資料新增成功')
+
+  try {
+    console.log('========== 開始新增幼兒資料到後端 ==========')
+
+    // 生成幼兒 ID
+    const childID = generateUUID()
+
+    // 使用組件層級的 currentFamilyInfoId（優先），否則從 authStore 取得
+    const familyInfoId = currentFamilyInfoId.value ||
+                         authStore.user?.FamilyInfoID ||
+                         authStore.user?.familyInfoID ||
+                         authStore.user?.familyInfoId
+
+    console.log('🔑 [addChild] 使用的 FamilyInfoID:', familyInfoId)
+    console.log('🔑 [addChild] currentFamilyInfoId.value:', currentFamilyInfoId.value)
+
+    if (!familyInfoId) {
+      console.error('❌ 無法取得家庭資訊 ID，請重新登入')
+      return
+    }
+
+    // 映射前端資料到 API 格式
+    const childInfoPayload = {
+      childID: childID,
+      familyInfoID: familyInfoId,
+      nationalID: newChild.value.idNumber,
+      name: newChild.value.name,
+      gender: newChild.value.gender === '男',
+      birthDate: newChild.value.birthday,
+      householdAddress: ''
+    }
+
+    console.log('🔑 [addChild] familyInfoID:', familyInfoId)
+    console.log('📤 [addChild] 準備發送的幼兒資訊:', JSON.stringify(childInfoPayload, null, 2))
+
+    // 調用 API 新增幼兒
+    const response = await createChildInfo(childInfoPayload)
+
+    console.log('✅ API 回應成功:', response)
+
+    // 新增至本地列表（包含 API 返回的資訊，特別是 childID）
+    const childToAdd = {
+      id: children.value.length + 1,
+      childID: response.childID || childID,
+      name: newChild.value.name,
+      idNumber: newChild.value.idNumber,
+      gender: newChild.value.gender,
+      birthday: newChild.value.birthday
+    }
+    children.value.push(childToAdd)
+    childIdErrors.value.push('')
+
+    // 儲存並重置
+    saveToStorage()
+    closeAddForm()
+    alert('✅ 幼兒資料已成功新增')
+  } catch (error) {
+    console.error('❌ 新增幼兒失敗:', error)
+    alert(`❌ 新增幼兒失敗: ${error.message}`)
+    alert(`❌ 新增幼兒失敗: ${error.message}`)
+  }
 }
 
 // 刪除幼兒
-const deleteChild = (idx) => {
-  if (confirm('確定要刪除此幼兒資料嗎？')) {
+const deleteChild = async (idx) => {
+  const target = children.value[idx]
+  if (!target) return
+
+  if (!confirm(`確定要刪除 ${target.name} 的資料嗎？`)) return
+
+  try {
+    // 確認有後端的 childID 可用
+    const backendId = target.childID
+    if (!backendId) {
+      console.error('❌ 缺少幼兒 ID，無法刪除')
+      return
+    }
+
+    console.log('========== 開始刪除幼兒資料 ==========')
+    console.log('childID:', backendId)
+
+    // 調用 API 刪除幼兒
+    await deleteChildInfo(backendId)
+
+    console.log('✅ API 刪除成功')
+
+    // 刪除成功後更新 UI
     children.value.splice(idx, 1)
     childIdErrors.value.splice(idx, 1)
     saveToStorage()
-    alert('幼兒資料已刪除')
+    console.log('✅ 幼兒資料已刪除')
+  } catch (error) {
+    console.error('❌ 刪除幼兒失敗:', error)
   }
 }
 

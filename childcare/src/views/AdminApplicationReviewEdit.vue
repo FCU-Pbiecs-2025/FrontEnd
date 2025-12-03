@@ -169,9 +169,9 @@
             <label class="form-label">審核結果：</label>
             <select v-model="reviewResult" class="form-input">
               <option value="">請選擇</option>
-              <option value="通過">通過</option>
+              <option value="候補中">候補中</option>
               <option value="需要補件">需要補件</option>
-              <option value="退件">退件</option>
+              <option value="已退件">退件</option>
             </select>
           </div>
           <div class="form-row">

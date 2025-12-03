@@ -202,7 +202,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth.js'
 import { getUserFamilyInfo } from '../api/user.js'
-import { createParentInfo, getParentsByFamilyId } from '../api/parentInfo.js'
+import { createParentInfo, getParentsByFamilyId, deleteParentInfo, updateParentInfo } from '../api/parentInfo.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -405,7 +405,7 @@ const cancelEdit = () => {
 }
 
 // 儲存家長資料（含驗證）
-const saveParent = (idx) => {
+const saveParent = async (idx) => {
   if (!parents.value[idx].name) {
     alert('請填寫家長姓名')
     return
@@ -415,18 +415,86 @@ const saveParent = (idx) => {
     alert(parentIdErrors.value[idx])
     return
   }
-  saveToStorage()
-  editIdx.value = null
-  alert('家長資料已儲存')
+
+  try {
+    console.log('========== 開始更新家長資料 ==========')
+
+    const parent = parents.value[idx]
+    const parentID = parent.parentID
+
+    if (!parentID) {
+      alert('❌ 缺少家長 ID，無法更新')
+      return
+    }
+
+    // 映射前端資料到 API 格式
+    const updatePayload = {
+      parentID: parentID,
+      familyInfoID: currentFamilyInfoId.value ||
+                    authStore.user?.FamilyInfoID ||
+                    authStore.user?.familyInfoID ||
+                    authStore.user?.familyInfoId,
+      nationalID: parent.idNumber,
+      name: parent.name,
+      gender: parent.gender === '男',
+      relationship: parent.relation,
+      occupation: parent.job,
+      phoneNumber: parent.phone,
+      householdAddress: parent.householdAddress,
+      mailingAddress: parent.contactAddress,
+      email: parent.email,
+      birthDate: parent.birthday,
+      isSuspended: false,
+      suspendEnd: null
+    }
+
+    console.log('📤 [saveParent] 準備發送的家長資訊:', JSON.stringify(updatePayload, null, 2))
+
+    // 調用 API 更新家長
+    const response = await updateParentInfo(parentID, updatePayload)
+
+    console.log('✅ API 更新成功:', response)
+
+    saveToStorage()
+    editIdx.value = null
+    alert('✅ 家長資料已更新')
+  } catch (error) {
+    console.error('❌ 更新家長失敗:', error)
+    alert(`❌ 更新家長失敗: ${error.message || '未知錯誤'}`)
+  }
 }
 
 // 刪除家長
-const deleteParent = (idx) => {
-  if (confirm(`確定要刪除 ${parents.value[idx].name} 的資料嗎？`)) {
+const deleteParent = async (idx) => {
+  const target = parents.value[idx]
+  if (!target) return
+
+  if (!confirm(`確定要刪除 ${target.name} 的資料嗎？`)) return
+
+  try {
+    // 確認有後端的 parentID 可用
+    const backendId = target.parentID
+    if (!backendId) {
+      alert('❌ 缺少家長 ID，無法刪除')
+      return
+    }
+
+    console.log('========== 開始刪除家長資料 ==========')
+    console.log('parentID:', backendId)
+
+    // 調用 API 刪除家長
+    await deleteParentInfo(backendId)
+
+    console.log('✅ API 刪除成功')
+
+    // 刪除成功後更新 UI
     parents.value.splice(idx, 1)
     parentIdErrors.value.splice(idx, 1)
     saveToStorage()
-    alert('家長資料已刪除')
+    alert('✅ 家長資料已刪除')
+  } catch (error) {
+    console.error('❌ 刪除家長失敗:', error)
+    alert(`❌ 刪除家長失敗: ${error.message || '未知錯誤'}`)
   }
 }
 
