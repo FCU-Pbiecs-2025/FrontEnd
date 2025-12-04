@@ -71,25 +71,17 @@
         </table>
       </div>
 
-      <div class="pagination-row">
-        <div class="pagination-info">
-          共 {{ totalElements }} 筆資料，第 {{ currentPage }} / {{ totalPages }} 頁
-        </div>
-        <div class="pagination-controls">
-          <button class="btn small pagination-btn" :disabled="currentPage === 1 || totalPages <= 1" @click="prevPage">上一頁</button>
-          <button
-            v-for="page in pageNumbers"
-            :key="page"
-            class="btn small pagination-btn"
-            :class="{ 'btn-active': page === currentPage }"
-            :disabled="totalPages <= 1"
-            @click="goToPage(page)"
-          >
-            {{ page }}
-          </button>
-          <button class="btn small pagination-btn" :disabled="currentPage === totalPages || totalPages <= 1" @click="nextPage">下一頁</button>
-        </div>
-      </div>
+      <!-- 分頁控制：改用 Pagination 元件 -->
+      <Pagination
+        :currentPage="currentPage"
+        :totalPages="totalPages"
+        :totalElements="totalElements"
+        :pageNumbers="pageNumbers"
+        size="md"
+        @prev="prevPage"
+        @next="nextPage"
+        @goToPage="goToPage"
+      />
 
       <div class="bottom-row" v-show="showBack">
         <button class="btn primary" @click="goBack">返回</button>
@@ -103,6 +95,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getApplicationsByOffset, searchApplications, getApplicationById } from '@/api/application.js';
 import { useAuthStore } from '@/store/auth.js';
+import Pagination from '@/components/Pagination.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -113,6 +106,21 @@ const PAGE_SIZE = 10;
 const currentPage = ref(1);
 const totalPages = ref(1);
 const totalElements = ref(0);
+
+// 分頁頁碼（1-based 顯示，最多 5 顆按鈕）
+const pageNumbers = computed(() => {
+  const tp = totalPages.value || 1
+  const cp = currentPage.value || 1
+  const maxButtons = 5
+  if (tp <= maxButtons) return Array.from({ length: tp }, (_, i) => i + 1)
+  const half = Math.floor(maxButtons / 2)
+  let start = Math.max(1, cp - half)
+  let end = Math.min(tp, start + maxButtons - 1)
+  if (end - start + 1 < maxButtons) start = Math.max(1, end - maxButtons + 1)
+  const arr = []
+  for (let i = start; i <= end; i++) arr.push(i)
+  return arr
+})
 
 // 原始完整資料列表
 const fullList = ref([]);
@@ -448,53 +456,5 @@ onMounted(() => {
 .action-cell { text-align:left }
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
 .bottom-row { display:flex; justify-content:center; gap:12px; margin-top:10vh; }
-.pagination-row {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  margin: 30px 0;
-  padding: 20px;
-  background: #fff;
-  border: 2px solid #e6f3ff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-.pagination-info {
-  font-size: 1rem;
-  color: #2e6fb7;
-  font-weight: 600;
-}
-.pagination-controls {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.pagination-btn {
-  min-width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #d0d7de;
-  border-radius: 8px;
-  background: #fff;
-  color: #2e6fb7;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-.pagination-btn:hover:not(:disabled) {
-  background: #f6f8fa;
-  border-color: #2e6fb7;
-}
-.pagination-btn:disabled {
-  background: #f6f8fa;
-  color: #8b949e;
-  cursor: not-allowed;
-  border-color: #d0d7de;
-}
-.btn-active {
-  background: linear-gradient(90deg, #3b82f6, #2563eb);
-}
 @media (max-width:900px){ .announcement-card{ width:100%; padding:16px } .date-input{ width:100px } .query-row{ width:100%; flex: 0 0 100%; } }
 </style>

@@ -102,6 +102,17 @@
         </table>
       </div>
 
+      <!-- 分頁元件 -->
+      <Pagination
+        :currentPage="currentPage"
+        :totalPages="totalPages"
+        :totalElements="totalElements"
+        :pageNumbers="pageNumbers"
+        @prev="prevPage"
+        @next="nextPage"
+        @goToPage="goToPage"
+      />
+
       <div class="bottom-row">
         <button class="btn primary" v-show="showBack" @click="goBack">返回</button>
       </div>
@@ -119,6 +130,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getInstitutionsSimpleAll } from '@/api/Institution'
 import { getClassNamesByInstitutionId } from '@/api/class'
 import { getApplicationsCasesList, IDENTITY_TYPE_MAP, CASE_STATUS_MAP } from '@/api/application'
+import Pagination from '@/components/Pagination.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -129,6 +141,26 @@ const items = ref([])
 
 // Result list (shown in table)
 const resultItems = ref([])
+
+// 分頁狀態
+const PAGE_SIZE = 10
+const currentPage = ref(1)
+const totalPages = ref(1)
+const totalElements = ref(0)
+
+const pageNumbers = computed(() => {
+  const tp = Number(totalPages.value) || 1
+  const cp = Number(currentPage.value) || 1
+  const maxButtons = 5
+  if (tp <= maxButtons) return Array.from({ length: tp }, (_, i) => i + 1)
+  const half = Math.floor(maxButtons / 2)
+  let start = Math.max(1, cp - half)
+  let end = Math.min(tp, start + maxButtons - 1)
+  if (end - start + 1 < maxButtons) start = Math.max(1, end - maxButtons + 1)
+  const arr = []
+  for (let i = start; i <= end; i++) arr.push(i)
+  return arr
+})
 
 // Query fields
 const qAgency = ref('')
@@ -169,23 +201,30 @@ const showBack = ref(false)
 // 載入機構資料和初始案件列表
 onMounted(async () => {
   try {
-    // 載入機構資料
     agencyList.value = await getInstitutionsSimpleAll()
-
-    // 載入初始案件列表
-    await loadCasesList()
+    await loadCasesList({ page: 1, size: PAGE_SIZE })
   } catch (error) {
     console.error('載入資料失敗:', error)
   }
 })
 
-// 載入案件列表
+// 載入案件列表（支援分頁與查詢）
 const loadCasesList = async (options = {}) => {
   try {
     const response = await getApplicationsCasesList(options)
 
+    // 更新分頁資訊（若後端提供）
+    totalElements.value = Number(response.totalElements ?? response.total ?? 0)
+    if (totalElements.value && options.size) {
+      totalPages.value = Number(response.totalPages ?? Math.ceil(totalElements.value / options.size))
+    } else {
+      // 後端未提供總數，使用目前頁面的內容長度做退化處理
+      totalPages.value = Number(response.totalPages ?? 1)
+    }
+    currentPage.value = Number(options.page ?? 1)
+
     // 將後端資料對應到前端欄位
-    items.value = response.content.map(item => ({
+    items.value = (response.content || []).map(item => ({
       id: item.caseNumber,
       applyDate: item.applicationDate,
       institution: item.institutionName,
@@ -204,6 +243,11 @@ const loadCasesList = async (options = {}) => {
     resultItems.value = [...items.value]
   } catch (error) {
     console.error('載入案件列表失敗:', error)
+    items.value = []
+    resultItems.value = []
+    totalElements.value = 0
+    totalPages.value = 1
+    currentPage.value = 1
   }
 }
 
@@ -239,57 +283,37 @@ const ageInYearsMonths = (dateStr) => {
 
 const doQuery = async () => {
   try {
-    // 構建 API 查詢參數
     const params = {}
 
-    // 如果選擇了機構，獲取機構 ID
     if (qAgency.value) {
       const institutionId = getInstitutionIdByName(qAgency.value)
-      if (institutionId) {
-        params.institutionId = institutionId
-      }
+      if (institutionId) params.institutionId = institutionId
     }
-
-    // 如果選擇了班級，獲取班級 ID
     if (qClassName.value) {
       const classId = getClassIdByName(qClassName.value)
-      if (classId) {
-        params.classId = classId
-      }
+      if (classId) params.classId = classId
     }
-
-    // 如果輸入了案號，添加案號參數
-    if (qCaseId.value) {
-      params.caseNumber = qCaseId.value
-    }
-
-    // 如果輸入了申請人身分證，添加身分證參數
-    if (qApplicantId.value) {
-      params.applicantNationalId = qApplicantId.value
-    }
-
-    // 如果選擇了身分別，將中文轉換為代碼
+    if (qCaseId.value) params.caseNumber = qCaseId.value
+    if (qApplicantId.value) params.applicantNationalId = qApplicantId.value
     if (qIdentity.value) {
-      // 找到身分別代碼
       for (const [code, label] of Object.entries(IDENTITY_TYPE_MAP)) {
-        if (label === qIdentity.value) {
-          params.identityType = code
-          break
-        }
+        if (label === qIdentity.value) { params.identityType = code; break }
       }
     }
+    if (qStatus.value) params.status = qStatus.value
 
-    // 如果選擇了狀態，添加狀態參數
-    if (qStatus.value) {
-      params.status = qStatus.value
-    }
+    // 查詢從第一頁開始
+    params.page = 1
+    params.size = PAGE_SIZE
 
-
-    // 呼叫 API 進行搜尋
     const response = await getApplicationsCasesList(params)
 
-    // 將後端資料對應到前端欄位
-    resultItems.value = response.content.map(item => ({
+    // 更新分頁資訊
+    totalElements.value = Number(response.totalElements ?? response.total ?? 0)
+    totalPages.value = Number(response.totalPages ?? (totalElements.value ? Math.ceil(totalElements.value / PAGE_SIZE) : 1))
+    currentPage.value = 1
+
+    resultItems.value = (response.content || []).map(item => ({
       id: item.caseNumber,
       applyDate: item.applicationDate,
       institution: item.institutionName,
@@ -304,7 +328,6 @@ const doQuery = async () => {
       participantID: item.participantID,
       queueNo: item.currentOrder
     }))
-
 
     showBack.value = true
   } catch (error) {
@@ -321,8 +344,7 @@ const resetQuery = async () => {
   qStatus.value = ''
   showBack.value = false
 
-  // 重新加載初始資料
-  await loadCasesList()
+  await loadCasesList({ page: 1, size: PAGE_SIZE })
 }
 
 const openCaseDetail = async (item) => {
@@ -391,9 +413,7 @@ const openCaseDetail = async (item) => {
   })
 }
 
-const goBack = () => {
-  resetQuery()
-}
+const goBack = () => { resetQuery() }
 
 const goToEditPage = (item) => {
   // 保存案件信息到 sessionStorage，供 AdminCaseManagementEdit 使用
@@ -410,6 +430,35 @@ const goToEditPage = (item) => {
     params: { participantID: item.participantID }
   })
 }
+
+// 分頁事件處理
+const goToPage = async (page) => {
+  if (page < 1 || page > totalPages.value) return
+  const baseParams = {}
+  if (qAgency.value) {
+    const institutionId = getInstitutionIdByName(qAgency.value)
+    if (institutionId) baseParams.institutionId = institutionId
+  }
+  if (qClassName.value) {
+    const classId = getClassIdByName(qClassName.value)
+    if (classId) baseParams.classId = classId
+  }
+  if (qCaseId.value) baseParams.caseNumber = qCaseId.value
+  if (qApplicantId.value) baseParams.applicantNationalId = qApplicantId.value
+  if (qIdentity.value) {
+    for (const [code, label] of Object.entries(IDENTITY_TYPE_MAP)) {
+      if (label === qIdentity.value) { baseParams.identityType = code; break }
+    }
+  }
+  if (qStatus.value) baseParams.status = qStatus.value
+
+  baseParams.page = page
+  baseParams.size = PAGE_SIZE
+
+  await loadCasesList(baseParams)
+}
+const prevPage = () => { if (currentPage.value > 1) goToPage(currentPage.value - 1) }
+const nextPage = () => { if (currentPage.value < totalPages.value) goToPage(currentPage.value + 1) }
 </script>
 
 <style scoped>

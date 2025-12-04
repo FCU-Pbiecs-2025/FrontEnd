@@ -53,12 +53,17 @@
         </table>
       </div>
 
-      <!-- 分頁控制 -->
-      <div class="pagination-row" v-if="totalPages > 1">
-        <button class="btn page-btn" :disabled="currentPage === 0" @click="goToPage(currentPage - 1)">上一頁</button>
-        <span class="page-info">第 {{ currentPage + 1 }} / {{ totalPages }} 頁（共 {{ totalElements }} 筆）</span>
-        <button class="btn page-btn" :disabled="!hasNext" @click="goToPage(currentPage + 1)">下一頁</button>
-      </div>
+      <!-- 分頁控制：改用 Pagination 元件 -->
+      <Pagination
+        :currentPage="currentPage + 1"
+        :totalPages="computedTotalPages"
+        :totalElements="totalElements"
+        :pageNumbers="pageNumbers"
+        size="md"
+        @prev="prevPage"
+        @next="nextPage"
+        @goToPage="goToPageComponent"
+      />
 
       <div class="bottom-row">
         <button class="btn primary" v-if="hasQueried" @click="goBack">返回</button>
@@ -72,6 +77,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getUsersWithOffset, getPermissionTypeName, getAccountStatusName } from '@/api/account.js'
+import Pagination from '@/components/Pagination.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -105,15 +111,12 @@ const loadList = () => {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
-      // 兼容舊資料：若無 right，預設為 enable
       Object.values(parsed).forEach(acc => {
         if (!acc.right) acc.right = 'enable'
-        // 若 status 欄位存在，則同步到 right
         if (acc.status) {
           acc.right = acc.status
           delete acc.status
         }
-        // 若 role 欄位是 enable/suspended，則自動修正為 admin 並將原值放到 right
         if (acc.role === 'enable' || acc.role === 'suspended') {
           acc.right = acc.role
           acc.role = 'admin'
@@ -122,7 +125,6 @@ const loadList = () => {
       admins.value = parsed
       localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed))
     } else {
-      // 初始範例資料
       admins.value = {
         'admin01': { id: 'admin01', org: '市政府', role: 'super_admin', right: 'enable', password: 'pass123' },
         'admin02': { id: 'admin02', org: '托育中心A', role: 'admin', right: 'enable', password: 'pass456' },
@@ -133,14 +135,6 @@ const loadList = () => {
   } catch (e) {
     console.error('loadList error', e)
   }
-}
-
-const saveList = () => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(admins.value))
-}
-
-const convertToArray = (obj) => {
-  return Object.values(obj)
 }
 
 // 載入後台帳號資料（從 API）
@@ -204,27 +198,41 @@ const handleQuery = () => {
 
 // 分頁切換
 const goToPage = async (page) => {
-  if (page < 0 || page >= totalPages.value) return
+  if (page < 0 || page >= computedTotalPages.value) return
   const offset = page * pageSize.value
   await loadBackendAccounts(offset)
 }
 
+// 計算總頁數（確保至少為 1）
+const computedTotalPages = computed(() => {
+  if (totalPages.value > 0) return totalPages.value
+  if (totalElements.value > 0) return Math.ceil(totalElements.value / pageSize.value)
+  return 1
+})
+
+// 分頁頁碼（1-based 顯示，最多 5 顆按鈕）
+const pageNumbers = computed(() => {
+  const tp = computedTotalPages.value
+  const cp = currentPage.value + 1
+  const maxButtons = 5
+  if (tp <= maxButtons) return Array.from({ length: tp }, (_, i) => i + 1)
+  const half = Math.floor(maxButtons / 2)
+  let start = Math.max(1, cp - half)
+  let end = Math.min(tp, start + maxButtons - 1)
+  if (end - start + 1 < maxButtons) start = Math.max(1, end - maxButtons + 1)
+  const arr = []
+  for (let i = start; i <= end; i++) arr.push(i)
+  return arr
+})
+
+// Pagination 元件事件：跳至指定頁（1-based -> 0-based）
+const goToPageComponent = (pageOneBased) => { goToPage(pageOneBased - 1) }
+const prevPage = () => { if (currentPage.value > 0) goToPage(currentPage.value - 1) }
+const nextPage = () => { if (hasNext.value && currentPage.value + 1 < computedTotalPages.value) goToPage(currentPage.value + 1) }
+
 const manageAdmin = (userID) => {
   // 使用新的路由跳轉到編輯頁面
   router.push({ name: 'AdminBackendEdit', params: { id: userID } })
-}
-
-const removeAdmin = async (userID) => {
-  if (!confirm('確定要刪除這個後台帳號嗎？')) return
-
-  // TODO: 這裡應該呼叫刪除 API
-  // 目前先從 localStorage 刪除（兼容舊邏輯）
-  loadList()
-  delete admins.value[userID]
-  saveList()
-
-  // 重新載入 API 資料
-  await loadBackendAccounts(currentPage.value * pageSize.value)
 }
 
 const goBack = () => {
@@ -256,8 +264,6 @@ const isEditPage = computed(() => {
 .title-row { display:flex; align-items:center; gap:12px; margin-bottom:8px;margin-top: 60px }
 .icon { font-size:20px }
 .main-title { font-size:1.35rem; color:#2e6fb7; font-weight:700 }
-.tab-row { display:flex; justify-content:center; margin-bottom:16px ;flex-direction: column}
-.tab-title { margin:20px auto 0 auto; color: #e35d6a; font-weight:700; font-size:1.05rem; padding:6px 28px; border-radius:18px; background: #f9dada; }
 .query-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:14px 18px; margin-bottom:50px; box-shadow:0 2px 8px rgba(16,24,40,0.04);margin-top:50px;  }
 .query-row { display:flex; align-items:center; gap:12px ;flex-direction: column}
 .search-area{gap: 30px; display: flex; align-items: center; margin-bottom: 8px;}
@@ -268,10 +274,7 @@ const isEditPage = computed(() => {
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff ;margin-right: 12px;}
 .btn.query { background:#e6f2ff; color:#2e6fb7; border:1px solid #b3d4fc }
 .btn.small { padding:6px 12px; font-size:0.95rem; background:#f3f4f6; margin-right:6px; }
-.btn.danger { background:#ff7b8a; color:#fff }
-.btn.page-btn { background:#f3f4f6; color:#334e5c; padding:6px 14px; }
-.btn.page-btn:hover:not(:disabled) { background:#e6f2ff; color:#2e6fb7; }
-.table-section {  }
+.table-section { margin-bottom: 18px; }
 .account-table { width:100%; border-collapse:collapse }
 .account-table thead th { background: #cfe8ff; color: #2e6fb7; padding: 10px; text-align: left; font-weight: 700; }
 .account-table td { padding:12px; border-bottom:1px solid #f3f4f6; vertical-align: middle; }
@@ -281,8 +284,6 @@ const isEditPage = computed(() => {
 .status-cell { color:#6b6f76 }
 .action-cell { text-align:left }
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
-.pagination-row { display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: 20px; padding: 16px; }
-.page-info { color: #6b6f76; font-size: 0.95rem; font-weight: 600; }
 .bottom-row { display: flex; justify-content:center; margin-top: 10vh; gap: 12px; margin-bottom: 20px}
 @media (max-width:900px){ .account-card{ width:100%; padding:16px } .search-input{ width:100% } }
 </style>

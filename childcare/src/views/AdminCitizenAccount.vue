@@ -47,12 +47,17 @@
         </table>
       </div>
 
-      <!-- 分頁控制 -->
-      <div class="pagination-row" v-if="totalPages > 1">
-        <button class="btn page-btn" :disabled="currentPage === 0" @click="goToPage(currentPage - 1)">上一頁</button>
-        <span class="page-info">第 {{ currentPage + 1 }} / {{ totalPages }} 頁（共 {{ totalElements }} 筆）</span>
-        <button class="btn page-btn" :disabled="!hasNext" @click="goToPage(currentPage + 1)">下一頁</button>
-      </div>
+      <!-- 分頁控制：改用 Pagination 元件 -->
+      <Pagination
+        :currentPage="currentPage + 1"
+        :totalPages="totalPages"
+        :totalElements="totalElements"
+        :pageNumbers="pageNumbers"
+        size="md"
+        @prev="prevPage"
+        @next="nextPage"
+        @goToPage="goToPageComponent"
+      />
 
       <div class="bottom-row" v-if="hasQueried">
         <button class="btn primary" @click="goBack">返回</button>
@@ -65,6 +70,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getUsersWithOffset, getAccountStatusName } from '@/api/account.js'
+import Pagination from '@/components/Pagination.vue'
 
 const router = useRouter()
 const query = ref('')
@@ -88,6 +94,23 @@ const displayAccounts = computed(() => {
   )
 })
 
+// 分頁頁碼（1-based 顯示）
+const pageNumbers = computed(() => {
+  const tpRaw = Number(totalPages.value)
+  const tp = tpRaw > 0 ? tpRaw : 1
+  const cpRaw = Number(currentPage.value + 1)
+  const cp = cpRaw > 0 ? cpRaw : 1
+  const maxButtons = 5
+  if (tp <= maxButtons) return Array.from({ length: tp }, (_, i) => i + 1)
+  const half = Math.floor(maxButtons / 2)
+  let start = Math.max(1, cp - half)
+  let end = Math.min(tp, start + maxButtons - 1)
+  if (end - start + 1 < maxButtons) start = Math.max(1, end - maxButtons + 1)
+  const arr = []
+  for (let i = start; i <= end; i++) arr.push(i)
+  return arr
+})
+
 // 載入帳號資料
 const loadAccounts = async (offset = 0) => {
   try {
@@ -95,7 +118,6 @@ const loadAccounts = async (offset = 0) => {
     const response = await getUsersWithOffset(offset, pageSize.value)
 
     // 過濾只顯示 permissionType=3 的一般使用者
-    // 從多個可能的欄位名稱讀取權限，並轉成 number 再比較
     const citizenAccounts = response.content.filter(user => {
       const raw = user.PermissionType ?? user.permissionType ?? null
       const p = raw != null && raw !== '' ? Number(raw) : null
@@ -110,12 +132,17 @@ const loadAccounts = async (offset = 0) => {
 
     // 更新分頁資訊
     currentPage.value = Math.floor(offset / pageSize.value)
-    totalPages.value = response.totalPages
-    totalElements.value = response.totalElements
-    hasNext.value = response.hasNext
+    totalElements.value = Number(response.totalElements ?? allAccounts.value.length) || 0
+    const apiTotalPages = Number(response.totalPages)
+    totalPages.value = apiTotalPages > 0 ? apiTotalPages : Math.max(1, Math.ceil(totalElements.value / pageSize.value))
+    hasNext.value = Boolean(response.hasNext)
   } catch (error) {
     console.error('載入帳號資料失敗:', error)
     alert('載入帳號資料失敗，請稍後再試')
+    // 回退：以目前列表推估分頁
+    totalElements.value = allAccounts.value.length
+    totalPages.value = Math.max(1, Math.ceil(totalElements.value / pageSize.value))
+    hasNext.value = currentPage.value + 1 < totalPages.value
   } finally {
     isLoading.value = false
   }
@@ -128,12 +155,17 @@ const handleQuery = () => {
   hasQueried.value = true
 }
 
-// 分頁切換
+// 分頁切換（底層：0-based）
 const goToPage = async (page) => {
   if (page < 0 || page >= totalPages.value) return
   const offset = page * pageSize.value
   await loadAccounts(offset)
 }
+
+// Pagination 事件包裝（1-based -> 0-based）
+const goToPageComponent = (pageOneBased) => { goToPage(pageOneBased - 1) }
+const prevPage = () => { if (currentPage.value > 0) goToPage(currentPage.value - 1) }
+const nextPage = () => { if (hasNext.value && currentPage.value + 1 < totalPages.value) goToPage(currentPage.value + 1) }
 
 // 管理帳號
 const manageAccount = (userID) => {
@@ -148,13 +180,10 @@ const goBack = () => {
   query.value = ''
   searchQuery.value = ''
   hasQueried.value = false
-  // 不需要導航，留在當前頁面即可
 }
 
 // 初始化載入資料
-onMounted(() => {
-  loadAccounts(0)
-})
+onMounted(() => { loadAccounts(0) })
 </script>
 
 <style scoped>

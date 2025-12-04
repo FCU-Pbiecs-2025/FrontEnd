@@ -58,24 +58,17 @@
         </table>
       </div>
 
-      <!-- 分頁列（統一風格） -->
-      <div class="pagination-row">
-        <div class="pagination-info">共 {{ totalElements }} 筆資料，第 {{ currentPage }} / {{ totalPages }} 頁</div>
-        <div class="pagination-controls">
-          <button class="btn small pagination-btn" :disabled="currentPage === 1 || totalPages <= 1 || isLoading" @click="prevPage">上一頁</button>
-          <button
-            v-for="page in pageNumbers"
-            :key="page"
-            class="btn small pagination-btn"
-            :class="{ 'btn-active': page === currentPage }"
-            :disabled="totalPages <= 1 || isLoading"
-            @click="goToPage(page)"
-          >
-            {{ page }}
-          </button>
-          <button class="btn small pagination-btn" :disabled="currentPage === totalPages || totalPages <= 1 || isLoading" @click="nextPage">下一頁</button>
-        </div>
-      </div>
+      <!-- 分頁控制：改用 Pagination 元件 -->
+      <Pagination
+        :currentPage="currentPage"
+        :totalPages="totalPages"
+        :totalElements="totalElements"
+        :pageNumbers="pageNumbers"
+        size="md"
+        @prev="prevPage"
+        @next="nextPage"
+        @goToPage="goToPage"
+      />
 
       <div class="bottom-row" v-show="showBack">
         <button class="btn primary" @click="goBack">返回</button>
@@ -92,6 +85,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { fetchRevokedApplications, searchRevokedApplications } from '@/api/revokes'
 import { useAuthStore } from '@/store/auth.js'
+import Pagination from '@/components/Pagination.vue'
 
 const router = useRouter()
 const route = useRoute()

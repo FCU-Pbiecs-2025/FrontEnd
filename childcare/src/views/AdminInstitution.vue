@@ -56,12 +56,17 @@
           </table>
         </div>
 
-        <!-- 分頁控制 -->
-        <div class="pagination-row" v-if="totalPages > 1">
-          <button class="btn page-btn" :disabled="currentPage === 0" @click="goToPage(currentPage - 1)">上一頁</button>
-          <span class="page-info">第 {{ currentPage + 1 }} / {{ totalPages }} 頁（共 {{ totalElements }} 筆）</span>
-          <button class="btn page-btn" :disabled="!hasNext" @click="goToPage(currentPage + 1)">下一頁</button>
-        </div>
+        <!-- 分頁控制：改用 Pagination 元件 -->
+        <Pagination
+          :currentPage="currentPage + 1"
+          :totalPages="totalPages"
+          :totalElements="totalElements"
+          :pageNumbers="pageNumbers"
+          size="md"
+          @prev="prevPage"
+          @next="nextPage"
+          @goToPage="goToPageComponent"
+        />
 
         <div class="bottom-row">
           <button class="btn primary" v-show="hasQueried" @click="goBack">返回</button>
@@ -76,17 +81,18 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getInstitutionsWithOffset } from '@/api/Institution.js'
+import Pagination from '@/components/Pagination.vue'
 
 const router = useRouter()
 const route = useRoute()
 
 const STORAGE_KEY = 'institutionData'
 const searchKeyword = ref('')
-const searchQuery = ref('') // 實際執行搜尋的關鍵字
-const allInstitutions = ref([]) // 所有機構資料
+const searchQuery = ref('')
+const allInstitutions = ref([])
 const isLoading = ref(false)
-const hasQueried = ref(false) // 是否已執行過查詢
-const currentPage = ref(0)
+const hasQueried = ref(false)
+const currentPage = ref(0 )// 0-based
 const pageSize = ref(10)
 const totalPages = ref(0)
 const totalElements = ref(0)
@@ -98,11 +104,27 @@ const displayList = computed(() => {
     return allInstitutions.value
   }
   return allInstitutions.value.filter(item =>
-
     (item.institutionName || '').toLowerCase().includes(searchQuery.value.toLowerCase()) ||
     (item.contactPerson || '').toLowerCase().includes(searchQuery.value.toLowerCase()) ||
     (item.phoneNumber || '').toLowerCase().includes(searchQuery.value.toLowerCase())
   )
+})
+
+// 分頁按鈕頁碼（1-based 顯示）
+const pageNumbers = computed(() => {
+  const tpRaw = Number(totalPages.value)
+  const tp = tpRaw > 0 ? tpRaw : 1
+  const cpRaw = Number(currentPage.value + 1)
+  const cp = cpRaw > 0 ? cpRaw : 1
+  const maxButtons = 5
+  if (tp <= maxButtons) return Array.from({ length: tp }, (_, i) => i + 1)
+  const half = Math.floor(maxButtons / 2)
+  let start = Math.max(1, cp - half)
+  let end = Math.min(tp, start + maxButtons - 1)
+  if (end - start + 1 < maxButtons) start = Math.max(1, end - maxButtons + 1)
+  const arr = []
+  for (let i = start; i <= end; i++) arr.push(i)
+  return arr
 })
 
 // 載入機構資料
@@ -111,22 +133,24 @@ const loadInstitutions = async (offset = 0) => {
     isLoading.value = true
     const response = await getInstitutionsWithOffset(offset, pageSize.value)
 
-    console.log('API 回應:', response)
-
     // 轉換資料格式
     allInstitutions.value = response.content || []
 
-    // 更新分頁資訊
+    // 更新分頁資訊（後端為 0-based page）
     currentPage.value = Math.floor(offset / pageSize.value)
-    totalPages.value = response.totalPages || 0
-    totalElements.value = response.totalElements || 0
-    hasNext.value = response.hasNext || false
-
+    totalElements.value = Number(response.totalElements ?? allInstitutions.value.length) || 0
+    const apiTotalPages = Number(response.totalPages)
+    totalPages.value = apiTotalPages > 0 ? apiTotalPages : Math.max(1, Math.ceil(totalElements.value / pageSize.value))
+    hasNext.value = Boolean(response.hasNext)
   } catch (error) {
     console.error('載入機構資料失敗:', error)
     alert('載入機構資料失敗，請稍後再試')
-    // 載入失敗時使用 localStorage 備援
     loadListFromLocalStorage()
+    // 本地資料的分頁回退
+    totalElements.value = allInstitutions.value.length
+    totalPages.value = Math.max(1, Math.ceil(totalElements.value / pageSize.value))
+    currentPage.value = Math.floor(offset / pageSize.value)
+    hasNext.value = currentPage.value + 1 < totalPages.value
   } finally {
     isLoading.value = false
   }
@@ -150,15 +174,12 @@ const saveList = () => {
 }
 
 // 初始化載入資料
-onMounted(() => {
-  loadInstitutions(0)
-})
+onMounted(() => { loadInstitutions(0) })
 
 // 監聽路由變化，從編輯頁面返回時重新載入資料
 watch(() => route.name, (newName, oldName) => {
   if (newName === 'AdminInstitution' && (oldName === 'AdminInstitutionNew' || oldName === 'AdminInstitutionEdit')) {
     loadInstitutions(0)
-    // 重置查詢條件
     searchKeyword.value = ''
     searchQuery.value = ''
     hasQueried.value = false
@@ -167,58 +188,34 @@ watch(() => route.name, (newName, oldName) => {
 
 // 查詢功能
 const doQuery = () => {
-  // 更新搜尋關鍵字，觸發 displayList 重新計算
   searchQuery.value = searchKeyword.value
   hasQueried.value = true
 }
 
-// 分頁切換
+// 分頁切換（底層，0-based page）
 const goToPage = async (page) => {
   if (page < 0 || page >= totalPages.value) return
   const offset = page * pageSize.value
   await loadInstitutions(offset)
 }
 
-const addNew = () => {
-  router.push({ name: 'AdminInstitutionNew' })
-}
+// Pagination 元件事件包裝（1-based 轉 0-based）
+const goToPageComponent = (pageOneBased) => { goToPage(pageOneBased - 1) }
+const prevPage = () => { if (currentPage.value > 0) goToPage(currentPage.value - 1) }
+const nextPage = () => { if (hasNext.value && currentPage.value + 1 < totalPages.value) goToPage(currentPage.value + 1) }
+
+const addNew = () => { router.push({ name: 'AdminInstitutionNew' }) }
 
 const edit = (item) => {
-  console.log('========== 編輯機構 ==========')
-  console.log('選擇的機構 ID:', item.institutionID)
-  console.log('機構名稱:', item.institutionName)
-  console.log('========== 開始跳轉 ==========')
-
   router.push({
     name: 'AdminInstitutionEdit',
     params: { institutionID: item.institutionID }
-  }).catch(error => {
-    console.error('路由跳轉失敗:', error)
-  })
+  }).catch(error => { console.error('路由跳轉失敗:', error) })
 }
 
-const remove = async (item) => {
-  if (confirm(`確定要刪除「${item.institutionName}」嗎？`)) {
-    // TODO: 實作刪除 API
-    // await deleteInstitution(item.institutionID)
+const goBack = () => { searchKeyword.value = ''; searchQuery.value = ''; hasQueried.value = false }
 
-    // 目前先從列表中移除
-    allInstitutions.value = allInstitutions.value.filter(i => i.institutionID !== item.institutionID)
-    saveList()
-
-    alert('刪除成功')
-  }
-}
-
-const goBack = () => {
-  searchKeyword.value = ''
-  searchQuery.value = ''
-  hasQueried.value = false
-}
-
-const isEditPage = computed(() => {
-  return route.name === 'AdminInstitutionNew' || route.name === 'AdminInstitutionEdit'
-})
+const isEditPage = computed(() => route.name === 'AdminInstitutionNew' || route.name === 'AdminInstitutionEdit')
 </script>
 
 <style scoped>
@@ -247,9 +244,6 @@ const isEditPage = computed(() => {
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff ;margin-right: 12px; }
 .btn.query { background:#e6f2ff; color:#2e6fb7; border:1px solid #b3d4fc }
 .btn.small { padding:6px 12px; font-size:0.95rem; background:#f3f4f6; margin-right:6px; }
-.btn.danger { background:#ff7b8a; color:#fff }
-.btn.page-btn { background:#f3f4f6; color:#334e5c; padding:6px 14px; }
-.btn.page-btn:hover:not(:disabled) { background:#e6f2ff; color:#2e6fb7; }
 .institution-table { width:100%; border-collapse:collapse }
 .institution-table thead th { background:#cfe8ff; color:#2e6fb7; padding:10px; text-align:left; font-weight:700; font-size:1rem; }
 .institution-table td { padding:12px; border-bottom:1px solid #f3f4f6; vertical-align: middle; font-size:1rem; }
@@ -260,8 +254,6 @@ const isEditPage = computed(() => {
 .type-cell { color:#2e6fb7; font-weight: 500; }
 .action-cell { text-align:left }
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
-.pagination-row { display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: 20px; padding: 16px; }
-.page-info { color: #6b6f76; font-size: 0.95rem; font-weight: 600; }
 .bottom-row { display:flex; justify-content:center; gap:12px; margin-top:10vh; margin-bottom: 20px}
 @media (max-width:900px){ .institution-card{ width:100%; padding:16px } .search-input{ width:100% } }
 </style>

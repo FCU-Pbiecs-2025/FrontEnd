@@ -160,7 +160,10 @@ const closeSidebar = () => { if (isMobile.value) sidebarOpen.value = false }
 // Do not auto-close the sidebar on navigation; keep it open for consistent navigation
 const navigate = (path) => {
   router.push(path)
-  // Intentionally do not close sidebar here to keep it visible across pages
+  // On mobile, auto-close the hamburger menu after navigation for better UX
+  if (isMobile.value) {
+    sidebarOpen.value = false
+  }
 }
 
 const isActive = (path) => route.path === path || route.path.startsWith(path + '/')
@@ -175,7 +178,8 @@ const handleResize = () => {
 
 // Re-open sidebar when changing to any /admin route (ensures visibility across admin pages)
 watch(() => route.path, (newPath) => {
-  if (newPath.startsWith('/admin')) {
+  // Only auto-open on desktop; keep collapsed on mobile
+  if (!isMobile.value && newPath.startsWith('/admin')) {
     sidebarOpen.value = true
   }
 })
@@ -600,12 +604,19 @@ const goAdminAnnouncementDetail = (id) => {
     top: 100px;
     left: 0;
     bottom: 0;
-    height: calc(100vh - 130px);
+    /* 以視窗高度為基準，扣掉 header 高度；先提供 100vh 作為回退，再用 100dvh 覆蓋 */
+    height: calc(100vh - 100px);
+    max-height: calc(100vh - 100px);
+    height: calc(100dvh - 100px);
+    max-height: calc(100dvh - 100px);
     margin: 0;
     border-radius: 0;
     z-index: 999;
     transform: translateX(-100%);
     transition: transform 0.3s ease;
+    /* 當內容超出高度時，允許滾動 */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .admin-sidebar.mobile-mode.is-open {

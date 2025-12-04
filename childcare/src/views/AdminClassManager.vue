@@ -54,17 +54,17 @@
           <div class="bottom-row">
             <button class="btn primary" v-show="showBack" @click="goBack">返回</button>
           </div>
-          <!-- 分頁控制區域（列表） -->
-          <div class="pagination-row">
-            <div class="pagination-info">
-              共 {{ totalElements }} 筆資料，第 {{ currentPage }} / {{ totalPages }} 頁
-            </div>
-            <div class="pagination-controls">
-              <button class="btn small pagination-btn" :disabled="currentPage === 1 || totalPages <= 1" @click="prevPage">上一頁</button>
-              <button v-for="page in pageNumbers" :key="page" class="btn small pagination-btn" :class="{ 'btn-active': page === currentPage }" :disabled="totalPages <= 1" @click="goToPage(page)">{{ page }}</button>
-              <button class="btn small pagination-btn" :disabled="currentPage === totalPages || totalPages <= 1" @click="nextPage">下一頁</button>
-            </div>
-          </div>
+          <!-- 分頁控制區域（列表）改用 Pagination 元件 -->
+          <Pagination
+            :currentPage="currentPage"
+            :totalPages="totalPages"
+            :totalElements="totalElements"
+            :pageNumbers="pageNumbers"
+            size="md"
+            @prev="prevPage"
+            @next="nextPage"
+            @goToPage="goToPage"
+          />
         </div>
       </div>
       <div v-if="showClassList">
@@ -106,17 +106,17 @@
         <div class="bottom-row">
           <button class="btn ghost" @click="closeClassList">返回機構列表</button>
         </div>
-        <!-- 分頁控制區域（子列表） -->
-        <div class="pagination-row">
-          <div class="pagination-info">
-            共 {{ totalElements }} 筆資料，第 {{ currentPage }} / {{ totalPages }} 頁
-          </div>
-          <div class="pagination-controls">
-            <button class="btn small pagination-btn" :disabled="currentPage === 1 || totalPages <= 1" @click="prevPage">上一頁</button>
-            <button v-for="page in pageNumbers" :key="page" class="btn small pagination-btn" :class="{ 'btn-active': page === currentPage }" :disabled="totalPages <= 1" @click="goToPage(page)">{{ page }}</button>
-            <button class="btn small pagination-btn" :disabled="currentPage === totalPages || totalPages <= 1" @click="nextPage">下一頁</button>
-          </div>
-        </div>
+        <!-- 分頁控制區域（子列表）改用 Pagination 元件 -->
+        <Pagination
+          :currentPage="currentPage"
+          :totalPages="totalPages"
+          :totalElements="totalElements"
+          :pageNumbers="pageNumbers"
+          size="md"
+          @prev="prevPage"
+          @next="nextPage"
+          @goToPage="goToPage"
+        />
       </div>
       <router-view v-else-if="isChildRoute" />
     </div>
@@ -126,6 +126,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import Pagination from '@/components/Pagination.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -225,7 +226,7 @@ const doQueryInstitution = async (page = 1) => {
       totalElements: totalElements.value
     }
 
-    // 使用content陣列
+    // 使用content陣���
     classes.value = Array.isArray(data.content) ? data.content : []
     console.log('搜索結果:', { kw, page, count: classes.value.length })
   } catch (e) {

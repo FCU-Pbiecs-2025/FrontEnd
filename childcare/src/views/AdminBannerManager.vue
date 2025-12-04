@@ -55,17 +55,20 @@
         </table>
       </div>
 
-      <div class="pagination">
-        <button class="btn small" @click="prevPage" :disabled="!canPrev">上一頁</button>
-        <button class="btn small" @click="nextPage" :disabled="!canNext">下一頁</button>
-      </div>
+      <!-- 分頁控制：改用 Pagination 元件 -->
+      <Pagination
+        :currentPage="currentPage"
+        :totalPages="computedTotalPages"
+        :totalElements="total || 0"
+        :pageNumbers="pageNumbers"
+        size="md"
+        @prev="prevPage"
+        @next="nextPage"
+        @goToPage="goToPageComponent"
+      />
 
       <div class="bottom-row">
         <button class="btn primary" v-show="showBack" @click="goBack">返回</button>
-      </div>
-
-      <div class="page-info" v-if="totalPages !== null">
-        <span>第 {{ currentPage }} / {{ totalPages }} 頁</span>
       </div>
     </div>
     <router-view v-if="isEditPage" />
@@ -76,6 +79,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import bannersApi from '../api/banners'
+import Pagination from '@/components/Pagination.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -95,6 +99,35 @@ const hasNext = ref(null)
 const currentPage = computed(() => {
   return Math.floor(offset.value / size.value) + 1
 })
+
+// 計算總頁數（確保至少為 1）
+const computedTotalPages = computed(() => {
+  if (totalPages.value !== null && totalPages.value > 0) return totalPages.value
+  if (total.value !== null && total.value > 0) return Math.ceil(total.value / size.value)
+  return 1
+})
+
+// 分頁頁碼（1-based 顯示，最多 5 顆按鈕）
+const pageNumbers = computed(() => {
+  const tp = computedTotalPages.value
+  const cp = currentPage.value
+  const maxButtons = 5
+  if (tp <= maxButtons) return Array.from({ length: tp }, (_, i) => i + 1)
+  const half = Math.floor(maxButtons / 2)
+  let start = Math.max(1, cp - half)
+  let end = Math.min(tp, start + maxButtons - 1)
+  if (end - start + 1 < maxButtons) start = Math.max(1, end - maxButtons + 1)
+  const arr = []
+  for (let i = start; i <= end; i++) arr.push(i)
+  return arr
+})
+
+// Pagination 元件事件：跳至指定頁
+const goToPageComponent = async (page) => {
+  if (page < 1 || page > computedTotalPages.value) return
+  offset.value = (page - 1) * size.value
+  await loadList()
+}
 
 // 日期查詢條件
 const dateStart = ref('')
@@ -336,7 +369,5 @@ const handleImgError = (event, b) => {
 .action-cell { text-align:left; position: relative; z-index: 1; }
 .empty-tip { text-align:center; padding:18px; color:#999 }
 .bottom-row { display: flex; justify-content: center; gap:12px; margin-top: 10vh; }
-.pagination { display: flex; justify-content: center; gap: 12px; margin-top: 20px; }
-.page-info { text-align: center; margin-top: 10px; color: #666; }
 @media (max-width:900px){ .banner-card{ width:100%; padding:16px } .date-input{ width:100px } }
 </style>
