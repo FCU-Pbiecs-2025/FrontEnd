@@ -30,7 +30,7 @@
             <input type="text" v-model="qCaseId" class="date-input" placeholder="請輸入案件編號" />
           </div>
           <div class="search-area">
-            <label class="date-label">申請幼兒身分證：</label>
+            <label class="date-label">幼兒身分證：</label>
             <input type="text" v-model="qApplicantId" class="date-input" placeholder="請輸入身分證字號" />
           </div>
         </div>

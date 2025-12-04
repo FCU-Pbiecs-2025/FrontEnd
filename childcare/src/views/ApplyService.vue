@@ -1021,9 +1021,10 @@ const buildCaseData = () => {
   const identityTypeNumber = convertIdentityTypeToNumber(identityTypeSelect.value);
   console.log('🔢 身分別轉換完成:', identityTypeSelect.value, '->', identityTypeNumber, '(類型:', typeof identityTypeNumber, ')');
 
-  // 生成案件編號：使用時間戳
-  const caseNumber = Date.now();
-  console.log('📋 生成案件編號:', caseNumber);
+  // 生成案件編號：使用時間戳（暫時註釋，改由後端生成）
+  // const caseNumber = Date.now();
+  const caseNumber = null; // 讓後端自動生成
+  console.log('📋 案件編號設為 null (由後端生成)');
 
   const caseData = {
     caseNumber: caseNumber,

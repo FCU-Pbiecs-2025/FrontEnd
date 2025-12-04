@@ -4,7 +4,6 @@ import http from './http.js';
 
 // 身分別代碼映射表
 export const IDENTITY_TYPE_MAP = {
-  0: '一般民眾',
   1: '第一序位',
   2: '第二序位',
   3: '第三序位'
@@ -136,7 +135,7 @@ export const getCaseDetails = async (userID, caseNo) => {
  * @param institutionId 機構ID篩選（可選）
  * @param applicationId 案件ID篩選（可選）
  * @param classId 班級ID篩選（可選）
- * @param applicantNationalId 申請人身分證字號篩選（可選）
+ * @param childNationalId 申請之幼兒身分證字號篩選（可選）
  * @param caseNumber 案件流水號篩選（可選）
  * @param identityType 身分別篩選（可選）
  * @return 包含分頁資訊和案件列表的回應
@@ -170,8 +169,8 @@ export const getApplicationsCasesList = async (options = {}) => {
         if (options.classId) {
             params.classId = options.classId;
         }
-        if (options.applicantNationalId) {
-            params.applicantNationalId = options.applicantNationalId;
+        if (options.childNationalId) {
+            params.childNationalId = options.childNationalId;
         }
         if (options.caseNumber) {
             params.caseNumber = options.caseNumber;
