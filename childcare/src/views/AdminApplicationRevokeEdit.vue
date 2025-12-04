@@ -221,13 +221,6 @@ onMounted(async () => {
     revokeData.value = { id: revokeId.value }
   } finally {
     isLoading.value = false
-    console.log('Loading finished. Final state:', {
-      revokeData: revokeData.value,
-      parentList: parentList.value,
-      childData: childData.value,
-      isLoading: isLoading.value,
-      notFound: notFound.value
-    })
   }
 })
 
@@ -242,10 +235,20 @@ async function confirmRevoke() {
   const confirmDate = `${yyyy}-${mm}-${dd}`
 
   try {
+    // 第一個 PUT：更新撤銷確認日期
     await http.put('/revoke/confirm-date', {
       cancellationID,
       confirmDate
     })
+
+    // 第二個 PUT：更新 application_participants 表的 Status 為 '撤銷申請通過'
+    console.log('revokeData for update-participant-status:', revokeData.value)
+    await http.put('/revoke/update-participant-status', {
+      ApplicationID: revokeData.value.applicationID.toUpperCase(),
+      NationalID: revokeData.value.nationalID.toUpperCase(),
+      Status: '撤銷申請通過'
+    })
+
     // 成功後返回列表
     goBack()
   } catch (e) {
@@ -255,7 +258,7 @@ async function confirmRevoke() {
 }
 
 function goBack() {
-  router.push({ name: 'AdminApplicationRevoke' })
+  router.push({ name: 'AdminApplicationRevoke', query: { refresh: '1' } })
 }
 </script>
 

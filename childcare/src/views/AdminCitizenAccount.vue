@@ -169,9 +169,7 @@ const nextPage = () => { if (hasNext.value && currentPage.value + 1 < totalPages
 
 // 管理帳號
 const manageAccount = (userID) => {
-  if (!userID) return
-  const guid = String(userID).toUpperCase()
-  router.push({ name: 'ApplicationStatus', query: { userID: guid, refresh: Date.now() } })
+  router.push({ path: '/member-center', query: { accountId: userID } })
 }
 
 // 返回

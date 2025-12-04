@@ -81,7 +81,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { fetchRevokedApplications, searchRevokedApplications } from '@/api/revokes'
 import { useAuthStore } from '@/store/auth.js'
@@ -158,6 +158,14 @@ async function loadData() {
 
 onMounted(() => {
   loadData()
+})
+
+watch(() => route.query.refresh, (val) => {
+  if (val === '1') {
+    loadData()
+    // 清除參數避免重複刷新
+    router.replace({ query: { ...route.query, refresh: undefined } })
+  }
 })
 
 async function search(page = 1) {

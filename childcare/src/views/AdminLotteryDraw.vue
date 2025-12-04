@@ -33,44 +33,6 @@
       </div>
 
 
-      <!-- 抽籤前不顯示表格，抽籤後只顯示結果表格 -->
-      <div v-if="showResultModal">
-        <!-- 抽籤結果表格 -->
-        <div class="table-section">
-          <table class="announcement-table">
-            <thead>
-              <tr>
-                <th>班級</th>
-                <th>申請人姓名<br/>申請人身分證</th>
-                <th>幼童姓名</th>
-                <th>幼童身分證</th>
-                <th>序號</th>
-                <th>排序</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in lotteryResults" :key="item.ApplicationID">
-                <td class="class-cell">{{ getClassNameById(item.ClassID) || '-' }}</td>
-                <td class="applicant-cell">
-                  <div>{{ item.Name }}</div>
-                  <div class="id-number">{{ item.NationalID }}</div>
-                </td>
-                <td class="child-cell">{{ item.Name || '-' }}</td>
-                <td class="id-cell">{{ item.NationalID || '-' }}</td>
-                <td class="number-cell">{{ item.LotteryOrder || '-' }}</td>
-                <td class="order-cell">
-                  <span v-if="item.Status && item.Status.includes('已錄取')">已錄取</span>
-                  <span v-else>{{ item.CurrentOrder || '-' }}</span>
-                </td>
-              </tr>
-              <tr v-if="lotteryResults.length === 0">
-                <td colspan="6" class="empty-tip">目前沒有抽籤結果</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       <!-- 抽籤確認對話框 -->
       <!-- 已移除原本的抽籤確認對話框區塊 -->
 
@@ -102,19 +64,11 @@ const institutionsLoading = ref(false)
 const institutionsError = ref('')
 
 const selectedInstitution = ref('')
-const showDrawModal = ref(false)
-const showResultModal = ref(false)
 const isDrawing = ref(false)
-const drawTime = ref('')
-
-// 購機名單（已分配名額）- 已錄取者
-const purchasedList = ref([])
 
 // 候補名單（待抽籤）- 候補中的申請人
 const waitingList = ref([])
 
-// 抽籤結果（包含已錄取和候補）
-const lotteryResults = ref([])
 
 // 統計資訊
 const statistics = ref(null)
@@ -129,22 +83,6 @@ const getInstitutionName = (id) => {
   return inst ? inst.institutionName : ''
 }
 
-// 獲取班級名稱
-const getClassNameById = (classId) => {
-  if (!classId) return '-'
-  // 這裡可以根據實際需求從班級列表中查詢，目前先返回 ClassID
-  return classId.toString().substring(0, 8) + '...'
-}
-
-// 獲取身分別名稱
-const getIdentityTypeName = (identityType) => {
-  const typeMap = {
-    1: '第一序位',
-    2: '第二序位',
-    3: '第三序位'
-  }
-  return typeMap[identityType] || '第三序位'
-}
 
 // 載入機構列表
 const loadInstitutions = async () => {
@@ -181,9 +119,7 @@ const loadInstitutions = async () => {
 // 載入抽籤資料（查詢候補名單和統計）
 const loadLotteryData = async () => {
   if (!selectedInstitution.value) {
-    purchasedList.value = []
     waitingList.value = []
-    lotteryResults.value = []
     statistics.value = null
     return
   }
@@ -204,16 +140,10 @@ const loadLotteryData = async () => {
     waitingList.value = waitlistData || []
     statistics.value = statsData
 
-    // 清空已錄取名單和抽籤結果（這些資料在抽籤後才有）
-    purchasedList.value = []
-    lotteryResults.value = []
-
   } catch (error) {
     console.error('載入抽籤資料失敗:', error)
     alert('載入資料失敗：' + (error.message || '未知錯誤'))
-    purchasedList.value = []
     waitingList.value = []
-    lotteryResults.value = []
     statistics.value = null
   }
 }
@@ -241,25 +171,19 @@ const performDraw = async () => {
 
     console.log('抽籤完成，結果:', result)
 
-    // 記錄抽籤時間
-    const now = new Date()
-    drawTime.value = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    // 顯示後端返回的訊息
+    if (result.message) {
+      alert(result.message)
+    }
 
-    // 顯示抽籤結果
+    // 抽籤完成後重新載入資料
     if (result.success) {
-      // 合併已錄取和候補名單作為抽籤結果
-      lotteryResults.value = [
-        ...(result.acceptedList || []),
-        ...(result.waitlistList || [])
-      ]
-
-      showResultModal.value = true
-
-
-      // 重新載入資料
       await loadLotteryData()
     } else {
-      alert('抽籤失敗：' + (result.message || '未知錯誤'))
+      // 如果沒有 message 或抽籤失敗，顯示失敗訊息
+      if (!result.message) {
+        alert('抽籤失敗：' + (result.message || '未知錯誤'))
+      }
     }
 
   } catch (error) {
@@ -298,15 +222,6 @@ onMounted(() => {
 .btn { padding:7px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:600 }
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff }
 
-/* 表格 */
-.table-section { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:0; margin-bottom:24px; box-shadow:0 2px 8px rgba(16,24,40,0.04) }
-.announcement-table { width:100%; border-collapse:collapse; }
-.announcement-table thead th { background:#cfe8ff; color:#2e6fb7; padding:10px; text-align:left; font-weight:700 }
-.announcement-table td { padding:12px; border-bottom:1px solid #f3f4f6; vertical-align:middle; text-align:left }
-.class-cell { font-weight:600; color:#334e5c }
-.id-number { font-size:0.85rem; color:#888; margin-top:4px }
-.order-cell { font-weight:700; color:#2e6fb7 }
-.empty-tip { color:#999; text-align:center; padding:18px 0 }
 
 /* 提示訊息 */
 .error-msg { color:#dc3545; font-size:0.875rem; margin-top:4px; margin-left:8px }

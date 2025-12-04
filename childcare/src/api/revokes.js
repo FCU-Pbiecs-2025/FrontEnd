@@ -88,7 +88,8 @@ export async function fetchRevokeDetails(cancellationID, nationalID) {
       applicant: revokeInfo.userName || '未提供',
       institution: revokeInfo.institutionName || '未提供',
       reason: revokeInfo.abandonReason || '',
-      nationalID: revokeInfo.nationalID || ''
+      nationalID: revokeInfo.nationalID || '',
+      applicationID: revokeInfo.applicationID || ''
     }
     console.log('Mapped revokeInfo:', mappedRevokeInfo)
 
