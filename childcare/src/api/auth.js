@@ -31,8 +31,8 @@ export function forgotPassword(email, recaptchaToken = null) {
     if (USE_MOCK_API) {
         return mockAuth.forgotPassword(email, recaptchaToken);
     }
-    // 使用真實的 SMTP 服務
-    return fetch(`${SMTP_SERVER_URL}/api/auth/forgot-password`, {
+    // 真實的 SMTP 服務${SMTP_SERVER_URL}替換http://localhost:8080
+    return fetch(`http://localhost:8080/api/auth/forgot-password`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -45,7 +45,7 @@ export function resetPassword(email, resetToken, newPassword) {
     if (USE_MOCK_API) {
         return mockAuth.resetPassword(email, resetToken, newPassword);
     }
-    // 使用真實的 SMTP 服務
+    // 真實的 SMTP 服務${SMTP_SERVER_URL}替換http://localhost:8080
     return fetch(`http://localhost:8080/api/auth/reset-password`, {
         method: 'POST',
         headers: {
