@@ -30,7 +30,7 @@
             <input type="text" v-model="qCaseId" class="date-input" placeholder="請輸入案件編號" />
           </div>
           <div class="search-area">
-            <label class="date-label">申請人身分證：</label>
+            <label class="date-label">申請幼兒身分證：</label>
             <input type="text" v-model="qApplicantId" class="date-input" placeholder="請輸入身分證字號" />
           </div>
         </div>
@@ -62,8 +62,8 @@
               <th>案件編號</th>
               <th>申請日期</th>
               <th>機構</th>
-              <th>申請人資訊</th>
-              <th>幼兒資訊</th>
+              <th>申請幼兒資訊</th>
+              <th>幼兒年齡</th>
               <th>候補序號</th>
               <th>狀態</th>
               <th>操作</th>
@@ -79,13 +79,12 @@
               </td>
               <td>
                 <div class="user-col">
-                  <div class="user-row"><span>{{ item.applicantName || '-' }}</span></div>
-                  <div class="user-row"><span>{{ item.applicantId || '-' }}</span></div>
+                  <div class="user-row"><span>{{ item.childName || '-' }}</span></div>
+                  <div class="user-row"><span>{{ item.childNationalId || '-' }}</span></div>
                 </div>
               </td>
               <td>
                 <div class="child-col">
-                  <div class="child-row"><span>{{ item.childName || '-' }}</span></div>
                   <div class="child-row"><span>{{ ageInYearsMonths(item.childBirth) }}</span></div>
                 </div>
               </td>
@@ -294,7 +293,7 @@ const doQuery = async () => {
       if (classId) params.classId = classId
     }
     if (qCaseId.value) params.caseNumber = qCaseId.value
-    if (qApplicantId.value) params.applicantNationalId = qApplicantId.value
+    if (qApplicantId.value) params.childNationalId = qApplicantId.value
     if (qIdentity.value) {
       for (const [code, label] of Object.entries(IDENTITY_TYPE_MAP)) {
         if (label === qIdentity.value) { params.identityType = code; break }
@@ -444,7 +443,7 @@ const goToPage = async (page) => {
     if (classId) baseParams.classId = classId
   }
   if (qCaseId.value) baseParams.caseNumber = qCaseId.value
-  if (qApplicantId.value) baseParams.applicantNationalId = qApplicantId.value
+  if (qApplicantId.value) baseParams.childNationalId = qApplicantId.value
   if (qIdentity.value) {
     for (const [code, label] of Object.entries(IDENTITY_TYPE_MAP)) {
       if (label === qIdentity.value) { baseParams.identityType = code; break }

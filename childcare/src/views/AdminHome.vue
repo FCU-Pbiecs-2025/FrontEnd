@@ -1,8 +1,8 @@
 <template>
   <div class="admin-layout">
-    <!-- 漢堡按鈕 (小於1250px時顯示) -->
+    <!-- 漢堡按鈕 (所有尺寸都顯示，側欄關閉時顯示) -->
     <button
-      v-if="isMobile && !sidebarOpen"
+      v-if="!sidebarOpen"
       class="mobile-hamburger"
       @click="toggleSidebar"
       aria-label="開啟選單"
@@ -12,17 +12,14 @@
 
     <!-- 遮罩層 -->
     <div
-      v-if="sidebarOpen && isMobile"
+      v-if="sidebarOpen"
       class="sidebar-overlay"
       @click="closeSidebar"
     ></div>
 
     <!-- 側邊選單 -->
-    <aside :class="['admin-sidebar', { 'is-open': sidebarOpen }, { 'mobile-mode': isMobile }]">
-      <button class="sidebar-toggle" @click="toggleSidebar" :aria-expanded="String(sidebarOpen)">
-        <span class="icon">☰</span>
-      </button>
-      <nav :class="['sidebar-menu', { 'is-open': sidebarOpen }]">
+    <aside :class="['admin-sidebar', { 'is-open': sidebarOpen }]">
+      <nav class="sidebar-menu">
         <div v-if="isSuperAdmin" class="menu-section">
           <div class="menu-title clickable" @click="toggleSection(0)">
             帳號管理
@@ -130,7 +127,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 // 導入通用的 Admin 響應式樣式
 import '@/styles/admin-responsive.css'
@@ -146,56 +143,30 @@ const institutionId = computed(() => authStore.user?.InstitutionID || null)
 const router = useRouter()
 const route = useRoute()
 
-// Sidebar state: keep open by default on all admin pages
-const isMobile = ref(window.innerWidth < 1250)
-const sidebarOpen = ref(true)
+// Sidebar state: 預設關閉，所有尺寸統一使用漢堡選單
+const sidebarOpen = ref(false)
 
 // Sections open state
 const openSections = ref([true, true, true])
 
 const toggleSection = idx => { openSections.value[idx] = !openSections.value[idx] }
 const toggleSidebar = () => { sidebarOpen.value = !sidebarOpen.value }
-const closeSidebar = () => { if (isMobile.value) sidebarOpen.value = false }
+const closeSidebar = () => { sidebarOpen.value = false }
 
-// Do not auto-close the sidebar on navigation; keep it open for consistent navigation
+// 導航後自動關閉側欄
 const navigate = (path) => {
   router.push(path)
-  // On mobile, auto-close the hamburger menu after navigation for better UX
-  if (isMobile.value) {
-    sidebarOpen.value = false
-  }
+  sidebarOpen.value = false
 }
 
 const isActive = (path) => route.path === path || route.path.startsWith(path + '/')
 
-// Resize handler: keep open on desktop; on mobile, preserve current state
-const handleResize = () => {
-  isMobile.value = window.innerWidth < 1250
-  if (!isMobile.value) {
-    sidebarOpen.value = true
-  }
-}
-
-// Re-open sidebar when changing to any /admin route (ensures visibility across admin pages)
-watch(() => route.path, (newPath) => {
-  // Only auto-open on desktop; keep collapsed on mobile
-  if (!isMobile.value && newPath.startsWith('/admin')) {
-    sidebarOpen.value = true
-  }
-})
-
-const breadcrumb = computed(() => {
-  const matched = route.matched.slice().reverse().find(r => r.meta && r.meta.breadcrumb)
-  return matched ? matched.meta.breadcrumb : (route.name || '後台')
-})
-
 onMounted(() => {
-  window.addEventListener('resize', handleResize)
   fetchTodoCountsAndAnnouncements()
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
+  // cleanup if needed
 })
 
 // AdminDashboard 設定資料（預設本地展示，會被後端回應覆蓋）
@@ -311,82 +282,81 @@ const goAdminAnnouncementDetail = (id) => {
 
 .admin-layout {
   display: flex;
-  flex-wrap: nowrap; /* prevent wrapping that can squeeze sidebar */
+  flex-wrap: nowrap;
   min-height: 80vh;
   gap: 30px;
   margin: 30px;
   position: relative;
-
 }
 
-/* 漢堡按鈕樣式 */
+/* 漢堡按鈕樣式 - 所有尺寸都顯示 */
 .mobile-hamburger {
-  display: none;
-}
-
-/* 遮罩層樣式 */
-.sidebar-overlay {
-  display: none;
-}
-
-/* 預設為收合狀態：aside 與按鈕一樣大 */
-.admin-sidebar {
-  flex: 0 0 60px; /* default collapsed basis */
-  width: 60px;
-  flex-shrink: 0; /* never shrink */
-  height: 60px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-  padding: 4px;
-  position: relative;
-  overflow: hidden;
-  transition: width 0.3s cubic-bezier(.4,0,.2,1), height 0.3s cubic-bezier(.4,0,.2,1), padding 0.2s, border-radius 0.2s;
-}
-/* 展開狀態：回到完整側欄尺寸 */
-.admin-sidebar.is-open {
-  flex: 0 0 180px; /* expanded basis matches width */
-  width: 180px;
-  height: auto; /* 高度自動撐開 */
-  padding: 10px ;
-  border-radius: 20px;
-
-}
-/* 切換按鈕：收合時填滿容器；展開時固定 40x40 */
-.sidebar-toggle {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
+  position: fixed;
+  top: 140px;
+  left: 20px;
   width: 50px;
   height: 50px;
-  background: #ffd4d4;
+  background: #e35d6a;
+  color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
+  font-size: 1.5rem;
   cursor: pointer;
-  font-size: 1.2rem;
-
-  z-index: 1;
-}
-.admin-sidebar.is-open .sidebar-toggle {
-  width: 50px;
-  height: 50px;
+  z-index: 997;
+  box-shadow: 0 4px 12px rgba(227, 93, 106, 0.4);
+  transition: transform 0.2s;
 }
 
-/* 收合時，內容區域隱藏且不佔互動 */
+.mobile-hamburger:hover {
+  transform: scale(1.05);
+}
+
+.mobile-hamburger:active {
+  transform: scale(0.95);
+}
+
+/* 遮罩層樣式 - 所有尺寸都顯示 */
+.sidebar-overlay {
+  display: block;
+  position: fixed;
+  top: 100px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 998;
+}
+
+/* 側邊欄樣式 - 固定定位，從左側滑出 */
+.admin-sidebar {
+  position: fixed;
+  top: 100px;
+  left: 0;
+  bottom: 0;
+  width: 250px;
+  background: #fff;
+  border-radius: 0 20px 0 0;
+  box-shadow: 4px 0 16px rgba(0,0,0,0.1);
+  padding: 20px;
+  z-index: 999;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 展開狀態 */
+.admin-sidebar.is-open {
+  transform: translateX(0);
+}
+
+/* 側邊欄內容 */
 .sidebar-menu {
   padding: 10px;
-  margin-top: 10px;
-  opacity: 0;
-  max-height: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease, max-height 0.3s cubic-bezier(.4,0,.2,1), margin-top 0.2s ease;
-}
-/* 展開時顯示內容 */
-.sidebar-menu.is-open {
-  margin-top: 16px;
-  opacity: 1;
-  max-height: 1000px; /* 足夠大的值以容納內容 */
-  pointer-events: auto;
+  margin-top: 0;
 }
 .menu-section {
   margin-bottom: 24px;
@@ -555,73 +525,6 @@ const goAdminAnnouncementDetail = (id) => {
   .admin-layout {
     margin: 0;
     gap: 0;
-
-
-
-
-  }
-
-  /* 漢堡按鈕 - 固定在 App.vue header 下方 */
-  .mobile-hamburger {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: fixed;
-    top: 140px; /* App.vue header 高度 + 間距 */
-    left: 20px;
-    width: 50px;
-    height: 50px;
-    background: #e35d6a;
-    color: white;
-    border: none;
-    border-radius: 12px;
-    font-size: 1.5rem;
-    cursor: pointer;
-    z-index: 997;
-    box-shadow: 0 4px 12px rgba(227, 93, 106, 0.4);
-    transition: transform 0.2s;
-  }
-
-  .mobile-hamburger:active {
-    transform: scale(0.95);
-  }
-
-  /* 遮罩層 */
-  .sidebar-overlay {
-    display: block;
-    position: fixed;
-    top: 100px; /* App.vue header 高度 */
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 998;
-  }
-
-  /* 側邊欄手機版樣式 */
-  .admin-sidebar.mobile-mode {
-    position: fixed;
-    top: 100px;
-    left: 0;
-    bottom: 0;
-    /* 以視窗高度為基準，扣掉 header 高度；先提供 100vh 作為回退，再用 100dvh 覆蓋 */
-    height: calc(100vh - 100px);
-    max-height: calc(100vh - 100px);
-    height: calc(100dvh - 100px);
-    max-height: calc(100dvh - 100px);
-    margin: 0;
-    border-radius: 0;
-    z-index: 999;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    /* 當內容超出高度時，允許滾動 */
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .admin-sidebar.mobile-mode.is-open {
-    transform: translateX(0);
-    width: 250px;
   }
 
   /* 主內容區調整 */
@@ -630,7 +533,6 @@ const goAdminAnnouncementDetail = (id) => {
     width: 100%;
     margin: 0;
     border-radius: 20px;
-
 
   }
 
