@@ -69,9 +69,16 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useAuthStore } from '@/store/auth.js'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
+
+// 判斷是否為 super_admin
+const isSuperAdmin = computed(() => authStore.user?.role === 'super_admin')
+// 取得當前使用者的機構 ID（admin 角色使用）
+const institutionId = computed(() => authStore.user?.InstitutionID || null)
 
 const STORAGE_KEY = 'admin_classes'
 const classes = ref([])
@@ -102,10 +109,29 @@ const pageNumbers = computed(() => {
 const fetchClasses = async (page = 1) => {
   try {
     const offset = (page - 1) * PAGE_SIZE
-    const url = `http://localhost:8080/classes/offset?offset=${offset}&size=${PAGE_SIZE}`
+
+    // Debug: 檢查使用者資訊
+    console.log('===== AdminClassList Debug =====')
+    console.log('isSuperAdmin:', isSuperAdmin.value)
+    console.log('institutionId:', institutionId.value)
+    console.log('user role:', authStore.user?.role)
+
+    // 根據角色決定是否帶機構 ID：super_admin 看全部，admin 只看自己機構
+    const institutionIdParam = isSuperAdmin.value ? null : institutionId.value
+    console.log('institutionIdParam to API:', institutionIdParam)
+    console.log('==================================')
+
+    // 建構 URL
+    let url = `http://localhost:8080/classes/offset?offset=${offset}&size=${PAGE_SIZE}`
+    if (institutionIdParam) {
+      url += `&InstitutionID=${institutionIdParam}`
+    }
+
     const res = await fetch(url)
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
     const data = await res.json()
+
+    console.log('班級資料回應:', data)
 
     // 更新分頁資訊
     totalElements.value = Number(data.totalElements) || 0
@@ -126,14 +152,20 @@ const fetchClasses = async (page = 1) => {
       institutionId: cls.institutionName,
     }))
 
-    // 標題
-    institution.value = { name: '全部班級' }
+    // 標題：根據角色顯示不同的標題
+    if (isSuperAdmin.value) {
+      institution.value = { name: '全部班級' }
+    } else {
+      institution.value = { name: '本機構班級' }
+    }
+
+    console.log('載入班級數量:', classes.value.length)
   } catch (e) {
     console.error('載入班級清單失敗:', e)
     classes.value = []
     totalPages.value = 1
     totalElements.value = 0
-    institution.value = { name: '全部班級' }
+    institution.value = { name: isSuperAdmin.value ? '全部班級' : '本機構班級' }
   }
 }
 

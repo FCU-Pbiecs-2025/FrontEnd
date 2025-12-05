@@ -13,11 +13,12 @@
             <div class="query-row">
               <div class="search-area">
                 <label class="search-label" for="queryInstitution">查詢條件：</label>
-                <input id="queryInstitution" type="text" v-model="searchKeyword" placeholder="機構名稱" class="search-input" />
+                <input id="queryInstitution" type="text" v-model="searchKeyword" placeholder="機構名稱" class="search-input" :disabled="!isSuperAdmin" />
               </div>
               <div class="btn-query">
+                <!-- 管理員也能新增，僅查詢限制為 super admin -->
                 <button class="btn primary" @click="goToAdminClassEdit">新增</button>
-                <button class="btn query" @click="() => doQueryInstitution(1)">查詢</button>
+                <button class="btn query" @click="() => doQueryInstitution(1)" :disabled="!isSuperAdmin">查詢</button>
               </div>
             </div>
           </div>
@@ -127,9 +128,19 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import Pagination from '@/components/Pagination.vue'
+// 新增：引入登入狀態以判斷是否為超級管理員與取得機構ID
+import { useAuthStore } from '@/store/auth.js'
 
 const router = useRouter()
 const route = useRoute()
+const auth = useAuthStore()
+
+// 角色判斷：permissionType 1=super_admin, 2=admin
+const isSuperAdmin = computed(() => {
+  const p = auth?.user?.PermissionType
+  return Number(p) === 1
+})
+const institutionId = computed(() => auth?.user?.InstitutionID || null)
 
 const classes = ref([])
 const searchKeyword = ref('')
@@ -171,7 +182,21 @@ const pageNumbers = computed(() => {
 const fetchClasses = async (page = 1) => {
   try {
     const offset = (page - 1) * PAGE_SIZE
-    const res = await fetch(`http://localhost:8080/classes/offset?offset=${offset}&size=${PAGE_SIZE}`)
+
+    // 非超級管理員：必須有機構ID，否則不進行未過濾查詢
+    if (!isSuperAdmin.value && !institutionId.value) {
+      console.warn('Admin 帳號未綁定機構，暫不顯示班級資料')
+      classes.value = []
+      totalElements.value = 0
+      totalPages.value = 1
+      currentPage.value = 1
+      return
+    }
+
+    // 非超級管理員只看自己機構資料
+    const instParam = isSuperAdmin.value ? '' : `&InstitutionID=${encodeURIComponent(institutionId.value)}`
+    const url = `http://localhost:8080/classes/offset?offset=${offset}&size=${PAGE_SIZE}${instParam}`
+    const res = await fetch(url)
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
     const data = await res.json()
 
@@ -189,7 +214,7 @@ const fetchClasses = async (page = 1) => {
     }
 
     classes.value = Array.isArray(data.content) ? data.content : []
-    console.log('班級資料載入成功:', { page, classes: classes.value.length, totalPages: totalPages.value })
+    console.log('班級資料載入成功:', { page, classes: classes.value.length, totalPages: totalPages.value, isSuperAdmin: isSuperAdmin.value, institutionId: institutionId.value })
   } catch (e) {
     console.error('載入班級資料失敗:', e)
     classes.value = []
@@ -200,6 +225,12 @@ const fetchClasses = async (page = 1) => {
 
 // 查詢班級（依機構名稱關鍵字，支援分頁）
 const doQueryInstitution = async (page = 1) => {
+  // 非 super admin 不允許查詢，直接回列表
+  if (!isSuperAdmin.value) {
+    await fetchClasses(1)
+    return
+  }
+
   const kw = (searchKeyword.value || '').trim()
 
   if (!kw) {
@@ -209,7 +240,10 @@ const doQueryInstitution = async (page = 1) => {
 
   try {
     const offset = (page - 1) * PAGE_SIZE
-    const res = await fetch(`http://localhost:8080/classes/search/institution?name=${encodeURIComponent(kw)}&offset=${offset}&size=${PAGE_SIZE}`)
+    // super admin 搜尋不帶 InstitutionID
+    let url = `http://localhost:8080/classes/search/institution?name=${encodeURIComponent(kw)}&offset=${offset}&size=${PAGE_SIZE}`
+
+    const res = await fetch(url)
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
     const data = await res.json()
 
@@ -226,9 +260,9 @@ const doQueryInstitution = async (page = 1) => {
       totalElements: totalElements.value
     }
 
-    // 使用content陣���
+    // 使用content陣列
     classes.value = Array.isArray(data.content) ? data.content : []
-    console.log('搜索結果:', { kw, page, count: classes.value.length })
+    console.log('搜索結果:', { kw, page, count: classes.value.length, isSuperAdmin: isSuperAdmin.value })
   } catch (e) {
     console.error('搜索失敗:', e)
     alert('搜索失敗，請稍後再試')
@@ -256,7 +290,8 @@ const editClass = (cls) => {
   router.push({
     name: 'AdminClassEdit',
     params: {
-      institutionId: cls.institutionName,
+      // 傳遞正確的機構ID（若後端欄位名稱不同則嘗試多個）
+      institutionId: cls.institutionID || cls.institutionId || '',
       id: cls.classID
     }
   })

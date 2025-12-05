@@ -216,10 +216,13 @@ const handleLogin = async () => {
         account: apiUser.account || apiUser.Account || apiUser.userAccount || '',
         email: apiUser.email || apiUser.Email || apiUser.mail || '',
         phone: apiUser.phoneNumber || apiUser.PhoneNumber || apiUser.phone || apiUser.mobile || '',
-        role: role
+        role: role,
+        InstitutionID: apiUser.InstitutionID || apiUser.institutionID || apiUser.institutionId || null, // 機構ID
+        FamilyInfoID: apiUser.FamilyInfoID || apiUser.familyInfoID || apiUser.familyinfoid || null // 家庭資料ID
       }
       authStore.isAuthenticated = true
       console.log('Pinia 狀態已更新，用戶角色:', role)
+      console.log('InstitutionID 已儲存:', authStore.user.InstitutionID) // Debug 確認
 
       // 權限判斷跳轉
       const permissionType = permissionTypeNum

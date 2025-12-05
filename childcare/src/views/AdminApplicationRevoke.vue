@@ -11,14 +11,14 @@
         <div class="query-container">
           <div class="query-row">
             <div class="search-area">
-              <label class="type-label">撤銷編號：</label>
-              <input v-model="filters.revokeId" placeholder="請輸入撤銷編號" class="date-input" style="width:200px" />
+              <label class="type-label">流水案號：</label>
+              <input v-model="filters.revokeId" placeholder="請輸入流水案號 (caseNumber)" class="date-input" style="width:200px" />
             </div>
           </div>
           <div class="query-row">
             <div class="search-area">
-              <label class="type-label">申請人身分證：</label>
-              <input v-model="filters.applicant" placeholder="身分證" class="date-input" style="width:200px" />
+              <label class="type-label">幼兒身分證：</label>
+              <input v-model="filters.applicant" placeholder="幼兒身分證字號" class="date-input" style="width:200px" />
             </div>
           </div>
         </div>
@@ -30,10 +30,10 @@
         <table class="announcement-table">
           <thead>
             <tr>
-              <th>撤銷編號</th>
+              <th>流水案號</th>
               <th>申請日期</th>
               <th>申請人</th>
-              <th>身分證號</th>
+              <th>幼兒身分證</th>
               <th>機構</th>
               <th>撤銷原因</th>
               <th>操作</th>
@@ -41,7 +41,7 @@
           </thead>
           <tbody>
             <tr v-for="item in items" :key="item.id">
-              <td class="date-cell">{{ item.id }}</td>
+              <td class="date-cell">{{ item.caseNumber || item.id }}</td>
               <td class="date-cell">{{ item.Date }}</td>
               <td class="title-cell">{{ item.applicant }}</td>
               <td class="title-cell">{{ item.nationalID }}</td>
@@ -108,13 +108,16 @@ const isLoading = ref(false)
 const isSearching = ref(false)
 
 function filterList(list) {
-  const qId = filters.value.revokeId.trim()
-  const qApplicant = filters.value.applicant.trim() // 這是身分證號
+  const qId = filters.value.revokeId.trim() // 現在代表 caseNumber
+  const qApplicant = filters.value.applicant.trim() // 幼兒身分證
   const qType = filters.value.type
   return list.filter(item => {
     if (qType && item.type !== qType) return false
-    if (qId && !String(item.id).toLowerCase().includes(qId.toLowerCase())) return false
-    if (qApplicant && !String(item.nationalID).includes(qApplicant)) return false
+    if (qId) {
+      const cn = String(item.caseNumber || item.id || '').toLowerCase()
+      if (!cn.includes(qId.toLowerCase())) return false
+    }
+    if (qApplicant && !String(item.nationalID || '').includes(qApplicant)) return false
     return true
   })
 }
@@ -170,10 +173,9 @@ watch(() => route.query.refresh, (val) => {
 
 async function search(page = 1) {
   // 如果沒有任何搜尋條件，回到列表模式
-  const hasId = filters.value.revokeId.trim() !== ''
-  const hasApplicant = filters.value.applicant.trim() !== ''
-  if (!hasId && !hasApplicant) {
-    // 不帶參數的查詢視同清空搜尋
+  const hasCase = filters.value.revokeId.trim() !== ''
+  const hasChildNid = filters.value.applicant.trim() !== ''
+  if (!hasCase && !hasChildNid) {
     currentPage.value = 1
     await loadData()
     showBack.value = false
@@ -184,26 +186,23 @@ async function search(page = 1) {
     isLoading.value = true
     isSearching.value = true
 
-    // 判斷使用者角色
     const userRole = authStore.user?.role
     const userInstitutionID = authStore.user?.InstitutionID
 
-    // 後端期望 cancellationID 與 nationalID
-    const cancellationID = filters.value.revokeId.trim()
-    const nationalID = filters.value.applicant.trim()
+    // 後端期望 cancellationID 與 nationalID；為相容，caseNumber 也同時帶 cancellationID
+    const caseNumber = filters.value.revokeId.trim()
+    const nationalID = filters.value.applicant.trim() // 幼兒身分證
 
-    // 如果是 admin 使用者，強制帶入 institutionID
     const institutionID = (userRole === 'admin' && userInstitutionID) ? userInstitutionID : null
 
     const { items: list, totalPages: tp, totalElements: te } = await searchRevokedApplications(
-      cancellationID,
+      caseNumber,
       nationalID,
       page - 1,
       PAGE_SIZE,
       institutionID
     )
 
-    // 搜尋結果為後端回傳的分頁清單
     items.value = list
     totalPages.value = tp
     totalElements.value = te
@@ -232,11 +231,14 @@ function openDetail(item) {
     return
   }
 
-  const targetRoute = { name: 'AdminApplicationRevokeEdit', params: { id: String(item.id) }, query: { nationalID: item.nationalID || '' } }
-
+  const targetRoute = {
+    name: 'AdminApplicationRevokeEdit',
+    params: { id: String(item.id) },
+    query: { nationalID: item.nationalID || '', caseNumber: item.caseNumber || '' }
+  }
 
   router.push(targetRoute).then(() => {
-    console.log('導航成功完成，帶入 cancellationID 與 nationalID')
+    console.log('導航成功完成，帶入 cancellationID、caseNumber 與 nationalID')
   }).catch(err => {
     console.error('導航失敗:', err)
     console.error('錯誤詳情:', {

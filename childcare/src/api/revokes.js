@@ -4,13 +4,14 @@ import http from './http'
 // 將後端 DTO 轉成前端畫面所需的欄位
 function mapDtoToItem(dto) {
   // 支援後端回傳欄位：
-  // { cancellationID, cancellationDate, userID, userName, institutionID, institutionName, abandonReason, nationalID }
+  // { cancellationID, cancellationDate, userID, userName, institutionID, institutionName, abandonReason, nationalID, caseNumber }
   const d = dto?.cancellationDate ? new Date(dto.cancellationDate) : null
   const yyyy = d ? d.getFullYear() : ''
   const mm = d ? String(d.getMonth() + 1).padStart(2, '0') : ''
   const dd = d ? String(d.getDate()).padStart(2, '0') : ''
   return {
     id: dto.cancellationID || dto.applicationID || '',
+    caseNumber: dto.caseNumber || '', // 新增對應流水案號
     Date: d ? `${yyyy}/${mm}/${dd}` : '', // 申請日期
     applicant: dto.userName || '未提供',   // 申請人
     institution: dto.institutionName || '未提供', // 機構

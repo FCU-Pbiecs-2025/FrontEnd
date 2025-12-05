@@ -16,11 +16,11 @@
           <div class="query-row">
             <div class="search-area">
               <label class="search-label" for="queryInstitution">查詢條件：</label>
-              <input id="queryInstitution" type="text" v-model="searchKeyword" placeholder="機構名稱" class="search-input" />
+              <input id="queryInstitution" type="text" v-model="searchKeyword" placeholder="機構名稱" class="search-input" :disabled="!isSuperAdmin" />
             </div>
             <div class="btn-query">
-             <button class="btn primary" @click="addNew">新增</button>
-             <button class="btn query" @click="doQuery">查詢</button>
+             <button class="btn primary" @click="addNew" :disabled="!isSuperAdmin">新增</button>
+             <button class="btn query" @click="doQuery" :disabled="!isSuperAdmin">查詢</button>
             </div>
           </div>
         </div>
@@ -82,9 +82,16 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getInstitutionsWithOffset } from '@/api/Institution.js'
 import Pagination from '@/components/Pagination.vue'
+import { useAuthStore } from '@/store/auth.js'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
+
+// 判斷是否為 super_admin
+const isSuperAdmin = computed(() => authStore.user?.role === 'super_admin')
+// 取得當前使用者的機構 ID（admin 角色使用）
+const institutionId = computed(() => authStore.user?.InstitutionID || null)
 
 const STORAGE_KEY = 'institutionData'
 const searchKeyword = ref('')
@@ -131,7 +138,21 @@ const pageNumbers = computed(() => {
 const loadInstitutions = async (offset = 0) => {
   try {
     isLoading.value = true
-    const response = await getInstitutionsWithOffset(offset, pageSize.value)
+
+    // Debug: 檢查使用者資訊
+    console.log('===== AdminInstitution Debug =====')
+    console.log('authStore.user:', authStore.user)
+    console.log('isSuperAdmin:', isSuperAdmin.value)
+    console.log('institutionId:', institutionId.value)
+    console.log('user role:', authStore.user?.role)
+    console.log('user InstitutionID:', authStore.user?.InstitutionID)
+
+    // 根據角色決定是否帶機構 ID：super_admin 看全部，admin 只看自己機構
+    const institutionIdParam = isSuperAdmin.value ? null : institutionId.value
+    console.log('institutionIdParam to API:', institutionIdParam)
+    console.log('==================================')
+
+    const response = await getInstitutionsWithOffset(offset, pageSize.value, institutionIdParam)
 
     // 轉換資料格式
     allInstitutions.value = response.content || []

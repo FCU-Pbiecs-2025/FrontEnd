@@ -3,15 +3,15 @@
     <div class="announcement-card">
       <div class="title-row">
         <img src="https://img.icons8.com/ios/48/2e6fb7/delete-sign.png" class="icon" alt="icon" />
-        <span class="main-title">撤銷審核 - {{ revokeId }}</span>
+        <span class="main-title">撤銷審核 - {{ revokeData.caseNumber || routeCaseNumber || revokeId }}</span>
       </div>
 
       <div class="detail-card">
         <h3>申請詳情</h3>
         <div class="detail-info">
           <div class="info-row">
-            <label class="info-label">撤銷編號：</label>
-            <span class="info-value">{{ revokeData.id }}</span>
+            <label class="info-label">流水案號：</label>
+            <span class="info-value">{{ revokeData.caseNumber || routeCaseNumber || revokeData.id }}</span>
           </div>
           <div class="info-row">
             <label class="info-label">申請日期：</label>
@@ -107,6 +107,7 @@ const route = useRoute()
 
 // 從路由參數取得 cancellationID，nationalID 可以從 query 或 params 傳入
 const revokeId = ref(route.params.id)
+const routeCaseNumber = ref(route.query.caseNumber || '') // 改為從 query 讀取 caseNumber
 const nationalIDParam = ref(route.query.nationalID || route.params.nationalID || '')
 
 // 基本資料

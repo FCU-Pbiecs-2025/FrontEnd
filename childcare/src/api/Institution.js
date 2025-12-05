@@ -20,6 +20,7 @@ export const getInstitutionsSimpleAll = async () => {
  *
  * @param offset 起始項目索引
  * @param size 每頁大小
+ * @param institutionID (可選) 機構ID - admin 角色使用，過濾特定機構
  * @return 分頁機構列表及分頁資訊
  *
  * 範例回應:
@@ -53,18 +54,20 @@ export const getInstitutionsSimpleAll = async () => {
  *   "totalElements": 4
  * }
  */
-export const getInstitutionsWithOffset = async (offset = 0, size = 10) => {
+export const getInstitutionsWithOffset = async (offset = 0, size = 10, institutionID = null) => {
     try {
         const url = '/institutions/offset';
-        console.log('[API] getInstitutionsWithOffset request url:', url);
-        console.log('[API] getInstitutionsWithOffset params:', { offset, size });
+        const params = { offset, size };
 
-        const response = await http.get(url, {
-            params: {
-                offset,
-                size
-            }
-        });
+        // 如果有傳入 institutionID，則加入查詢參數
+        if (institutionID) {
+            params.InstitutionID = institutionID;
+        }
+
+        console.log('[API] getInstitutionsWithOffset request url:', url);
+        console.log('[API] getInstitutionsWithOffset params:', params);
+
+        const response = await http.get(url, { params });
 
         console.log('[API] getInstitutionsWithOffset response.data:', response.data);
         return response.data;

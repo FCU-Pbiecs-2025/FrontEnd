@@ -220,7 +220,7 @@ async function fetchTodoCountsAndAnnouncements() {
       const scopeLabel = isSuperAdmin.value ? '' : '（本機構）'
       const list = [
         { id: 'pending', title: `審核新申請${scopeLabel}`, content: `有 ${pending} 筆新申請待審核`, date: null, count: pending },
-        { id: 'revoke', title: `撤銷申請${scopeLabel}`, content: `有 ${revoke} 筆撤銷聲請待審`, date: null, count: revoke }
+        { id: 'revoke', title: `撤銷申請${scopeLabel}`, content: `有 ${revoke} 筆撤銷申請待審核`, date: null, count: revoke }
       ]
       if (isLotteryWindow()) {
         if (!list.find(i => i.id === 'lottery')) {

@@ -13,11 +13,14 @@ export const getClassByInstitutionId = async (id) => {
 // 獲取分頁班級資料
 export const getClassesByOffset = async (offset = 0, size = 10, institutionId = null) => {
     try {
-        let url = `/classes/offset?offset=${offset}&size=${size}`
+        const params = { offset, size }
+        // 如果有傳入 institutionId，則加入查詢參數（使用後端期望的大寫 InstitutionID）
         if (institutionId) {
-            url += `&institutionId=${institutionId}`
+            params.InstitutionID = institutionId
         }
-        const response = await http.get(url)
+        console.log('[API] getClassesByOffset params:', params)
+        const response = await http.get('/classes/offset', { params })
+        console.log('[API] getClassesByOffset response:', response.data)
         return response.data
     } catch (error) {
         console.error('獲取班級資料失敗:', error)

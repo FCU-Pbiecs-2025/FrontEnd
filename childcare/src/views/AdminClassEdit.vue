@@ -9,12 +9,19 @@
 
 
       <div class="form-card">
-        <div class="form-row" v-if="!isEdit">
+        <!-- 建立模式：super admin 可選擇機構；admin 顯示唯讀機構 -->
+        <div class="form-row" v-if="!isEdit && isSuperAdmin">
           <label for="institution-select">選擇機構</label>
           <select v-model="form.institutionId" id="institution-select">
             <option value="" disabled>請選擇機構</option>
             <option v-for="inst in institutions" :key="inst.id" :value="inst.id">{{ inst.name }}</option>
           </select>
+        </div>
+        <div class="form-row" v-else-if="!isEdit && !isSuperAdmin">
+          <label>機構</label>
+          <div style="display:flex;flex-direction:column;">
+            <input :value="resolvedInstitutionName || form.institutionName || '（未指定）'" type="text" readonly class="readonly-input" style="width:420px;padding:8px 10px;border-radius:6px;border:1px solid #d8dbe0;" />
+          </div>
         </div>
         <div class="form-row" v-else>
           <label>機構</label>
@@ -67,10 +74,14 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useAuthStore } from '@/store/auth.js'
 const router = useRouter()
 const route = useRoute()
+const auth = useAuthStore()
 
 const isEdit = computed(() => !!route.params.id)
+const isSuperAdmin = computed(() => Number(auth?.user?.PermissionType) === 1 || auth?.user?.role === 'super_admin')
+const adminInstitutionId = computed(() => auth?.user?.InstitutionID || '')
 
 // Remove hardcoded fake institutions and fetch from backend instead
 const institutions = ref([])
@@ -94,6 +105,11 @@ const resolvedInstitutionName = computed(() => {
     const found = institutions.value.find(i => String(i.id) === String(form.value.institutionId))
     return found ? found.name : ''
   }
+  // admin 建立時若尚未解析，從 auth 的機構ID解析名稱
+  if (!isSuperAdmin.value && adminInstitutionId.value) {
+    const found = institutions.value.find(i => String(i.id) === String(adminInstitutionId.value))
+    return found ? found.name : ''
+  }
   return ''
 })
 
@@ -102,13 +118,12 @@ const canSave = computed(() => {
   if (!form.value.unit || form.value.unit.trim() === '') return false
   // 編輯模式：只要有班級名稱即可儲存（不可變更機構）
   if (isEdit.value) return true
-  // 新增模式：需有可解析或選擇的機構
-  if (form.value.institutionId && String(form.value.institutionId).trim() !== '') return true
-  if (form.value.institutionName && form.value.institutionName.trim() !== '') {
-    const match = institutions.value.find(i => i.name === form.value.institutionName)
-    return !!match
+  // 新增模式：super admin 需選擇機構；admin 需有自身機構 ID
+  if (isSuperAdmin.value) {
+    return !!(form.value.institutionId && String(form.value.institutionId).trim() !== '')
   }
-  return false
+  // admin
+  return !!(adminInstitutionId.value && String(adminInstitutionId.value).trim() !== '')
 })
 
 // Fetch institutions from backend API (adjust endpoint if your backend differs)
@@ -240,6 +255,10 @@ onMounted(async () => {
   } else {
     // 新增模式：清空表單
     form.value = defaultForm()
+    // super admin 由使用者選擇；admin 固定為自己的機構
+    if (!isSuperAdmin.value) {
+      form.value.institutionId = adminInstitutionId.value || ''
+    }
     if (route.params.institutionId) {
       form.value.institutionId = route.params.institutionId // 應為機構ID
     }
@@ -254,13 +273,22 @@ const save = async () => {
 
   // 僅在新增模式時要求與解析 institutionId；編輯模式不得變更機構
   if (!isEdit.value) {
-    if (!form.value.institutionId || String(form.value.institutionId).trim() === '') {
-      const resolved = resolveInstitutionIdFromName(form.value.institutionName)
-      if (resolved) {
-        form.value.institutionId = resolved
-      } else {
-        alert('請選擇機構')
+    // admin 角色強制綁定到自己的機構
+    if (!isSuperAdmin.value) {
+      if (!adminInstitutionId.value) {
+        alert('您的帳號未綁定機構，無法新增班級，請聯絡管理員')
         return
+      }
+      form.value.institutionId = adminInstitutionId.value
+    } else {
+      if (!form.value.institutionId || String(form.value.institutionId).trim() === '') {
+        const resolved = resolveInstitutionIdFromName(form.value.institutionName)
+        if (resolved) {
+          form.value.institutionId = resolved
+        } else {
+          alert('請選擇機構')
+          return
+        }
       }
     }
   }
