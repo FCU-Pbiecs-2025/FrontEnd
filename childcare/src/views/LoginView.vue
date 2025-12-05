@@ -228,13 +228,13 @@ const handleLogin = async () => {
       console.log('重定向參數:', redirect)
 
       if (permissionType === 1 || permissionType === 2) {
-        // super_admin 和 admin 都可以進入後台
-        console.log('跳轉到後台:', redirect || '/admin')
-        await router.push(redirect || '/admin')
+        // super_admin 和 admin 登入成功後跳轉到後台首頁，忽略 redirect 參數
+        console.log('跳轉到後台首頁: /admin')
+        await router.push('/admin')
       } else {
-        // general 用戶進入前台
-        console.log('跳轉到首頁:', redirect || '/')
-        await router.push(redirect || '/')
+        // general 用戶進入前台首頁，忽略 redirect 參數
+        console.log('跳轉到前台首頁: /')
+        await router.push('/')
       }
     } else {
       console.log('登入失敗:', result.message)

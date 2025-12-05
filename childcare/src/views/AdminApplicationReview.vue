@@ -20,14 +20,14 @@
           </div>
           <div class="query-row">
             <div class="search-area">
-              <label class="type-label">申請編號：</label>
-              <input v-model="filters.applicationId" placeholder="請輸入申請編號" class="date-input" style="width:200px" />
+              <label class="type-label">流水案號：</label>
+              <input v-model="filters.applicationId" placeholder="請輸入流水案號" class="date-input" style="width:200px" />
             </div>
           </div>
           <div class="query-row">
             <div class="search-area">
-              <label class="type-label">申請人身分證：</label>
-              <input v-model="filters.applicant" placeholder="身分證" class="date-input" style="width:200px" />
+              <label class="type-label">幼兒身分證：</label>
+              <input v-model="filters.applicant" placeholder="幼兒身分證字號" class="date-input" style="width:200px" />
             </div>
           </div>
         </div>
@@ -40,7 +40,7 @@
         <table class="announcement-table">
           <thead>
             <tr>
-              <th>申請編號</th>
+              <th>流水案號</th>
               <th>申請日期</th>
               <th>申請人</th>
               <th>幼兒姓名</th>
@@ -51,7 +51,7 @@
           </thead>
           <tbody>
             <tr v-for="item in paginatedItems" :key="item.id">
-              <td class="date-cell">{{ item.id }}</td>
+              <td class="date-cell">{{ item.caseNumber }}</td>
               <td class="date-cell">{{ item.Date }}</td>
               <td class="title-cell">{{ item.applicant }}</td>
               <td class="title-cell">
@@ -94,6 +94,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getApplicationsByOffset, searchApplications, getApplicationById } from '@/api/application.js';
+import { getInstitutionsSimpleAll } from '@/api/Institution.js';
 import { useAuthStore } from '@/store/auth.js';
 import Pagination from '@/components/Pagination.vue'
 
@@ -125,9 +126,18 @@ const pageNumbers = computed(() => {
 // 原始完整資料列表
 const fullList = ref([]);
 const items = ref([]);
+const allInstitutions = ref([])
+// 追蹤查詢序號，避免過期回應覆蓋最新結果
+const activeRequestId = ref(0)
 
 async function fetchApplications() {
   try {
+    // 開始新請求前清空列表，避免殘留
+    items.value = []
+    totalElements.value = 0
+    totalPages.value = 1
+
+    const reqId = ++activeRequestId.value
     const offset = (currentPage.value - 1) * PAGE_SIZE;
 
     // 判斷使用者角色，如果是 admin 則只查詢該機構的資料
@@ -140,7 +150,7 @@ async function fetchApplications() {
       const searchParams = {
         institutionID: institutionID,
         institutionName: '',
-        applicationID: ''
+        CaseNumber: ''
       };
       data = await searchApplications(searchParams);
     } else {
@@ -148,64 +158,111 @@ async function fetchApplications() {
       data = await getApplicationsByOffset(offset, PAGE_SIZE);
     }
 
-    if (data && data.content && Array.isArray(data.content)) {
-      // 只保留 participantType === '0' 的所有資料（不去重）
-      const filtered = data.content.filter(item => String(item.participantType) === '0');
-      fullList.value = filtered.map(item => ({
+    let contentArray = [];
+    // 判斷回傳的資料格式
+    if (Array.isArray(data)) {
+      // 直接是陣列
+      contentArray = data;
+    } else if (data && data.content && Array.isArray(data.content)) {
+      // 包含 content 屬性的物件
+      contentArray = data.content;
+    }
+
+    if (contentArray.length > 0) {
+      // 只保留 participantType === '0' 的所有資料
+      const filtered = contentArray.filter(item => String(item.participantType) === '0');
+      const mapped = filtered.map(item => ({
         id: item.applicationID,
+        caseNumber: item.caseNumber || item.CaseNumber || '未提供',
         Date: item.applicationDate,
         applicant: item.name || '未提供',
         childName: item.pname || '未提供',
         nationalID: item.nationalID || item.NationalID || null,
         institution: item.institutionName || '未提供',
         status: item.status || '未提供'
-      }));
-      items.value = [...fullList.value];
-      totalElements.value = fullList.value.length;
-      totalPages.value = Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE));
+      }))
+
+      // 忽略過期回應
+      if (reqId !== activeRequestId.value) return
+
+      fullList.value = mapped
+      totalElements.value = fullList.value.length
+      totalPages.value = Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE))
+
+      // 分頁切片（避免整包覆蓋造成視覺殘留）
+      const startIndex = offset
+      const endIndex = startIndex + PAGE_SIZE
+      items.value = fullList.value.slice(startIndex, endIndex)
     } else {
-      fullList.value = [];
-      items.value = [];
-      totalElements.value = 0;
-      totalPages.value = 1;
+      // 忽略過期回應
+      if (reqId !== activeRequestId.value) return
+      fullList.value = []
+      items.value = []
+      totalElements.value = 0
+      totalPages.value = 1
     }
   } catch (e) {
-    console.error('Failed to fetch applications:', e);
-    fullList.value = [];
-    items.value = [];
-    totalElements.value = 0;
-    totalPages.value = 1;
+    // 忽略過期回應
+    // 仍以清空狀態顯示，避免殘留
+    items.value = []
+    totalElements.value = 0
+    totalPages.value = 1
   }
 }
 
 async function searchApplicationsByFilters() {
   try {
+    // 開始新查詢前清空，避免殘留
+    items.value = []
+    totalElements.value = 0
+    totalPages.value = 1
+
+    const reqId = ++activeRequestId.value
     const userRole = authStore.user?.role;
     const userInstitutionID = authStore.user?.InstitutionID;
 
     const params = {
-      institutionID: filters.value.institution,
-      institutionName: '',
-      applicationID: filters.value.applicationId
+      institutionID: '',
+      institutionName: filters.value.institution,
+      CaseNumber: filters.value.applicationId,
+      NationalID: filters.value.applicant
     };
+    console.log('搜尋:', filters.value.institution);
+    console.log('搜尋:', filters.value.applicationId);
+    console.log('搜尋:', filters.value.applicant);
 
-    // 如果是 admin 使用者且沒有指定機構篩選，則強制使用該使用者的機構ID
+
+    // 只有 admin 使用者才會受機構限制，super_admin 不受限制
     if (userRole === 'admin' && userInstitutionID) {
-      if (!params.institutionID) {
-        params.institutionID = userInstitutionID;
-      }
-      // 如果 admin 試圖查詢其他機構的資料，也強制改為自己的機構
-      else if (params.institutionID !== userInstitutionID) {
-        console.warn('Admin 使用者只能查詢自己機構的資料，已自動切換為當前機構');
-        params.institutionID = userInstitutionID;
-      }
+      // admin 用戶強制使用自己的機構ID，清空機構名稱避免衝突
+      params.institutionID = userInstitutionID;
+      params.institutionName = '';  // 清空機構名稱，使用 institutionID 查詢
     }
 
     const data = await searchApplications(params);
-    if (data && data.content && Array.isArray(data.content)) {
-      const filtered = data.content.filter(item => String(item.participantType) === '0');
-      items.value = filtered.map(item => ({
-        id: item.applicationID,
+    console.log('searchApplications 回傳的 data:', data);
+
+    let contentArray = [];
+    // 判斷回傳的資料格式
+    if (Array.isArray(data)) {
+      // 直接是陣列
+      contentArray = data;
+      console.log('data 是直接的陣列:', contentArray);
+    } else if (data && data.content && Array.isArray(data.content)) {
+      // 包含 content 屬性的物件
+      contentArray = data.content;
+      console.log('data.content:', contentArray);
+    }
+
+    if (contentArray.length > 0) {
+      console.log('處理前的 contentArray:', contentArray);
+      const filtered = contentArray.filter(item => String(item.participantType) === '0');
+      console.log('過濾後的 filtered:', filtered);
+
+      // 清空之前的查詢結果，避免堆積
+      const searchResults = filtered.map(item => ({
+        id: item.applicationID,  // 保留 ApplicationID 作為唯一識別
+        caseNumber: item.caseNumber || item.CaseNumber || '未提供', // 流水案號
         Date: item.applicationDate,
         applicant: item.name || '未提供',
         childName: item.pname || '未提供',
@@ -213,71 +270,99 @@ async function searchApplicationsByFilters() {
         institution: item.institutionName || '未提供',
         status: item.status || '未提供'
       }));
-      totalElements.value = items.value.length;
-      totalPages.value = Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE));
+
+      // 忽略過期回應
+      if (reqId !== activeRequestId.value) return
+
+      // 直接使用查詢結果第一頁
+      fullList.value = searchResults
+      totalElements.value = fullList.value.length
+      totalPages.value = Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE))
+      items.value = fullList.value.slice(0, PAGE_SIZE)
     } else {
-      items.value = [];
-      totalElements.value = 0;
-      totalPages.value = 1;
+      if (reqId !== activeRequestId.value) return
+      items.value = []
+      fullList.value = []
+      totalElements.value = 0
+      totalPages.value = 1
     }
   } catch (e) {
-    console.error('Failed to search applications:', e);
-    items.value = [];
-    totalElements.value = 0;
-    totalPages.value = 1;
+    items.value = []
+    fullList.value = []
+    totalElements.value = 0
+    totalPages.value = 1
   }
 }
 
-async function searchByApplicationId() {
-  const applicationId = filters.value.applicationId.trim();
-  if (!applicationId) {
-    alert('請輸入申請編號');
+async function searchByCaseNumber() {
+  const caseNumber = filters.value.applicationId.trim();
+  if (!caseNumber) {
+    alert('請輸入流水案號');
     return;
   }
+
   try {
-    const data = await getApplicationById(applicationId);
-    let children = [];
-    if (data && Array.isArray(data.children)) {
-      children = data.children.filter(p => String(p.participantType) === '0');
+    // 清空舊資料，避免殘留
+    items.value = []
+    totalElements.value = 0
+    totalPages.value = 1
+
+    const reqId = ++activeRequestId.value
+    const userRole = authStore.user?.role;
+    const userInstitutionID = authStore.user?.InstitutionID;
+
+    const params = { institutionID: '', institutionName: '', CaseNumber: caseNumber };
+    if (userRole === 'admin' && userInstitutionID) {
+      params.institutionID = userInstitutionID;
+      params.institutionName = '';
+    } else if (filters.value.institution && filters.value.institution.trim()) {
+      params.institutionName = filters.value.institution.trim();
     }
-    if (data && Array.isArray(data.participants)) {
-      children = children.concat(data.participants.filter(p => String(p.participantType) === '0'));
+
+    const data = await searchApplications(params);
+    console.log('根據流水案號查詢結果:', data);
+
+    let contentArray = [];
+    if (Array.isArray(data)) {
+      contentArray = data;
+    } else if (data && data.content && Array.isArray(data.content)) {
+      contentArray = data.content;
     }
-    // 若頂層本身就是 participantType === '0'
-    if (data && String(data.participantType) === '0') {
-      children.push(data);
-    }
-    // 去重（以 nationalID 做 key，避免重複）
-    const uniqueMap = new Map();
-    children.forEach(child => {
-      if (child.nationalID && !uniqueMap.has(child.nationalID)) {
-        uniqueMap.set(child.nationalID, child);
-      } else if (!child.nationalID) {
-        // 沒有 nationalID 用物件引用去重
-        uniqueMap.set(Math.random().toString(36), child);
-      }
-    });
-    const uniqueChildren = Array.from(uniqueMap.values());
-    if (uniqueChildren.length > 0) {
-      items.value = uniqueChildren.map(child => ({
-        id: data.applicationId || data.applicationID,
-        Date: data.applicationDate,
-        applicant: data.name || '未提供',
-        childName: child.pname || child.name || '未提供',
-        nationalID: child.nationalID || child.NationalID || null,
-        institution: data.institutionName || '未提供',
-        status: child.status || data.status || '未提供'
+
+    if (contentArray.length > 0) {
+      const filtered = contentArray.filter(item => String(item.participantType) === '0');
+      const searchResults = filtered.map(item => ({
+        id: item.applicationID,
+        caseNumber: item.caseNumber || item.CaseNumber || caseNumber,
+        Date: item.applicationDate,
+        applicant: item.name || '未提供',
+        childName: item.pname || '未提供',
+        nationalID: item.nationalID || item.NationalID || null,
+        institution: item.institutionName || '未提供',
+        status: item.status || '未提供'
       }));
-      totalElements.value = items.value.length;
-      totalPages.value = 1;
+
+      // 忽略過期回應
+      if (reqId !== activeRequestId.value) return
+
+      fullList.value = searchResults
+      totalElements.value = fullList.value.length
+      totalPages.value = Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE))
+      items.value = fullList.value.slice(0, PAGE_SIZE)
     } else {
-      items.value = [];
-      totalElements.value = 0;
-      totalPages.value = 1;
+      if (reqId !== activeRequestId.value) return
+      items.value = []
+      fullList.value = []
+      totalElements.value = 0
+      totalPages.value = 1
+      alert('查無此流水案號的申請資料');
     }
   } catch (e) {
-    console.error('Failed to fetch application by ID:', e);
-    alert('查詢失敗，請確認申請編號是否正確');
+    alert('查詢失敗，請確認流水案號是否正確');
+    items.value = []
+    fullList.value = []
+    totalElements.value = 0
+    totalPages.value = 1
   }
 }
 
@@ -377,7 +462,16 @@ async function openDetail(item) {
 function goToPage(page) {
   if (page < 1 || page > totalPages.value) return;
   currentPage.value = page;
-  fetchApplications();
+
+  const startIndex = (currentPage.value - 1) * PAGE_SIZE
+  const endIndex = startIndex + PAGE_SIZE
+  // 直接依 fullList 分頁切片，避免重複查詢造成殘留/閃爍
+  items.value = fullList.value.slice(startIndex, endIndex)
+
+  // 若尚未有資料（初始情境）才呼叫載入
+  if (items.value.length === 0 && fullList.value.length === 0) {
+    fetchApplications();
+  }
 }
 
 function prevPage() {
@@ -394,19 +488,57 @@ const paginatedItems = computed(() => {
 
 // 機構名稱選項（去重）
 const institutionOptions = computed(() => {
-  const set = new Set(fullList.value.map(item => item.institution))
-  return Array.from(set)
+  // 直接用 allInstitutions，確保不會因查詢而消失
+  return allInstitutions.value
 })
-
-// 顯示的資料列表（初始顯示全部）
-items.value = [...fullList.value]
 
 const showBack = ref(false)
 
+async function searchAllApplications() {
+  try {
+    const offset = (currentPage.value - 1) * PAGE_SIZE;
+    const data = await getApplicationsByOffset(offset, PAGE_SIZE);
+
+    if (data && data.content && Array.isArray(data.content)) {
+      // 只保留 participantType === '0' 的所有資料
+      const filtered = data.content.filter(item => String(item.participantType) === '0');
+      items.value = filtered.map(item => ({
+        id: item.applicationID,  // 保留 ApplicationID 作為唯一識別
+        caseNumber: item.caseNumber || item.CaseNumber || '未提供', // 流水案號
+        Date: item.applicationDate,
+        applicant: item.name || '未提供',
+        childName: item.pname || '未提供',
+        nationalID: item.nationalID || item.NationalID || null,
+        institution: item.institutionName || '未提供',
+        status: item.status || '未提供'
+      }));
+
+      // 更新分頁資訊
+      totalElements.value = data.totalElements || items.value.length;
+      totalPages.value = Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE));
+    } else {
+      items.value = [];
+      totalElements.value = 0;
+      totalPages.value = 1;
+    }
+  } catch (e) {
+    console.error('Failed to fetch all applications:', e);
+    items.value = [];
+    totalElements.value = 0;
+    totalPages.value = 1;
+  }
+}
+
 function search() {
-  if (filters.value.applicationId.trim()) {
-    searchByApplicationId();
+  currentPage.value = 1; // 重置到第一頁
+
+  // 如果有輸入流水案號，使用流水案號精確查詢
+  if (filters.value.applicationId && filters.value.applicationId.trim()) {
+    console.error('使用流水查詢');
+    searchByCaseNumber();
   } else {
+    // 否則使用一般篩選查詢
+    console.error('使用一般查詢');
     searchApplicationsByFilters();
   }
 }
@@ -414,15 +546,34 @@ function search() {
 function goBack() {
   // 重置所有查詢條件
   filters.value = { institution: '', applicationId: '', applicant: '' }
-  // 恢復顯示全部資料
-  items.value = [...fullList.value]
+  // 重置到第一頁
+  currentPage.value = 1;
   // 隱藏返回按鈕
   showBack.value = false
+  // 重新載入原始資料
+  fetchApplications();
 }
 
-onMounted(() => {
-  fetchApplications();
-});
+onMounted(async () => {
+  // 先載入所有機構名稱
+  try {
+    const res = await getInstitutionsSimpleAll();
+    console.log('機構API回應:', res);
+    // getInstitutionsSimpleAll 回傳格式應為陣列 [{ institutionID, institutionName }, ...]
+    if (Array.isArray(res)) {
+      allInstitutions.value = res.map(i => i.institutionName || i.name || i.label || i)
+    } else if (res && Array.isArray(res.content)) {
+      allInstitutions.value = res.content.map(i => i.institutionName || i.name || i.label || i)
+    } else if (res && res.data && Array.isArray(res.data)) {
+      allInstitutions.value = res.data.map(i => i.institutionName || i.name || i.label || i)
+    }
+    console.log('解析後的機構清單:', allInstitutions.value);
+  } catch (e) {
+    console.error('載入機構清單失敗:', e);
+    allInstitutions.value = []
+  }
+  await fetchApplications();
+})
 </script>
 
 <style scoped>
