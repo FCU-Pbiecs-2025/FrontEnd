@@ -55,7 +55,20 @@ export const useAuthStore = defineStore('auth', {
 
           // 設定 token 與 user 資訊（若後端未提供 token，維持 null）
           this.token = payload.token || null
+
+          // 🔍 調試：檢查 API 返回的 FamilyInfoID
+          console.log('🔍 [auth.js] user.FamilyInfoID:', user.FamilyInfoID)
+          console.log('🔍 [auth.js] user.familyInfoID:', user.familyInfoID)
+          console.log('🔍 [auth.js] user.familyinfoid:', user.familyinfoid)
+          console.log('🔍 [auth.js] user 的所有 key:', Object.keys(user))
+
           // 使用小寫 key (name, email, phone) 以符合元件的讀取邏輯
+          const familyInfoID = user.FamilyInfoID || user.familyInfoID  || null
+          const institutionID = user.InstitutionID || user.institutionID || user.institutionId || null
+
+          console.log('📝 [auth.js] 解析出的 FamilyInfoID:', familyInfoID)
+          console.log('📝 [auth.js] 解析出的 InstitutionID:', institutionID)
+
           this.user = {
             UserID: user.UserID || user.userID || user.userId || null,
             PermissionType: permissionType,
@@ -64,10 +77,17 @@ export const useAuthStore = defineStore('auth', {
             email: user.email || user.Email || '',
             phone: user.phoneNumber || user.PhoneNumber || user.phone || '',
             role: role, // 供路由守衛使用
-            InstitutionID: user.InstitutionID || user.institutionID || user.institutionId || null, // 機構ID
-            FamilyInfoID: user.FamilyInfoID || user.familyInfoID || user.familyinfoid || null // 家庭資料ID
+            InstitutionID: institutionID, // 機構ID
+            FamilyInfoID: familyInfoID // 家庭資料ID
           }
           this.isAuthenticated = true
+
+          // ✅ 驗證：確認設置後的值
+          console.log('✅ [auth.js] this.user 設置完成')
+          console.log('✅ [auth.js] this.user.FamilyInfoID:', this.user.FamilyInfoID)
+          console.log('✅ [auth.js] this.user 的所有 key:', Object.keys(this.user))
+          console.log('✅ [auth.js] this.user 完整內容:', JSON.stringify(this.user, null, 2))
+
           return { success: true }
         } else {
           return {

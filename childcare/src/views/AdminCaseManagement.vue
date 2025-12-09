@@ -181,9 +181,14 @@ const getInstitutionIdByName = (name) => {
 
 // 建立班級名稱 -> ID 的映射
 const getClassIdByName = (name) => {
+  console.log('[getClassIdByName] Looking for:', name)
+  console.log('[getClassIdByName] classList.value:', classList.value)
   const classItem = classList.value.find(c => c.className === name)
+  console.log('[getClassIdByName] Found classItem:', classItem)
   if (classItem) {
-    return classItem.classId || classItem.id
+    const id = classItem.classId || classItem.id || classItem.classID || classItem.ClassID
+    console.log('[getClassIdByName] Extracted ID:', id)
+    return id
   }
   return null
 }
@@ -258,8 +263,12 @@ watch(qAgency, async () => {
 
   try {
     const institutionId = getInstitutionIdByName(qAgency.value)
+    console.log('[watch qAgency] institutionId:', institutionId)
     if (institutionId) {
-      classList.value = await getClassNamesByInstitutionId(institutionId)
+      const result = await getClassNamesByInstitutionId(institutionId)
+      console.log('[watch qAgency] API result:', result)
+      classList.value = result
+      console.log('[watch qAgency] classList.value set to:', classList.value)
     }
   } catch (error) {
     console.error('載入班級列表失敗:', error)
@@ -290,6 +299,7 @@ const doQuery = async () => {
     }
     if (qClassName.value) {
       const classId = getClassIdByName(qClassName.value)
+      console.log('[doQuery] qClassName:', qClassName.value, 'classId:', classId)
       if (classId) params.classId = classId
     }
     if (qCaseId.value) params.caseNumber = qCaseId.value
@@ -302,9 +312,10 @@ const doQuery = async () => {
     if (qStatus.value) params.status = qStatus.value
 
     // 查詢從第一頁開始
-    params.page = 1
+    params.offset = 0
     params.size = PAGE_SIZE
 
+    console.log('[doQuery] Final params:', params)
     const response = await getApplicationsCasesList(params)
 
     // 更新分頁資訊
@@ -440,6 +451,7 @@ const goToPage = async (page) => {
   }
   if (qClassName.value) {
     const classId = getClassIdByName(qClassName.value)
+    console.log('[goToPage] qClassName:', qClassName.value, 'classId:', classId)
     if (classId) baseParams.classId = classId
   }
   if (qCaseId.value) baseParams.caseNumber = qCaseId.value
@@ -451,9 +463,11 @@ const goToPage = async (page) => {
   }
   if (qStatus.value) baseParams.status = qStatus.value
 
-  baseParams.page = page
+  // 將 page 轉換為 offset
+  baseParams.offset = (page - 1) * PAGE_SIZE
   baseParams.size = PAGE_SIZE
 
+  console.log('[goToPage] page:', page, 'baseParams:', baseParams)
   await loadCasesList(baseParams)
 }
 const prevPage = () => { if (currentPage.value > 1) goToPage(currentPage.value - 1) }

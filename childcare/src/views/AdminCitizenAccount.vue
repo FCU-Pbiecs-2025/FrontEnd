@@ -53,6 +53,7 @@
         :totalPages="totalPages"
         :totalElements="totalElements"
         :pageNumbers="pageNumbers"
+        :displayCount="searchQuery ? displayAccounts.length : null"
         size="md"
         @prev="prevPage"
         @next="nextPage"
@@ -67,7 +68,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { getUsersWithOffset, getAccountStatusName } from '@/api/account.js'
 import Pagination from '@/components/Pagination.vue'
@@ -76,7 +77,8 @@ const router = useRouter()
 const query = ref('')
 const searchQuery = ref('') // 實際執行搜尋的關鍵字
 const isLoading = ref(false)
-const allAccounts = ref([]) // 所有一般使用者帳號
+const allAccounts = ref([]) // 當前頁顯示的民眾帳號
+const allCitizenAccounts = ref([]) // 儲存所有民眾帳號（未分頁）
 const currentPage = ref(0)
 const pageSize = ref(10)
 const totalPages = ref(0)
@@ -111,42 +113,74 @@ const pageNumbers = computed(() => {
   return arr
 })
 
-// 載入帳號資料
-const loadAccounts = async (offset = 0) => {
+// 載入所有民眾帳號資料（從 API 一次性加載）
+const loadAllAccounts = async () => {
   try {
     isLoading.value = true
-    const response = await getUsersWithOffset(offset, pageSize.value)
+    // 先獲取第一頁，取得總筆數
+    const firstResponse = await getUsersWithOffset(0, 100) // 使用較大的 size
+
+    // 計算需要載入多少頁
+    const totalElementsFromAPI = firstResponse.totalElements || 0
+    const needPages = Math.ceil(totalElementsFromAPI / 100)
+
+    let allUsers = [...firstResponse.content]
+
+    // 如果還有更多頁，繼續載入
+    if (needPages > 1) {
+      const promises = []
+      for (let i = 1; i < needPages; i++) {
+        promises.push(getUsersWithOffset(i * 100, 100))
+      }
+      const responses = await Promise.all(promises)
+      responses.forEach(res => {
+        allUsers = allUsers.concat(res.content)
+      })
+    }
 
     // 過濾只顯示 permissionType=3 的一般使用者
-    const citizenAccounts = response.content.filter(user => {
+    const citizenAccounts = allUsers.filter(user => {
       const raw = user.PermissionType ?? user.permissionType ?? null
       const p = raw != null && raw !== '' ? Number(raw) : null
       return p === 3
     })
 
     // 轉換資料格式並添加狀態文字
-    allAccounts.value = citizenAccounts.map(user => ({
+    allCitizenAccounts.value = citizenAccounts.map(user => ({
       ...user,
       statusText: getAccountStatusName(user.accountStatus)
     }))
 
-    // 更新分頁資訊
-    currentPage.value = Math.floor(offset / pageSize.value)
-    totalElements.value = Number(response.totalElements ?? allAccounts.value.length) || 0
-    const apiTotalPages = Number(response.totalPages)
-    totalPages.value = apiTotalPages > 0 ? apiTotalPages : Math.max(1, Math.ceil(totalElements.value / pageSize.value))
-    hasNext.value = Boolean(response.hasNext)
+    // 設定為第一頁
+    currentPage.value = 0
+    updatePaginationInfo()
   } catch (error) {
     console.error('載入帳號資料失敗:', error)
     alert('載入帳號資料失敗，請稍後再試')
-    // 回退：以目前列表推估分頁
-    totalElements.value = allAccounts.value.length
-    totalPages.value = Math.max(1, Math.ceil(totalElements.value / pageSize.value))
-    hasNext.value = currentPage.value + 1 < totalPages.value
+    // 回退：使用空列表
+    allCitizenAccounts.value = []
+    totalElements.value = 0
+    totalPages.value = 1
+    hasNext.value = false
   } finally {
     isLoading.value = false
   }
 }
+
+// 更新分頁資訊
+const updatePaginationInfo = () => {
+  totalElements.value = allCitizenAccounts.value.length
+  totalPages.value = Math.max(1, Math.ceil(totalElements.value / pageSize.value))
+  hasNext.value = (currentPage.value + 1) < totalPages.value
+
+  // 更新當前頁顯示的數據
+  const start = currentPage.value * pageSize.value
+  const end = start + pageSize.value
+  allAccounts.value = allCitizenAccounts.value.slice(start, end)
+}
+
+// 初始化
+loadAllAccounts()
 
 // 查詢功能
 const handleQuery = () => {
@@ -155,11 +189,11 @@ const handleQuery = () => {
   hasQueried.value = true
 }
 
-// 分頁切換（底層：0-based）
-const goToPage = async (page) => {
+// 分頁切換（前端分頁）
+const goToPage = (page) => {
   if (page < 0 || page >= totalPages.value) return
-  const offset = page * pageSize.value
-  await loadAccounts(offset)
+  currentPage.value = page
+  updatePaginationInfo()
 }
 
 // Pagination 事件包裝（1-based -> 0-based）
@@ -179,9 +213,6 @@ const goBack = () => {
   searchQuery.value = ''
   hasQueried.value = false
 }
-
-// 初始化載入資料
-onMounted(() => { loadAccounts(0) })
 </script>
 
 <style scoped>

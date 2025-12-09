@@ -158,7 +158,6 @@
           <div>
             <router-view />
           </div>
-          <button class="modal-close" @click="closeAccountModal" aria-label="關閉">×</button>
         </div>
 
 

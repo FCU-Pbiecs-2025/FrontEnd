@@ -1,23 +1,23 @@
 <template>
   <div class="pagination">
     <div v-if="showInfo" class="pagination__info">
-      共 {{ totalElements }} 筆資料，第 {{ currentPage }} / {{ totalPages }} 頁
+      共 {{ actualTotalElements }} 筆資料，第 {{ actualCurrentPage }} / {{ actualTotalPages }} 頁
     </div>
     <div class="pagination__controls" :class="`pagination--${size}`">
       <button
         class="pagination__btn"
-        :disabled="currentPage === 1 || totalPages <= 1"
+        :disabled="actualCurrentPage === 1 || actualTotalPages <= 1"
         @click="$emit('prev')"
       >
         ‹ 上一頁
       </button>
       <div class="pagination__pages">
         <button
-          v-for="page in pageNumbers"
+          v-for="page in actualPageNumbers"
           :key="page"
           class="pagination__page"
-          :class="{ 'is-active': page === currentPage }"
-          :disabled="totalPages <= 1"
+          :class="{ 'is-active': page === actualCurrentPage }"
+          :disabled="actualTotalPages <= 1"
           @click="$emit('goToPage', page)"
         >
           {{ page }}
@@ -25,7 +25,7 @@
       </div>
       <button
         class="pagination__btn"
-        :disabled="currentPage === totalPages || totalPages <= 1"
+        :disabled="actualCurrentPage === actualTotalPages || actualTotalPages <= 1"
         @click="$emit('next')"
       >
         下一頁 ›
@@ -35,16 +35,48 @@
 </template>
 
 <script setup>
-import { defineProps } from 'vue'
+import { defineProps, computed } from 'vue'
 
-defineProps({
+const props = defineProps({
   currentPage: { type: Number, required: true },
   totalPages: { type: Number, required: true },
   totalElements: { type: Number, required: true },
   pageNumbers: { type: Array, required: true },
+  // 新增：當前顯示的資料筆數（用於查詢過濾後）
+  displayCount: { type: Number, default: null },
   // 新增：大小與是否顯示資訊區
   size: { type: String, default: 'md' }, // sm | md | lg
   showInfo: { type: Boolean, default: true },
+})
+
+// 計算實際顯示的數據
+const actualTotalElements = computed(() => {
+  // 如果有 displayCount，表示有查詢過濾，使用過濾後的數量
+  return props.displayCount !== null ? props.displayCount : props.totalElements
+})
+
+const actualTotalPages = computed(() => {
+  // 如果有查詢過濾，則固定為 1 頁（所有過濾結果都在當前頁顯示）
+  if (props.displayCount !== null) {
+    return 1
+  }
+  return props.totalPages
+})
+
+const actualCurrentPage = computed(() => {
+  // 如果有查詢過濾，當前頁固定為 1
+  if (props.displayCount !== null) {
+    return 1
+  }
+  return props.currentPage
+})
+
+const actualPageNumbers = computed(() => {
+  // 如果有查詢過濾，只顯示第 1 頁
+  if (props.displayCount !== null) {
+    return [1]
+  }
+  return props.pageNumbers
 })
 </script>
 

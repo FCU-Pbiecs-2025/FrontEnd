@@ -59,6 +59,7 @@
         :totalPages="computedTotalPages"
         :totalElements="totalElements"
         :pageNumbers="pageNumbers"
+        :displayCount="searchQuery ? displayAdmins.length : null"
         size="md"
         @prev="prevPage"
         @next="nextPage"
@@ -74,7 +75,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getUsersWithOffset, getPermissionTypeName, getAccountStatusName } from '@/api/account.js'
 import Pagination from '@/components/Pagination.vue'
@@ -85,7 +86,8 @@ const STORAGE_KEY = 'backendAccounts'
 const query = ref('')
 const searchQuery = ref('') // 實際執行搜尋的關鍵字
 const admins = ref({})
-const allAdmins = ref([]) // 從 API 載入的管理員帳號
+const allAdmins = ref([]) // 當前頁顯示的管理員帳號
+const allBackendAccounts = ref([]) // 儲存所有後台帳號（未分頁）
 const isLoading = ref(false)
 const hasQueried = ref(false) // 是否已執行過查詢
 const currentPage = ref(0)
@@ -137,34 +139,48 @@ const loadList = () => {
   }
 }
 
-// 載入後台帳號資料（從 API）
-const loadBackendAccounts = async (offset = 0) => {
+// 載入所有後台帳號資料（從 API 一次性加載）
+const loadAllBackendAccounts = async () => {
   try {
     isLoading.value = true
-    const response = await getUsersWithOffset(offset, pageSize.value)
+    // 先獲取第一頁，取得總筆數
+    const firstResponse = await getUsersWithOffset(0, 100) // 使用較大的 size
+
+    // 計算需要載入多少頁
+    const totalElementsFromAPI = firstResponse.totalElements || 0
+    const needPages = Math.ceil(totalElementsFromAPI / 100)
+
+    let allUsers = [...firstResponse.content]
+
+    // 如果還有更多頁，繼續載入
+    if (needPages > 1) {
+      const promises = []
+      for (let i = 1; i < needPages; i++) {
+        promises.push(getUsersWithOffset(i * 100, 100))
+      }
+      const responses = await Promise.all(promises)
+      responses.forEach(res => {
+        allUsers = allUsers.concat(res.content)
+      })
+    }
 
     // 過濾只顯示 permissionType=1 或 2 的管理員和機構人員
-    const backendAccounts = response.content.filter(user =>
-      // 支援大小寫與不同欄位名稱，將 raw 欄位轉為 number
-      (() => {
-        const raw = user.PermissionType ?? user.permissionType ?? null
-        const p = raw != null && raw !== '' ? Number(raw) : null
-        return p === 1 || p === 2
-      })()
-    )
+    const backendAccounts = allUsers.filter(user => {
+      const raw = user.PermissionType ?? user.permissionType ?? null
+      const p = raw != null && raw !== '' ? Number(raw) : null
+      return p === 1 || p === 2
+    })
 
     // 轉換資料格式並添加文字
-    allAdmins.value = backendAccounts.map(user => ({
+    allBackendAccounts.value = backendAccounts.map(user => ({
       ...user,
       roleText: getPermissionTypeName(user.PermissionType ?? user.permissionType ?? null),
       statusText: getAccountStatusName(user.accountStatus)
     }))
 
-    // 更新分頁資訊
-    currentPage.value = Math.floor(offset / pageSize.value)
-    totalPages.value = response.totalPages
-    totalElements.value = response.totalElements
-    hasNext.value = response.hasNext
+    // 設定為第一頁
+    currentPage.value = 0
+    updatePaginationInfo()
   } catch (error) {
     console.error('載入後台帳號資料失敗:', error)
     alert('載入後台帳號資料失敗，請稍後再試')
@@ -173,16 +189,27 @@ const loadBackendAccounts = async (offset = 0) => {
   }
 }
 
-onMounted(() => {
-  loadList()
-  loadBackendAccounts(0)
-})
+// 更新分頁資訊
+const updatePaginationInfo = () => {
+  totalElements.value = allBackendAccounts.value.length
+  totalPages.value = Math.max(1, Math.ceil(totalElements.value / pageSize.value))
+  hasNext.value = (currentPage.value + 1) < totalPages.value
+
+  // 更新當前頁顯示的數據
+  const start = currentPage.value * pageSize.value
+  const end = start + pageSize.value
+  allAdmins.value = allBackendAccounts.value.slice(start, end)
+}
+
+// 初始化
+loadList()
+loadAllBackendAccounts()
 
 // 監聽路由變化，從編輯頁面返回時重新載入資料
 watch(() => route.name, (newName, oldName) => {
   if (newName === 'AdminBackendAccount' && (oldName === 'AdminBackendNew' || oldName === 'AdminBackendEdit')) {
     loadList()
-    loadBackendAccounts(0)
+    loadAllBackendAccounts()
     // 重置查詢條件
     query.value = ''
     searchQuery.value = ''
@@ -196,11 +223,11 @@ const handleQuery = () => {
   hasQueried.value = true
 }
 
-// 分頁切換
-const goToPage = async (page) => {
+// 分頁切換（前端分頁）
+const goToPage = (page) => {
   if (page < 0 || page >= computedTotalPages.value) return
-  const offset = page * pageSize.value
-  await loadBackendAccounts(offset)
+  currentPage.value = page
+  updatePaginationInfo()
 }
 
 // 計算總頁數（確保至少為 1）
