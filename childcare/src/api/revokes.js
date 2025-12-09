@@ -23,9 +23,14 @@ function mapDtoToItem(dto) {
 }
 
 // 取得撤銷申請清單（分頁）- 參數 page 為 0-based
-export async function fetchRevokedApplications(page = 0, size = 10) {
+export async function fetchRevokedApplications(page = 0, size = 10, institutionID = null, caseNumber = '', nationalID = '') {
   const offset = page * size
-  const res = await http.get('/revoke/applications', { params: { offset, size } })
+  const params = { offset, size }
+  if (institutionID) params.institutionID = institutionID
+  if (caseNumber) params.caseNumber = caseNumber
+  if (nationalID) params.nationalID = nationalID
+  console.log('[API] GET /revoke/applications params:', params)
+  const res = await http.get('/revoke/applications', { params })
   const data = res?.data || {}
   const content = Array.isArray(data.content) ? data.content : []
   const items = content.map(mapDtoToItem)
@@ -40,13 +45,14 @@ export async function fetchRevokedApplications(page = 0, size = 10) {
 }
 
 // 新增：搜尋撤銷申請（server-side 分頁）
-export async function searchRevokedApplications(cancellationID = '', nationalID = '', page = 0, size = 10, institutionID = null) {
+export async function searchRevokedApplications(caseNumber = '', nationalID = '', page = 0, size = 10, institutionID = null) {
   const offset = page * size
   const params = { offset, size }
-  if (cancellationID) params.cancellationID = cancellationID
+  if (caseNumber) params.caseNumber = caseNumber
   if (nationalID) params.nationalID = nationalID
   if (institutionID) params.institutionID = institutionID
-  const res = await http.get('/revoke/applications/search', { params })
+  console.log('[API] GET /revoke/search params:', params)
+  const res = await http.get('/revoke/search', { params })
   const data = res?.data || {}
   const content = Array.isArray(data.content) ? data.content : []
   const items = content.map(mapDtoToItem)

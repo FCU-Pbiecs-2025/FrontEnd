@@ -131,14 +131,15 @@ async function loadData() {
     const userRole = authStore.user?.role
     const institutionID = authStore.user?.InstitutionID
 
-    let result
-    if (userRole === 'admin' && institutionID) {
-      // admin 使用者：使用 searchRevokedApplications 並帶入 institutionID
-      result = await searchRevokedApplications('', '', currentPage.value - 1, PAGE_SIZE, institutionID)
-    } else {
-      // super_admin 或其他：使用原本的 fetchRevokedApplications
-      result = await fetchRevokedApplications(currentPage.value - 1, PAGE_SIZE)
-    }
+    console.log('🔍 [AdminApplicationRevoke] loadData - authStore.user:', authStore.user)
+    console.log('🔍 [AdminApplicationRevoke] loadData - userRole:', userRole)
+    console.log('🔍 [AdminApplicationRevoke] loadData - institutionID:', institutionID)
+
+    // admin 使用者：傳入 institutionID 過濾
+    // super_admin：不傳 institutionID，查看所有機構資料
+    const filterInstitutionID = (userRole === 'admin' && institutionID) ? institutionID : null
+
+    const result = await fetchRevokedApplications(currentPage.value - 1, PAGE_SIZE, filterInstitutionID)
 
     const { items: list, totalPages: tp, totalElements: te } = result
 
@@ -182,12 +183,19 @@ async function search(page = 1) {
     return
   }
 
+  // 保證 page 為有效數字
+  const safePage = Number.isFinite(page) && page > 0 ? page : 1;
+
   try {
     isLoading.value = true
     isSearching.value = true
 
     const userRole = authStore.user?.role
     const userInstitutionID = authStore.user?.InstitutionID
+
+    console.log('🔍 [AdminApplicationRevoke] search - authStore.user:', authStore.user)
+    console.log('🔍 [AdminApplicationRevoke] search - userRole:', userRole)
+    console.log('🔍 [AdminApplicationRevoke] search - userInstitutionID:', userInstitutionID)
 
     // 後端期望 cancellationID 與 nationalID；為相容，caseNumber 也同時帶 cancellationID
     const caseNumber = filters.value.revokeId.trim()
@@ -198,7 +206,7 @@ async function search(page = 1) {
     const { items: list, totalPages: tp, totalElements: te } = await searchRevokedApplications(
       caseNumber,
       nationalID,
-      page - 1,
+      safePage - 1,
       PAGE_SIZE,
       institutionID
     )
@@ -206,7 +214,7 @@ async function search(page = 1) {
     items.value = list
     totalPages.value = tp
     totalElements.value = te
-    currentPage.value = page
+    currentPage.value = safePage
     showBack.value = true
   } catch (e) {
     console.error('搜尋撤銷申請失敗：', e)
@@ -234,11 +242,14 @@ function openDetail(item) {
   const targetRoute = {
     name: 'AdminApplicationRevokeEdit',
     params: { id: String(item.id) },
-    query: { nationalID: item.nationalID || '', caseNumber: item.caseNumber || '' }
+    query: {
+      nationalID: (item.nationalID || '').toUpperCase(),
+      caseNumber: String(item.caseNumber || '')
+    }
   }
 
   router.push(targetRoute).then(() => {
-    console.log('導航成功完成，帶入 cancellationID、caseNumber 與 nationalID')
+    console.log('導航成功完成，帶入 cancellationID、caseNumber 與 nationalID:', targetRoute)
   }).catch(err => {
     console.error('導航失敗:', err)
     console.error('錯誤詳情:', {
