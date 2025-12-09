@@ -25,7 +25,7 @@
 import { useAuthStore } from '../store/auth.js'
 import { useRouter } from 'vue-router'
 import { ref } from 'vue'
-import { loginUser } from '../api/auth.js' // 直接引入 API
+import { loginadmin } from '../api/auth.js' // 直接引入 API
 
 export default {
   setup() {
@@ -38,7 +38,7 @@ export default {
     const handleLogin = async () => {
       error.value = ''
       try {
-        const result = await loginUser(username.value, password.value)
+        const result = await loginadmin(username.value, password.value)
         console.log('Login API result:', result); // 登入日誌
 
         if (result.success) {
