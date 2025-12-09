@@ -195,26 +195,46 @@ export const getApplicationCaseByParticipantID = async (participantID) => {
 };
 
 /**
- * 更新申請參與者的狀態
+ * 更新參與者資訊，支持兩種模式：
  *
- * 功能說明：
- * 用於更新指定參與者（通常是幼兒）的申請狀態，例如錄取、退托等。
+ * 模式1：legacy模式（只傳participantID）
+ *   - 直接更新參與者資訊，不涉及currentOrder動態計算
+ *   - 適用於簡單的狀態/備註更新
+ *
+ * 模式2：新模式（傳applicationID + nationalID）
+ *   - 支持動態currentOrder計算和自動遞補
+ *   - 當狀態改為"候補中"時：自動指派下一個候補序號
+ *   - 當狀態從"候補中"改為其他狀態（如已錄取）時：
+ *     * 將該個案的currentOrder設為null
+ *     * 自動遞補：同機構後面所有的currentOrder減1
+ *   - 例：錄取11號個案後，12號會變成11號、13號變成12號...
  *
  * 端點: PUT /application-participants/{participantID}
  *
- * @param {string} participantID - 參與者ID (路徑參數)
- * @param {object} params - 包含狀態、原因和班級ID的物件
- * @param {string} params.status - 新的狀態 (查詢參數)
- * @param {string} [params.reason] - 原因說明，例如退托原因 (查詢參數, 可選)
- * @param {string} [params.classID] - 分配的班級ID (查詢參數, 可選, 錄取時需要)
+ * @param {string} participantID - 參與者ID（PathVariable，兩種模式都需要）
+ * @param {object} params - 包含狀態和其他參數的物件
+ * @param {string} params.status - 參與者狀態（候補中/已錄取/需要補件/已退件等）
+ * @param {string} [params.reason] - 審核原因或備註
+ * @param {string} [params.classID] - 班級ID
+ * @param {string} [params.applicationID] - 申請案件ID（新模式需要，用於支持動態currentOrder計算）
+ * @param {string} [params.nationalID] - 參與者身分證（新模式需要，用於自動遞補）
  *
- * @returns {Promise<any>}
+ * @returns {Promise<any>} 更新後的參與者資訊
  *
  * 使用範例:
- * updateApplicationParticipantStatus('some-participant-id', { status: '已錄取', classID: 'some-class-id' })
- * updateApplicationParticipantStatus('some-participant-id', { status: '已退托', reason: '家長決定' })
+ * // 模式1：legacy模式（簡單更新）
+ * updateApplicationParticipantStatus('participant-id-123', { status: '已錄取', classID: 'class-id-456' })
+ * updateApplicationParticipantStatus('participant-id-123', { status: '已退托', reason: '家長決定' })
+ *
+ * // 模式2：新模式（支持動態currentOrder和自動遞補）
+ * updateApplicationParticipantStatus('participant-id-123', {
+ *   status: '已錄取',
+ *   classID: 'class-id-456',
+ *   applicationID: 'app-id-789',
+ *   nationalID: 'A123456789'
+ * })
  */
-export const updateApplicationParticipantStatus = async (participantID, { status, reason, classID }) => {
+export const updateApplicationParticipantStatus = async (participantID, { status, reason, classID, applicationID, nationalID }) => {
     if (!participantID) {
         throw new Error('缺少參與者ID (ParticipantID)');
     }
@@ -227,6 +247,8 @@ export const updateApplicationParticipantStatus = async (participantID, { status
         const queryParams = {
             status,
         };
+
+        // 可選參數
         if (reason) {
             queryParams.reason = reason;
         }
@@ -234,10 +256,18 @@ export const updateApplicationParticipantStatus = async (participantID, { status
             queryParams.classID = classID;
         }
 
+        // 新模式參數（支持動態currentOrder計算和自動遞補）
+        if (applicationID) {
+            queryParams.applicationID = applicationID;
+        }
+        if (nationalID) {
+            queryParams.nationalID = nationalID;
+        }
+
         console.log(`[API] updateApplicationParticipantStatus - URL: ${url}`);
         console.log(`[API] updateApplicationParticipantStatus - Query Params:`, queryParams);
+        console.log(`[API] updateApplicationParticipantStatus - Mode: ${applicationID && nationalID ? '新模式（支持自動遞補）' : 'legacy模式'}`);
 
-        // 對於 PUT 請求，通常將參數放在請求體中，但根據您的要求，我們將其作為查詢參數
         const response = await http.put(url, null, { params: queryParams });
 
         console.log(`[API] updateApplicationParticipantStatus for participant ${participantID} successful.`);

@@ -515,6 +515,8 @@ const transformApiData = (apiData) => {
     selectedClass: apiData.selectedClass || '',
     reason: childrenArray.length > 0 ? (childrenArray[0].reason || '') : '',
     withdrawNote: childrenArray.length > 0 ? (childrenArray[0].reason || '') : '',
+    applicationID: apiData.applicationID || '',
+    childNationalID: childrenArray.length > 0 ? (childrenArray[0].nationalID || '') : '',
     attachmentPath: apiData.attachmentPath || '',
     attachmentPath1: apiData.attachmentPath1 || '',
     attachmentPath2: apiData.attachmentPath2 || '',
@@ -592,12 +594,16 @@ async function admit () {
     console.log('[Admit] Calling API with params:', {
       participantID: applicationId.value,
       status: ADMITTED,
-      classID: classId
+      classID: classId,
+      applicationID: caseData.value.applicationID,
+      nationalID: caseData.value.childNationalID
     })
 
     await updateApplicationParticipantStatus(applicationId.value, {
       status: ADMITTED,
-      classID: classId
+      classID: classId,
+      applicationID: caseData.value.applicationID,
+      nationalID: caseData.value.childNationalID
     })
     alert('已錄取')
     await fetchCaseData() // 重新載入資料
@@ -619,7 +625,9 @@ async function revoke () {
   try {
     const payload = {
       status: WITHDRAWN,
-      reason: withdrawNote.value.trim()
+      reason: withdrawNote.value.trim(),
+      applicationID: caseData.value.applicationID,
+      nationalID: caseData.value.childNationalID
     }
     console.log('[退托] 發送退托請求:', {
       participantID: applicationId.value,
