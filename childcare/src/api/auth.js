@@ -111,3 +111,22 @@ export const loginUser = async (account, password) => {
         return { success: false, message: '伺服器連線失敗' }
     }
 }
+
+// 登入 API
+export const loginadmin = async (account, password) => {
+    try {
+        const response = await fetch('http://localhost:8080/Login/Verify2', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ account, password })
+        })
+        const result = await response.json()
+        return result
+    } catch (error) {
+        console.error('登入失敗:', error)
+        return { success: false, message: '伺服器連線失敗' }
+    }
+}
+
