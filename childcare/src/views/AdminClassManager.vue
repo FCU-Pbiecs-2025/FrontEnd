@@ -144,7 +144,29 @@ const institutionId = computed(() => auth?.user?.InstitutionID || null)
 
 const classes = ref([])
 const searchKeyword = ref('')
-const filteredClasses = computed(() => classes.value.slice(0, PAGE_SIZE))
+const filteredClasses = computed(() => {
+  // 按機構ID排序班級資料
+  const sortedClasses = [...classes.value].sort((a, b) => {
+    // 首先按機構ID排序
+    const aInstId = a.institutionID || a.institutionId || 0
+    const bInstId = b.institutionID || b.institutionId || 0
+    if (aInstId !== bInstId) {
+      return aInstId - bInstId
+    }
+    // 如果機構ID相同，再按機構名稱排序
+    const aInstName = (a.institutionName || '').toString()
+    const bInstName = (b.institutionName || '').toString()
+    if (aInstName !== bInstName) {
+      return aInstName.localeCompare(bInstName, 'zh-TW')
+    }
+    // 最後按班級名稱排序
+    const aClassName = (a.className || '').toString()
+    const bClassName = (b.className || '').toString()
+    return aClassName.localeCompare(bClassName, 'zh-TW')
+  })
+
+  return sortedClasses.slice(0, PAGE_SIZE)
+})
 const showClassList = ref(false)
 const selectedInstitution = ref(null)
 

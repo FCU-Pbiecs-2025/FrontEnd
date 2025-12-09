@@ -127,7 +127,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 // 導入通用的 Admin 響應式樣式
 import '@/styles/admin-responsive.css'
@@ -276,6 +276,57 @@ const goAdminAnnouncementDetail = (id) => {
   // 導向後台公告詳情頁 - 修正路由路徑
   router.push({ path: `/admin/detail/${id}` })
 }
+
+// 組件載入時和路由變化時載入數據
+onMounted(() => {
+  // 立即載入數據
+  fetchTodoCountsAndAnnouncements()
+
+  // 監聽頁面可見性變化，當頁面重新變為可見時重新載入數據
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+
+  // 監聽窗口焦點變化，當窗口重新獲得焦點時重新載入數據
+  window.addEventListener('focus', handleWindowFocus)
+})
+
+onUnmounted(() => {
+  // 清理事件監聽器
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  window.removeEventListener('focus', handleWindowFocus)
+})
+
+function handleVisibilityChange() {
+  // 當頁面從隱藏變為可見時，重新載入數據
+  if (!document.hidden && route.name === 'AdminHome') {
+    console.log('頁面重新可見，重新載入數據')
+    fetchTodoCountsAndAnnouncements()
+  }
+}
+
+function handleWindowFocus() {
+  // 當窗口重新獲得焦點時，重新載入數據
+  if (route.name === 'AdminHome') {
+    console.log('窗口重新獲得焦點，重新載入數據')
+    fetchTodoCountsAndAnnouncements()
+  }
+}
+
+// 監聽路由變化，當回到 AdminHome 時重新載入數據
+watch(() => route.name, (newName) => {
+  if (newName === 'AdminHome') {
+    // 當從其他後台頁面回到 AdminHome 時重新載入數據
+    console.log('路由變化至AdminHome，重新載入數據')
+    fetchTodoCountsAndAnnouncements()
+  }
+}, { immediate: false })
+
+// 監聽用戶角色變化，重新載入數據
+watch(() => authStore.user, (newUser) => {
+  if (newUser && route.name === 'AdminHome') {
+    console.log('用戶信息變化，重新載入數據')
+    fetchTodoCountsAndAnnouncements()
+  }
+}, { deep: true })
 </script>
 
 <style scoped>

@@ -81,6 +81,7 @@ import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getAllAnnouncements } from '../api/announcements.js'
 import { useAuthStore } from '../store/auth.js'
+import bannersApi from '../api/banners.js'
 
 // 路由器實例
 const router = useRouter()
@@ -99,26 +100,57 @@ const goToPage = (page) => {
   router.push({ name: page })
 }
 
-// 新增：從 localStorage 載入前台海報
-const storageKey = 'siteBanners'
+// 新增：載入前台有效海報
 const banners = ref([])
-const visibleBanners = computed(() => banners.value.filter(b => (b.status || '顯示') === '顯示'))
+const visibleBanners = computed(() => {
+  const now = new Date()
+  return banners.value.filter(b => {
+    // 檢查狀態是否為顯示
+    if ((b.status || '顯示') !== '顯示') return false
 
-const loadBanners = () => {
+    // 檢查結束時間（如果有的話）
+    if (b.endTime) {
+      const endDate = new Date(b.endTime)
+      if (now > endDate) return false
+    }
+
+    // 檢查開始時間（如果有的話）
+    if (b.startTime) {
+      const startDate = new Date(b.startTime)
+      if (now < startDate) return false
+    }
+
+    return true
+  })
+})
+
+const loadBanners = async () => {
   try {
-    const raw = localStorage.getItem(storageKey)
-    banners.value = raw ? JSON.parse(raw) : []
+    // 使用API獲取有效的海報，而不是從localStorage載入
+    const response = await bannersApi.active()
+    const bannersData = Array.isArray(response) ? response : (response?.data ?? [])
+
+    banners.value = bannersData.map(item => ({
+      id: item.id || item.ID || item.bannerId || item.bannerID,
+      image: item.imageName ? bannersApi.imageUrl(item.imageName) : '',
+      link: item.linkUrl || item.link || '',
+      startTime: item.startTime || item.startDate,
+      endTime: item.endTime || item.endDate,
+      status: item.status === false || item.status === 0 ? '下架' : '顯示',
+      title: item.title || '',
+      _raw: item
+    }))
   } catch (e) {
+    console.error('載入海報失敗', e)
     banners.value = []
-    console.error('載入 siteBanners 失敗', e)
   }
 }
 
-// reload banners if localStorage is changed in another tab/window
-const onStorage = (e) => {
-  if (!e) return
-  if (e.key === storageKey) loadBanners()
-}
+// 移除 localStorage 相關的監聽器，因為現在從API獲取
+// const onStorage = (e) => {
+//   if (!e) return
+//   if (e.key === storageKey) loadBanners()
+// }
 
 // 點擊海報：如果是內部路徑 (以 / 開頭) 使用 router 推轉，否則在新分頁開啟
 const openBanner = (b) => {
@@ -230,11 +262,10 @@ const loadNewsData = async () => {
 onMounted(() => {
   loadNewsData()
   loadBanners()
-  window.addEventListener('storage', onStorage)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('storage', onStorage)
+  // 移除localStorage監聽器，因為現在使用API
 })
 
 
