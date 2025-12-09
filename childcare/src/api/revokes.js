@@ -187,12 +187,17 @@ function formatDate(dateString) {
 }
 
 // 新增撤銷申請
-export async function createRevoke({ applicationID, nationalID, abandonReason }) {
+export async function createRevoke({ applicationID, nationalID, abandonReason, caseNumber }) {
   if (!applicationID) throw new Error('缺少 applicationID')
   if (!nationalID) throw new Error('缺少 nationalID')
   if (!abandonReason) throw new Error('缺少撤銷原因')
   // Use backend expected property names (capitalized via @JsonProperty)
-  const body = { ApplicationID: applicationID, NationalID: nationalID, AbandonReason: abandonReason }
+  const body = {
+    ApplicationID: applicationID,
+    NationalID: nationalID,
+    AbandonReason: abandonReason,
+    CaseNumber: caseNumber // 新增案件編號
+  }
   const res = await http.post('/revoke/create', body)
   return res?.data
 }

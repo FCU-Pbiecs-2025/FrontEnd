@@ -304,6 +304,33 @@ export const updateUserProfile = async (id, profileData) => {
 }
 
 /**
+ * PUT /users/{id}/status
+ * 只更新 accountStatus 欄位（0 或 1）
+ * @param {string} id 用戶 UUID
+ * @param {number} accountStatus 0|1
+ */
+export const updateAccountStatus = async (id, accountStatus) => {
+    if (!id) throw new Error('缺少使用者 id')
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) throw new Error('無效的使用者 ID 格式（必須是 UUID）')
+    if (accountStatus !== 1 && accountStatus !== 2) throw new Error('accountStatus 必須為 1 (啟用) 或 2 (停用)')
+
+    try {
+        console.log('[API] PUT /users/%s/status payload:', id, { accountStatus })
+        const response = await http.put(`/users/${encodeURIComponent(id)}/status`, { accountStatus })
+        console.log('[API] Response for /users/%s/status:', id, response?.status, response?.data)
+        return response.data || response
+    } catch (err) {
+        console.error('[API] 更新帳號狀態失敗:', err?.message || err)
+        if (err?.response) {
+            console.error('[API] Error status:', err.response.status)
+            console.error('[API] Error data:', err.response.data)
+        }
+        throw err
+    }
+}
+
+/**
  * POST /users/new-member
  * 建立新使用者
  *
@@ -338,4 +365,3 @@ export const searchUsers = async (params = {}) => {
         throw error
     }
 }
-

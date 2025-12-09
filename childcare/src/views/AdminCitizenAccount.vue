@@ -203,7 +203,9 @@ const nextPage = () => { if (hasNext.value && currentPage.value + 1 < totalPages
 
 // 管理帳號
 const manageAccount = (userID) => {
-  router.push({ path: '/member-center', query: { accountId: userID } })
+  // 跳轉到會員中心，傳遞 userID（MemberCenter 會優先使用 route.params.userID 或 route.query.userID 來載入用戶資料）
+  // 同時保留 accountId，讓 MemberCenter 的帳號管理區塊（若使用）也能顯示
+  router.push({ path: '/member-center', query: { userID: userID, accountId: userID } })
 }
 
 // 返回

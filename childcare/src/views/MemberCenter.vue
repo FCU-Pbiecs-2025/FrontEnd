@@ -134,11 +134,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../store/auth.js'
-import { getUserFamilyInfo, updateUserProfile } from '../api/user.js'
+import { getUserFamilyInfo, updateUserProfile, updateAccountStatus } from '../api/user.js'
 import { useApplicationsStore } from '../store/applications.js'
 import { getUserApplicationDetails, CASE_STATUS_MAP } from '../api/application.js'
 
@@ -147,10 +147,14 @@ const route = useRoute()
 const authStore = useAuthStore()
 const applicationsStore = useApplicationsStore()
 
+// 是否為後台管理模式（由 route params 或 query 傳入 userID）
+const isAdminMode = computed(() => Boolean(route.params.userID || route.query.userID))
+
 // 帳號管理（當 route query 帶 accountId 時顯示）
 const accountId = ref(route.query.accountId || '')
 const accountStatuses = ref(JSON.parse(localStorage.getItem('accountStatuses') || '{}'))
 const accountStatus = ref('啟用')
+const accountSaveLoading = ref(false)
 
 const loadAccountStatus = (id) => {
   if (!id) return
@@ -160,11 +164,41 @@ const loadAccountStatus = (id) => {
 // 如果一開始就帶有 accountId，立即載入狀態
 if (accountId.value) loadAccountStatus(accountId.value)
 
-const saveAccountStatus = () => {
-  if (!accountId.value) return
-  accountStatuses.value[accountId.value] = accountStatus.value
-  localStorage.setItem('accountStatuses', JSON.stringify(accountStatuses.value))
-  alert('帳號狀態已儲存')
+const saveAccountStatus = async () => {
+  if (accountSaveLoading.value) return
+
+  // 決定要操作的 user ID：優先使用 accountId query，其次 route userID，再次 authStore 的登入者
+  const targetId = accountId.value || route.query.userID || route.params.userID || authStore.user?.UserID
+  if (!targetId) {
+    alert('找不到目標使用者 ID，無法儲存狀態')
+    return
+  }
+
+  // 轉換狀態為後端要求的數值
+  // 後端使用：1 = 啟用, 2 = 停用
+  const statusValue = accountStatus.value === '啟用' ? 1 : 2
+
+  try {
+    accountSaveLoading.value = true
+
+    // 呼叫專用的 status 更新端點，避免傳送或覆寫其他欄位
+    const resp = await updateAccountStatus(targetId, statusValue)
+
+    // 若後端回應成功，更新 localStorage 的暫存狀態以便 UI 一致
+    accountStatuses.value[targetId] = accountStatus.value
+    localStorage.setItem('accountStatuses', JSON.stringify(accountStatuses.value))
+
+    alert('帳號狀態已同步至後端')
+    return resp
+  } catch (err) {
+    console.error('更新帳號狀態失敗:', err)
+    // 嘗試保留 localStorage 的變更以便離線或測試場景（若你不想保留，這裡可以跳過）
+    // 不更新 localStorage 當 API 失敗，以免 UI 與伺服器不一致
+    alert('無法更新帳號狀態，請稍後再試')
+    throw err
+  } finally {
+    accountSaveLoading.value = false
+  }
 }
 
 const clearAccountQuery = () => {
@@ -291,10 +325,10 @@ function mapStatusToClass(status) {
 // 初始化會員中心資料
 onMounted(async () => {
   // 檢查是否為後台管理模式（有 userID 參數）
-  const isAdminMode = route.params.userID || route.query.userID
+  // const isAdminMode = route.params.userID || route.query.userID
 
   // 確保用戶已登入，如果沒有登入且非後台管理模式則導向登入頁
-  if (!authStore.isLoggedIn && !isAdminMode) {
+  if (!authStore.isLoggedIn && !isAdminMode.value) {
     console.warn('用戶未登入，導向登入頁面')
     router.push('/login')
     return
@@ -407,8 +441,8 @@ onMounted(async () => {
       }
       console.log('✅ 已映射用戶個人資料:', userProfile.value)
 
-      // 同時更新 authStore 的用戶資料
-      if (authStore.user) {
+      // 同時更新 authStore 的用戶資料（但若為後台管理模式，不要覆寫全域 authStore，用以保留管理員登入資訊）
+      if (!isAdminMode.value && authStore.user) {
         authStore.user.name = userProfile.value.name
         authStore.user.email = userProfile.value.email
         authStore.user.phone = userProfile.value.phone
@@ -803,12 +837,15 @@ const saveProfile = async () => {
     userProfile.value.phone = editableUser.value.phone
     userProfile.value.address = editableUser.value.address
 
-    // 更新 authStore 中的使用者資料
-    if (authStore.user) {
+    // 更新 authStore 中的使用者資料（僅當不是後台管理模式時才覆寫全域登入資訊）
+    if (!isAdminMode.value && authStore.user) {
       authStore.user.name = editableUser.value.name
       authStore.user.email = editableUser.value.email
       authStore.user.phone = editableUser.value.phone
       authStore.user.address = editableUser.value.address
+    } else {
+      // 若為後台管理模式，不修改全域登入資訊；可視情況顯示提示或紀錄操作
+      console.log('後台管理模式：未修改全域 authStore.user')
     }
 
     editProfileMode.value = false

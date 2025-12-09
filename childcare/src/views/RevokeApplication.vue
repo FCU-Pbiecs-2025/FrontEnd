@@ -177,13 +177,14 @@ const submitRevoke = async () => {
     alert('無法取得申請案號，無法提交撤銷')
     return
   }
-  submitting.value = true
+  // 提交撤銷
   try {
     // 呼叫後端建立 cancellation 紀錄
     const resp = await createRevoke({
       applicationID: applicationId.value,
       nationalID: childNationalID.value,
-      abandonReason: revokeReason.value
+      abandonReason: revokeReason.value,
+      caseNumber: caseNumber.value // 新增案件編號
     })
     console.log('[RevokeApplication] createRevoke response:', resp)
     // 以前會更新 store 中的 selected 與 applications list；改為直接回到申請進度查詢，由該頁面重新從後端拉資料
