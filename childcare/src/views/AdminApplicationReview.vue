@@ -124,7 +124,6 @@ const pageNumbers = computed(() => {
 })
 
 // 原始完整資料列表
-const fullList = ref([]);
 const items = ref([]);
 const allInstitutions = ref([])
 // 追蹤查詢序號，避免過期回應覆蓋最新結果
@@ -159,13 +158,17 @@ async function fetchApplications() {
     }
 
     let contentArray = [];
+    let backendTotalElements = 0;
+
     // 判斷回傳的資料格式
     if (Array.isArray(data)) {
       // 直接是陣列
       contentArray = data;
+      backendTotalElements = data.length;
     } else if (data && data.content && Array.isArray(data.content)) {
-      // 包含 content 屬性的物件
+      // 包含 content 屬性的物件 - 使用後端返回的 totalElements
       contentArray = data.content;
+      backendTotalElements = data.totalElements || data.content.length;
     }
 
     if (contentArray.length > 0) {
@@ -185,18 +188,13 @@ async function fetchApplications() {
       // 忽略過期回應
       if (reqId !== activeRequestId.value) return
 
-      fullList.value = mapped
-      totalElements.value = fullList.value.length
+      items.value = mapped
+      // 使用後端返回的 totalElements 而不是當前頁面的資料數量
+      totalElements.value = backendTotalElements
       totalPages.value = Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE))
-
-      // 分頁切片（避免整包覆蓋造成視覺殘留）
-      const startIndex = offset
-      const endIndex = startIndex + PAGE_SIZE
-      items.value = fullList.value.slice(startIndex, endIndex)
     } else {
       // 忽略過期回應
       if (reqId !== activeRequestId.value) return
-      fullList.value = []
       items.value = []
       totalElements.value = 0
       totalPages.value = 1
@@ -243,14 +241,18 @@ async function searchApplicationsByFilters() {
     console.log('searchApplications 回傳的 data:', data);
 
     let contentArray = [];
+    let backendTotalElements = 0;
+
     // 判斷回傳的資料格式
     if (Array.isArray(data)) {
       // 直接是陣列
       contentArray = data;
+      backendTotalElements = data.length;
       console.log('data 是直接的陣列:', contentArray);
     } else if (data && data.content && Array.isArray(data.content)) {
       // 包含 content 屬性的物件
       contentArray = data.content;
+      backendTotalElements = data.totalElements || data.content.length;
       console.log('data.content:', contentArray);
     }
 
@@ -274,21 +276,18 @@ async function searchApplicationsByFilters() {
       // 忽略過期回應
       if (reqId !== activeRequestId.value) return
 
-      // 直接使用查詢結果第一頁
-      fullList.value = searchResults
-      totalElements.value = fullList.value.length
+      // 使用搜尋結果
+      items.value = searchResults
+      totalElements.value = backendTotalElements
       totalPages.value = Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE))
-      items.value = fullList.value.slice(0, PAGE_SIZE)
     } else {
       if (reqId !== activeRequestId.value) return
       items.value = []
-      fullList.value = []
       totalElements.value = 0
       totalPages.value = 1
     }
   } catch (e) {
     items.value = []
-    fullList.value = []
     totalElements.value = 0
     totalPages.value = 1
   }
@@ -323,10 +322,14 @@ async function searchByCaseNumber() {
     console.log('根據流水案號查詢結果:', data);
 
     let contentArray = [];
+    let backendTotalElements = 0;
+
     if (Array.isArray(data)) {
       contentArray = data;
+      backendTotalElements = data.length;
     } else if (data && data.content && Array.isArray(data.content)) {
       contentArray = data.content;
+      backendTotalElements = data.totalElements || data.content.length;
     }
 
     if (contentArray.length > 0) {
@@ -345,14 +348,12 @@ async function searchByCaseNumber() {
       // 忽略過期回應
       if (reqId !== activeRequestId.value) return
 
-      fullList.value = searchResults
-      totalElements.value = fullList.value.length
+      items.value = searchResults
+      totalElements.value = backendTotalElements
       totalPages.value = Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE))
-      items.value = fullList.value.slice(0, PAGE_SIZE)
     } else {
       if (reqId !== activeRequestId.value) return
       items.value = []
-      fullList.value = []
       totalElements.value = 0
       totalPages.value = 1
       alert('查無此流水案號的申請資料');
@@ -360,7 +361,6 @@ async function searchByCaseNumber() {
   } catch (e) {
     alert('查詢失敗，請確認流水案號是否正確');
     items.value = []
-    fullList.value = []
     totalElements.value = 0
     totalPages.value = 1
   }
@@ -463,15 +463,8 @@ function goToPage(page) {
   if (page < 1 || page > totalPages.value) return;
   currentPage.value = page;
 
-  const startIndex = (currentPage.value - 1) * PAGE_SIZE
-  const endIndex = startIndex + PAGE_SIZE
-  // 直接依 fullList 分頁切片，避免重複查詢造成殘留/閃爍
-  items.value = fullList.value.slice(startIndex, endIndex)
-
-  // 若尚未有資料（初始情境）才呼叫載入
-  if (items.value.length === 0 && fullList.value.length === 0) {
-    fetchApplications();
-  }
+  // 當切換頁面時，重新呼叫 fetchApplications 來載入新頁面的資料
+  fetchApplications();
 }
 
 function prevPage() {

@@ -26,7 +26,7 @@
             <span class="label">身份別：</span>
             <strong>{{ caseData.identityType || '—' }}</strong>
           </div>
-          <div v-if="caseData.status === WAITING" class="wait-chip">
+          <div v-if="caseData.status === '候補中'" class="wait-chip">
             <span class="label">候補序號：</span>
             <strong>{{ caseData.queueNo ?? '—' }}</strong>
           </div>
@@ -66,9 +66,14 @@
             <label class="info-label">當前狀態：</label>
             <span class="info-value">{{ caseData.status }}</span>
           </div>
-          <div class="info-row" v-if="caseData.status === ADMITTED">
+          <div class="info-row" v-if="caseData.status === '已錄取'">
             <label class="info-label">就讀班級：</label>
             <span class="info-value">{{ caseData.selectedClass || '—' }}</span>
+          </div>
+
+          <div class="info-row" v-if="caseData.status === '已退托'">
+            <label class="info-label">退托原因：</label>
+            <span class="info-value">{{ caseData.reason || '—' }}</span>
           </div>
         </div>
       </div>
@@ -76,7 +81,7 @@
 
 
 
-      <div v-if="caseData.status === '錄取候補中'" class="wait-extra">
+      <div v-if="caseData.status === '候補中'" class="wait-extra">
         <div class="admit-setup">
           <div class="form-row">
             <label class="info-label">申請單位：</label>
@@ -228,9 +233,22 @@
         </div>
       </div>
 
+      <!-- Withdraw section (for ADMITTED status) -->
+      <div v-if="caseData.status === '已錄取'" class="section-card">
+        <div class="section-header">
+          <h3>退托處理</h3>
+        </div>
+        <div class="section-body">
+          <div class="form-row">
+            <label class="info-label">退托原因說明：</label>
+            <textarea v-model="withdrawNote" class="text-input" rows="3" placeholder="請填寫退托原因"></textarea>
+          </div>
+        </div>
+      </div>
+
       <!-- Bottom actions -->
       <div class="bottom-row">
-        <template v-if="caseData.status === '錄取候補中'">
+        <template v-if="caseData.status === '候補中'">
           <button class="btn primary" @click="admit" :disabled="!admitAgency || !admitClass">錄取</button>
         </template>
         <template v-else-if="caseData.status === '已錄取'">
@@ -246,23 +264,17 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { IDENTITY_TYPE_MAP, CASE_STATUS_MAP } from '@/api/application'
 import { useRouter, useRoute } from 'vue-router'
-import { getApplicationCaseByParticipantID } from '@/api/applicationCase.js'
+import { getApplicationCaseByParticipantID, updateApplicationParticipantStatus } from '@/api/applicationCase.js'
 import { getClassByInstitutionId } from '@/api/class.js'
 
 const router = useRouter()
 const route = useRoute()
 
 // Status constants (from CASE_STATUS_MAP)
-const PROCESSING = CASE_STATUS_MAP['1']      // '審核中'
-const SUPPLEMENT = CASE_STATUS_MAP['2']      // '需要補件'
-const REJECTED = CASE_STATUS_MAP['3']        // '已退件'
-const WAITING = CASE_STATUS_MAP['4']         // '錄取候補中'
-const REVOKE_PROCESSING = CASE_STATUS_MAP['5'] // '撤銷申請審核中'
-const REVOKED = CASE_STATUS_MAP['6']         // '撤銷申請通過'
-const WITHDRAWN = CASE_STATUS_MAP['7']       // '已退托'
-const ADMITTED = CASE_STATUS_MAP['8']        // '已錄取'
+const WAITING = CASE_STATUS_MAP['4'] // '候補中'
+const WITHDRAWN = CASE_STATUS_MAP['7'] // '已退托'
+const ADMITTED = CASE_STATUS_MAP['8'] // '已錄取'
 
-const caseId = ref(route.params.id)
 const applicationId = ref(route.params.participantID || '')
 const caseData = ref({})
 const isLoading = ref(false)
@@ -299,10 +311,25 @@ watch(admitAgency, async () => {
     // 這裡需要機構 ID，暫時使用 mock 的機構 ID 映射
     // 實際應該從 caseData 中獲取機構 ID
     const institutionId = caseData.value?.institutionId || ''
+    console.log('[Watch admitAgency] institutionId:', institutionId)
+    console.log('[Watch admitAgency] caseData.value:', caseData.value)
+
     if (institutionId) {
       const response = await getClassByInstitutionId(institutionId)
-      classList.value = response.data || response || []
+      console.log('[Watch admitAgency] Raw API response:', response)
+
+      // Check if response.data exists, otherwise use response directly
+      const classData = response.data || response
+      console.log('[Watch admitAgency] Extracted classData:', classData)
+
+      classList.value = classData || []
       console.log('[Watch admitAgency] Loaded classes:', classList.value)
+
+      // Log the structure of the first class item
+      if (classList.value.length > 0) {
+        console.log('[Watch admitAgency] First class item structure:', classList.value[0])
+        console.log('[Watch admitAgency] First class item keys:', Object.keys(classList.value[0]))
+      }
     }
   } catch (error) {
     console.error('[Watch admitAgency] Failed to load classes:', error)
@@ -329,17 +356,13 @@ const isPdfFile = (f) => {
   const n = (f?.name || '').toLowerCase()
   return n.endsWith('.pdf')
 }
-const canPreview = (f) => (isImageFile(f) || isPdfFile(f)) && !!fileHref(f)
-const downloadName = (f) => f?.name || 'attachment'
-const fallbackDownloadUrl = () => 'data:application/octet-stream,'
 
 // Preview modal state
 const preview = ref({ visible: false, file: null })
-const openPreview = (f) => { preview.value.visible = true; preview.value.file = f }
 const closePreview = () => { preview.value.visible = false; preview.value.file = null }
 
 // 獲取幼兒圖片 URL
-const getChildImageUrl = (child) => {
+const getChildImageUrl = () => {
   if (!caseData.value) return ''
   const a = caseData.value
   const path =
@@ -397,8 +420,6 @@ const openFilePreview = (file) => {
   }
 }
 
-// Mock dataset (replace by API later)
-
 // 轉換 API 數據為前端格式
 const transformApiData = (apiData) => {
   if (!apiData) return {}
@@ -414,7 +435,6 @@ const transformApiData = (apiData) => {
     '已退托': '已退托',
     '已錄取': '已錄取'
   }
-
 
   // 提取申請人信息 (來自 user 欄位)
   const userData = apiData.user || {}
@@ -475,8 +495,6 @@ const transformApiData = (apiData) => {
     id: child.nationalID || ''
   }))
 
-
-
   // 取得狀態 (從幼兒的 status 欄位)
   const childStatus = childrenArray.length > 0 ? (childrenArray[0].status || '') : ''
   const mappedStatus = STATUS_MAP[childStatus] || childStatus || '審核中'
@@ -495,6 +513,7 @@ const transformApiData = (apiData) => {
     children,
     selectedAgency: apiData.institutionName || '',
     selectedClass: apiData.selectedClass || '',
+    reason: childrenArray.length > 0 ? (childrenArray[0].reason || '') : '',
     withdrawNote: childrenArray.length > 0 ? (childrenArray[0].reason || '') : '',
     attachmentPath: apiData.attachmentPath || '',
     attachmentPath1: apiData.attachmentPath1 || '',
@@ -503,171 +522,148 @@ const transformApiData = (apiData) => {
   }
 }
 
-onMounted(async () => {
+const fetchCaseData = async () => {
   try {
     isLoading.value = true
     loadError.value = ''
-    // 1. 優先呼叫 API 取得資料
-    try {
-      const apiData = await getApplicationCaseByParticipantID(applicationId.value)
-      if (apiData) {
-        caseData.value = transformApiData(apiData)
-        if (caseData.value.status === WAITING) {
-          admitAgency.value = appliedAgency.value || ''
-          admitClass.value = caseData.value.selectedClass || ''
-        }
-        withdrawNote.value = caseData.value.withdrawNote ?? ''
-        isLoading.value = false
-        return
-      }
-    } catch (apiError) {
-      // API 404 或失敗才 fallback
-      console.warn('[onMounted] API 查詢失敗，fallback localStorage/mock', apiError)
-    }
-    // 2. sessionStorage 中的列表數據 fallback
-    let listItemData = null
-    try {
-      const sessionItem = sessionStorage.getItem('caseManagementItem')
-      if (sessionItem) {
-        listItemData = JSON.parse(sessionItem)
-        console.log('[onMounted] Retrieved item from sessionStorage:', listItemData)
-      }
-    } catch (e) {
-      console.warn('[onMounted] sessionStorage retrieval failed:', e)
-    }
-
-    if (listItemData) {
-      // 根據列表數據構建案件對象
-      caseData.value = {
-        id: listItemData.id,
-        applyDate: listItemData.applyDate,
-        status: listItemData.status,
-        institution: listItemData.institution,
-        identityType: listItemData.identityType,
-        queueNo: listItemData.queueNo,
-        participant: {
-          name: listItemData.applicantName || '',
-          id: listItemData.participantID || ''
-        },
-        children: [{
-          name: listItemData.childName || '',
-          birth: listItemData.childBirth || ''
-        }],
-        selectedAgency: listItemData.institution,
-        selectedClass: '',
-        attachmentPath: listItemData.attachmentPath || '',
-        attachmentPath1: listItemData.attachmentPath1 || '',
-        attachmentPath2: listItemData.attachmentPath2 || '',
-        attachmentPath3: listItemData.attachmentPath3 || ''
-
-      }
-      if (caseData.value.status === WAITING) {
-        admitAgency.value = appliedAgency.value || ''
-        admitClass.value = caseData.value.selectedClass || ''
-      }
-      try { sessionStorage.removeItem('caseManagementItem') } catch (e) {}
-      isLoading.value = false
-      return
-    }
-
-    // 3. localStorage/sessionStorage fallback
-    let payload = null
-    const sessionData = sessionStorage.getItem('caseManagementSelection')
-    if (sessionData) {
-      payload = JSON.parse(sessionData)
-    } else {
-      const localData = localStorage.getItem('caseManagementSelection')
-      if (localData) {
-        payload = JSON.parse(localData)
-      }
-    }
-    if (payload && payload.caseData && (payload.caseData.participantID === participantID.value || payload.participantID === participantID.value)) {
-      caseData.value = JSON.parse(JSON.stringify(payload.caseData))
+    const apiData = await getApplicationCaseByParticipantID(applicationId.value)
+    if (apiData) {
+      caseData.value = transformApiData(apiData)
       if (caseData.value.status === WAITING) {
         admitAgency.value = appliedAgency.value || ''
         admitClass.value = caseData.value.selectedClass || ''
       }
       withdrawNote.value = caseData.value.withdrawNote ?? ''
-      try { sessionStorage.removeItem('caseManagementSelection') } catch (e) {}
-      try { localStorage.removeItem('caseManagementSelection') } catch (e) {}
-      isLoading.value = false
-      return
+    } else {
+      loadError.value = '無法加載案件數據'
     }
-    // 3. 其他 fallback
-    loadError.value = '無法加載案件數據'
   } catch (error) {
-    console.error('[onMounted] 加載數據失敗:', error)
-    router.push('/admin/case-management')
+    console.error('[fetchCaseData] 加載數據失敗:', error)
+    loadError.value = '加載案件數據時發生錯誤'
   } finally {
     isLoading.value = false
   }
+}
+
+onMounted(() => {
+  fetchCaseData()
 })
 
+async function admit () {
+  if (caseData.value.status !== WAITING) return
+  if (!admitAgency.value || !admitClass.value) {
+    alert('請先選擇申請單位與就讀班級')
+    return
+  }
 
-  function admit() {
-    if (caseData.value.status === WAITING) {
-      if (!admitAgency.value || !admitClass.value) {
-        alert('請先選擇申請單位與就讀班級')
-        return
-      }
-      // Assign chosen agency and class
-      caseData.value.institution = admitAgency.value
-      caseData.value.selectedAgency = admitAgency.value
-      caseData.value.selectedClass = admitClass.value
-    }
-    if (!confirm('確定要執行錄取嗎？')) return
-    caseData.value.status = ADMITTED
+  const selectedClassItem = classList.value.find(c => c.className === admitClass.value)
+  console.log('[Admit] Selected class item:', selectedClassItem)
+  console.log('[Admit] Selected class item - All keys:', selectedClassItem ? Object.keys(selectedClassItem) : 'null')
+  console.log('[Admit] Selected class item - All properties:', selectedClassItem ? JSON.stringify(selectedClassItem, null, 2) : 'null')
+  console.log('[Admit] classList.value:', classList.value)
+  console.log('[Admit] admitClass.value:', admitClass.value)
+
+  if (!selectedClassItem) {
+    alert('找不到對應的班級資訊')
+    return
+  }
+
+  // Try different possible property names for class ID
+  const classId = selectedClassItem.classId ||
+                  selectedClassItem.id ||
+                  selectedClassItem.classID ||
+                  selectedClassItem.ClassID ||
+                  selectedClassItem.class_id
+
+  console.log('[Admit] Extracted classId:', classId)
+  console.log('[Admit] selectedClassItem.classId:', selectedClassItem.classId)
+  console.log('[Admit] selectedClassItem.id:', selectedClassItem.id)
+  console.log('[Admit] selectedClassItem.classID:', selectedClassItem.classID)
+  console.log('[Admit] selectedClassItem.ClassID:', selectedClassItem.ClassID)
+
+  if (!classId) {
+    alert('無法取得班級ID，請檢查資料')
+    return
+  }
+
+  if (!confirm('確定要執行錄取嗎？')) return
+
+  try {
+    console.log('[Admit] Calling API with params:', {
+      participantID: applicationId.value,
+      status: ADMITTED,
+      classID: classId
+    })
+
+    await updateApplicationParticipantStatus(applicationId.value, {
+      status: ADMITTED,
+      classID: classId
+    })
     alert('已錄取')
-    // 停留於本頁
+    await fetchCaseData() // 重新載入資料
+  } catch (error) {
+    alert('錄取失敗，請稍後再試')
+    console.error('錄取操作失敗:', error)
+  }
+}
+
+async function revoke () {
+  if (caseData.value.status !== ADMITTED) return
+  if (!withdrawNote.value || !withdrawNote.value.trim()) {
+    alert('請填寫退托原因說明後再執行退托')
+    return
   }
 
-  function revoke() {
-    // If currently admitted, require a withdraw note
-    if (caseData.value.status === ADMITTED) {
-      if (!withdrawNote.value || !withdrawNote.value.trim()) {
-        alert('請填寫退托原因說明後再執行退托')
-        return
-      }
-      // attach note to case data for record
-      caseData.value.withdrawNote = withdrawNote.value.trim()
+  if (!confirm('確定要執行退托嗎？')) return
+
+  try {
+    const payload = {
+      status: WITHDRAWN,
+      reason: withdrawNote.value.trim()
     }
-    if (!confirm('確定要執行退托嗎？')) return
-    // mark as withdrawn (已退托)
-    caseData.value.status = WITHDRAWN
+    console.log('[退托] 發送退托請求:', {
+      participantID: applicationId.value,
+      payload: payload
+    })
+    await updateApplicationParticipantStatus(applicationId.value, payload)
     alert('已退托')
-    // 停留於本頁（不自動返回）
+    await fetchCaseData() // 重新載入資料
+  } catch (error) {
+    alert('退托失敗，請稍後再試')
+    console.error('退托操作失敗:', error)
   }
+}
 
-  function goBack() {
-    router.push('/admin/case-management')
-  }
+function goBack () {
+  router.push('/admin/case-management')
+}
 
-  function computeChildAge(birth) {
-    if (!birth) return ''
-    const bd = new Date(birth)
-    if (isNaN(bd)) return ''
-    const now = new Date('2025-10-27')
+function computeChildAge (birth) {
+  if (!birth) return ''
+  const bd = new Date(birth)
+  if (isNaN(bd)) return ''
+  const now = new Date('2025-10-27')
 
-    if (bd > now) return '0歲0月0周'
+  if (bd > now) return '0歲0月0周'
 
-    // 計算總月數
-    let months = (now.getFullYear() - bd.getFullYear()) * 12 + (now.getMonth() - bd.getMonth())
-    if (now.getDate() < bd.getDate()) months -= 1
+  // 計算總月數
+  let months = (now.getFullYear() - bd.getFullYear()) * 12 + (now.getMonth() - bd.getMonth())
+  if (now.getDate() < bd.getDate()) months -= 1
 
-    // 計算年、月
-    const years = Math.floor(months / 12)
-    const remainMonths = months % 12
+  // 計算年、月
+  const years = Math.floor(months / 12)
+  const remainMonths = months % 12
 
-    // 計算剩餘天數
-    const tmp = new Date(bd.getTime())
-    tmp.setMonth(tmp.getMonth() + months)
-    let daysDiff = Math.floor((now - tmp) / (1000 * 60 * 60 * 24))
-    if (isNaN(daysDiff) || daysDiff < 0) daysDiff = 0
+  // 計算剩餘天數
+  const tmp = new Date(bd.getTime())
+  tmp.setMonth(tmp.getMonth() + months)
+  let daysDiff = Math.floor((now - tmp) / (1000 * 60 * 60 * 24))
+  if (isNaN(daysDiff) || daysDiff < 0) daysDiff = 0
 
-    const weeks = Math.floor(daysDiff / 7)
+  const weeks = Math.floor(daysDiff / 7)
 
-    return `${years}歲${remainMonths}月${weeks}周`
-  }
+  return `${years}歲${remainMonths}月${weeks}周`
+}
 </script>
 
 <style scoped>

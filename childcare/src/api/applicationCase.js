@@ -193,3 +193,57 @@ export const getApplicationCaseByParticipantID = async (participantID) => {
         throw error;
     }
 };
+
+/**
+ * 更新申請參與者的狀態
+ *
+ * 功能說明：
+ * 用於更新指定參與者（通常是幼兒）的申請狀態，例如錄取、退托等。
+ *
+ * 端點: PUT /application-participants/{participantID}
+ *
+ * @param {string} participantID - 參與者ID (路徑參數)
+ * @param {object} params - 包含狀態、原因和班級ID的物件
+ * @param {string} params.status - 新的狀態 (查詢參數)
+ * @param {string} [params.reason] - 原因說明，例如退托原因 (查詢參數, 可選)
+ * @param {string} [params.classID] - 分配的班級ID (查詢參數, 可選, 錄取時需要)
+ *
+ * @returns {Promise<any>}
+ *
+ * 使用範例:
+ * updateApplicationParticipantStatus('some-participant-id', { status: '已錄取', classID: 'some-class-id' })
+ * updateApplicationParticipantStatus('some-participant-id', { status: '已退托', reason: '家長決定' })
+ */
+export const updateApplicationParticipantStatus = async (participantID, { status, reason, classID }) => {
+    if (!participantID) {
+        throw new Error('缺少參與者ID (ParticipantID)');
+    }
+    if (!status) {
+        throw new Error('缺少狀態 (status)');
+    }
+
+    try {
+        const url = `/application-participants/${participantID}`;
+        const queryParams = {
+            status,
+        };
+        if (reason) {
+            queryParams.reason = reason;
+        }
+        if (classID) {
+            queryParams.classID = classID;
+        }
+
+        console.log(`[API] updateApplicationParticipantStatus - URL: ${url}`);
+        console.log(`[API] updateApplicationParticipantStatus - Query Params:`, queryParams);
+
+        // 對於 PUT 請求，通常將參數放在請求體中，但根據您的要求，我們將其作為查詢參數
+        const response = await http.put(url, null, { params: queryParams });
+
+        console.log(`[API] updateApplicationParticipantStatus for participant ${participantID} successful.`);
+        return response.data;
+    } catch (error) {
+        console.error(`更新參與者狀態失敗 (participantID: ${participantID}):`, error);
+        throw error;
+    }
+};
