@@ -27,7 +27,7 @@
             <label class="info-label">當前狀態：</label>
             <span class="info-value">{{ childList.length > 0 ? childList[0].status : applicationData.status }}</span>
           </div>
-          
+
         </div>
       </div>
 

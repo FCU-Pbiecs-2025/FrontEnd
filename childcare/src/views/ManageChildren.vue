@@ -127,12 +127,13 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../store/auth.js'
 import { getUserFamilyInfo } from '../api/user.js'
 import { createChildInfo, updateChildInfo, deleteChildInfo } from '../api/childInfo.js'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 // 幼兒資料
@@ -142,6 +143,9 @@ const showAddForm = ref(false)
 
 // 儲存 familyInfoId（從 authStore 或查詢結果中取得）
 const currentFamilyInfoId = ref(null)
+
+// 🔑 儲存目標用戶 ID（用於管理員代表民眾操作時）
+const targetUserID = ref(null)
 
 // 新增幼兒表單資料（僅四欄位）
 const newChild = ref({
@@ -186,25 +190,32 @@ function generateUUID() {
 // 載入幼兒資料（僅四欄位）
 const loadChildren = async () => {
   try {
-    // 確保用戶已登入，從 authStore 取得 userID
+    // 確保用戶已登入
     if (!authStore.isLoggedIn) {
       console.warn('用戶未登入')
       return
     }
 
-    const userID = authStore.user?.UserID
-    if (!userID) {
-      console.error('無法從 authStore 獲取 userID')
+    // 🔑 優先檢查路由參數中的 userID（用於管理員進入民眾帳號的場景）
+    let targetUserIDValue = route.query.userID || route.params.userID || authStore.user?.UserID
+    console.log('🔍 [loadChildren] 路由 query.userID:', route.query.userID)
+    console.log('🔍 [loadChildren] 路由 params.userID:', route.params.userID)
+    console.log('🔍 [loadChildren] 使用的 targetUserID:', targetUserIDValue)
+
+    // 🔑 保存目標用戶 ID 到 ref，供後續操作使用
+    targetUserID.value = targetUserIDValue
+
+    if (!targetUserIDValue) {
+      console.error('❌ 無法從路由參數或 authStore 獲取 userID')
       return
     }
 
-    console.log('========== ManageChildren: 從 authStore 取得用戶信息 ==========')
-    console.log('authStore.user:', authStore.user)
-    console.log('取得的 userID:', userID)
+    console.log('========== ManageChildren: 從路由參數或 authStore 取得用戶信息 ==========')
+    console.log('targetUserIDValue:', targetUserIDValue)
 
     // 調用 API 獲取家庭信息
     console.log('========== 開始調用 getUserFamilyInfo API ==========')
-    const response = await getUserFamilyInfo(userID)
+    const response = await getUserFamilyInfo(targetUserIDValue)
 
     if (!response || !response.data) {
       console.error('❌ API 回應為空')
@@ -309,6 +320,9 @@ const saveChild = async (idx) => {
 
   try {
     console.log('========== 開始更新幼兒資料 ==========')
+    console.log('🔑 [saveChild] 當前目標用戶 ID:', targetUserID.value)
+    console.log('🔑 [saveChild] 當前 FamilyInfoID:', currentFamilyInfoId.value)
+    console.log('🔑 [saveChild] authStore.user.FamilyInfoID:', authStore.user?.FamilyInfoID)
 
     const child = children.value[idx]
     const childID = child.childID
@@ -318,13 +332,23 @@ const saveChild = async (idx) => {
       return
     }
 
+    // 🔑 確保使用正確的 familyInfoID
+    const familyInfoID = currentFamilyInfoId.value ||
+                         authStore.user?.FamilyInfoID ||
+                         authStore.user?.familyInfoID ||
+                         authStore.user?.familyInfoId
+
+    console.log('✅ [saveChild] 最終確定使用的 FamilyInfoID:', familyInfoID)
+
+    if (!familyInfoID) {
+      alert('❌ 無法取得家庭資訊 ID，請重新載入頁面')
+      return
+    }
+
     // 映射前端資料到 API 格式
     const updatePayload = {
       childID: childID,
-      familyInfoID: currentFamilyInfoId.value ||
-                    authStore.user?.FamilyInfoID ||
-                    authStore.user?.familyInfoID ||
-                    authStore.user?.familyInfoId,
+      familyInfoID: familyInfoID,
       nationalID: child.idNumber,
       name: child.name,
       gender: child.gender === '男',
@@ -341,9 +365,10 @@ const saveChild = async (idx) => {
 
     saveToStorage()
     editIdx.value = null
-    console.log('✅ 幼兒資料已更新')
+    alert('✅ 幼兒資料已更新')
   } catch (error) {
     console.error('❌ 更新幼兒失敗:', error)
+    alert(`❌ 更新幼兒失敗: ${error.message || '未知錯誤'}`)
   }
 }
 
@@ -371,12 +396,13 @@ const addChild = async () => {
     // 生成幼兒 ID
     const childID = generateUUID()
 
-    // 使用組件層級的 currentFamilyInfoId（優先），否則從 authStore 取得
+    // 🔑 確保使用正確的 familyInfoId
     const familyInfoId = currentFamilyInfoId.value ||
                          authStore.user?.FamilyInfoID ||
                          authStore.user?.familyInfoID ||
                          authStore.user?.familyInfoId
 
+    console.log('🔑 [addChild] 當前目標用戶 ID:', targetUserID.value)
     console.log('🔑 [addChild] 使用的 FamilyInfoID:', familyInfoId)
     console.log('🔑 [addChild] currentFamilyInfoId.value:', currentFamilyInfoId.value)
 
@@ -474,7 +500,7 @@ const closeAddForm = () => {
 
 // 返回會員中心
 const goBack = () => {
-  router.push('/member-center')
+  router.back()
 }
 
 onMounted(async () => {

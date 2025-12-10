@@ -172,8 +172,8 @@ async function fetchApplications() {
     }
 
     if (contentArray.length > 0) {
-      // 只保留 participantType === '0' 的所有資料
-      const filtered = contentArray.filter(item => String(item.participantType) === '0');
+      // 只保留 participantType === '0' 且狀態為 '審核中' 的所有資料
+      const filtered = contentArray.filter(item => String(item.participantType) === '0' && item.status === '審核中');
       const mapped = filtered.map(item => ({
         id: item.applicationID,
         caseNumber: item.caseNumber || item.CaseNumber || '未提供',
@@ -189,8 +189,8 @@ async function fetchApplications() {
       if (reqId !== activeRequestId.value) return
 
       items.value = mapped
-      // 使用後端返回的 totalElements 而不是當前頁面的資料數量
-      totalElements.value = backendTotalElements
+      // 使用過濾後的資料數量作為 totalElements，只計算狀態為 '審核中' 的案件
+      totalElements.value = filtered.length
       totalPages.value = Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE))
     } else {
       // 忽略過期回應
@@ -258,7 +258,7 @@ async function searchApplicationsByFilters() {
 
     if (contentArray.length > 0) {
       console.log('處理前的 contentArray:', contentArray);
-      const filtered = contentArray.filter(item => String(item.participantType) === '0');
+      const filtered = contentArray.filter(item => String(item.participantType) === '0' && item.status === '審核中');
       console.log('過濾後的 filtered:', filtered);
 
       // 清空之前的查詢結果，避免堆積
@@ -278,7 +278,7 @@ async function searchApplicationsByFilters() {
 
       // 使用搜尋結果
       items.value = searchResults
-      totalElements.value = backendTotalElements
+      totalElements.value = filtered.length
       totalPages.value = Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE))
     } else {
       if (reqId !== activeRequestId.value) return
@@ -333,7 +333,7 @@ async function searchByCaseNumber() {
     }
 
     if (contentArray.length > 0) {
-      const filtered = contentArray.filter(item => String(item.participantType) === '0');
+      const filtered = contentArray.filter(item => String(item.participantType) === '0' && item.status === '審核中');
       const searchResults = filtered.map(item => ({
         id: item.applicationID,
         caseNumber: item.caseNumber || item.CaseNumber || caseNumber,
@@ -349,7 +349,7 @@ async function searchByCaseNumber() {
       if (reqId !== activeRequestId.value) return
 
       items.value = searchResults
-      totalElements.value = backendTotalElements
+      totalElements.value = filtered.length
       totalPages.value = Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE))
     } else {
       if (reqId !== activeRequestId.value) return
@@ -493,8 +493,8 @@ async function searchAllApplications() {
     const data = await getApplicationsByOffset(offset, PAGE_SIZE);
 
     if (data && data.content && Array.isArray(data.content)) {
-      // 只保留 participantType === '0' 的所有資料
-      const filtered = data.content.filter(item => String(item.participantType) === '0');
+      // 只保留 participantType === '0' 且狀態為 '審核中' 的所有資料
+      const filtered = data.content.filter(item => String(item.participantType) === '0' && item.status === '審核中');
       items.value = filtered.map(item => ({
         id: item.applicationID,  // 保留 ApplicationID 作為唯一識別
         caseNumber: item.caseNumber || item.CaseNumber || '未提供', // 流水案號
@@ -506,8 +506,8 @@ async function searchAllApplications() {
         status: item.status || '未提供'
       }));
 
-      // 更新分頁資訊
-      totalElements.value = data.totalElements || items.value.length;
+      // 更新分頁資訊 - 使用過濾後的資料數量
+      totalElements.value = filtered.length;
       totalPages.value = Math.max(1, Math.ceil(totalElements.value / PAGE_SIZE));
     } else {
       items.value = [];

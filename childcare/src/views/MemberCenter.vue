@@ -864,12 +864,16 @@ const cancelProfileEdit = () => {
 
 // 管理家長資料
 const manageParents = () => {
-  router.push('/manage-parents')
+  // 優先使用路由中的 userID（管理員進入民眾帳號），否則使用當前登入用戶的 UserID
+  const targetUserID = route.query.userID || route.params.userID || authStore.user?.UserID
+  router.push({ path: '/manage-parents', query: { userID: targetUserID } })
 }
 
 // 管理幼兒資料
 const manageChildren = () => {
-  router.push('/manage-children')
+  // 優先使用路由中的 userID（管理員進入民眾帳號），否則使用當前登入用戶的 UserID
+  const targetUserID = route.query.userID || route.params.userID || authStore.user?.UserID
+  router.push({ path: '/manage-children', query: { userID: targetUserID } })
 }
 </script>
 

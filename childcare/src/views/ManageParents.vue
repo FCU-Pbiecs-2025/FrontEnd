@@ -199,12 +199,13 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../store/auth.js'
 import { getUserFamilyInfo } from '../api/user.js'
 import { createParentInfo, getParentsByFamilyId, deleteParentInfo, updateParentInfo } from '../api/parentInfo.js'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 // 家長資料
@@ -214,6 +215,9 @@ const showAddForm = ref(false)
 
 // 儲存 familyInfoId（從 authStore 或查詢結果中取得）
 const currentFamilyInfoId = ref(null)
+
+// 🔑 儲存目標用戶 ID（用於管理員代表民眾操作時）
+const targetUserID = ref(null)
 
 // 新增家長表單資料
 const newParent = ref({
@@ -272,6 +276,15 @@ const loadParents = async () => {
 
     let parentsData = []
 
+    // 🔑 優先檢查路由參數中的 userID（用於管理員進入民眾帳號的場景）
+    let targetUserIDValue = route.query.userID || route.params.userID || authStore.user?.UserID
+    console.log('🔍 [loadParents] 路由 query.userID:', route.query.userID)
+    console.log('🔍 [loadParents] 路由 params.userID:', route.params.userID)
+    console.log('🔍 [loadParents] 使用的 targetUserID:', targetUserIDValue)
+
+    // 🔑 保存目標用戶 ID 到 ref，供後續操作使用
+    targetUserID.value = targetUserIDValue
+
     // 優先使用 FamilyInfoID 查詢（兼容多種命名）
     let familyInfoId = authStore.user?.FamilyInfoID || authStore.user?.familyInfoID || authStore.user?.familyInfoId
     console.log('🔍 [loadParents] authStore.user 完整內容:', authStore.user)
@@ -301,9 +314,9 @@ const loadParents = async () => {
     // 備用方案：如果沒有 familyInfoId 或查詢失敗，使用 getUserFamilyInfo
     if (!parentsData || parentsData.length === 0) {
       console.log('========== 使用備用方案：getUserFamilyInfo API ==========')
-      const userID = authStore.user?.UserID
+      const userID = targetUserIDValue
       if (!userID) {
-        console.error('❌ 無法從 authStore 獲取 UserID')
+        console.error('❌ 無法從 authStore 或路由參數獲取 UserID')
         console.log('authStore.user:', authStore.user)
         parents.value = []
         parentIdErrors.value = []
@@ -453,6 +466,9 @@ const saveParent = async (idx) => {
 
   try {
     console.log('========== 開始更新家長資料 ==========')
+    console.log('🔑 [saveParent] 當前目標用戶 ID:', targetUserID.value)
+    console.log('🔑 [saveParent] 當前 FamilyInfoID:', currentFamilyInfoId.value)
+    console.log('🔑 [saveParent] authStore.user.FamilyInfoID:', authStore.user?.FamilyInfoID)
 
     const parent = parents.value[idx]
     const parentID = parent.parentID
@@ -462,13 +478,23 @@ const saveParent = async (idx) => {
       return
     }
 
+    // 🔑 確保使用正確的 familyInfoID
+    const familyInfoID = currentFamilyInfoId.value ||
+                         authStore.user?.FamilyInfoID ||
+                         authStore.user?.familyInfoID ||
+                         authStore.user?.familyInfoId
+
+    console.log('✅ [saveParent] 最終確定使用的 FamilyInfoID:', familyInfoID)
+
+    if (!familyInfoID) {
+      alert('❌ 無法取得家庭資訊 ID，請重新載入頁面')
+      return
+    }
+
     // 映射前端資料到 API 格式
     const updatePayload = {
       parentID: parentID,
-      familyInfoID: currentFamilyInfoId.value ||
-                    authStore.user?.FamilyInfoID ||
-                    authStore.user?.familyInfoID ||
-                    authStore.user?.familyInfoId,
+      familyInfoID: familyInfoID,
       nationalID: parent.idNumber,
       name: parent.name,
       gender: parent.gender === '男',
@@ -551,12 +577,13 @@ const addParent = async () => {
     // 生成家長 ID
     const parentID = generateUUID()
 
-    // 使用組件層級的 currentFamilyInfoId（優先），否則從 authStore 取得
+    // 🔑 確保使用正確的 familyInfoId
     const familyInfoId = currentFamilyInfoId.value ||
                          authStore.user?.FamilyInfoID ||
                          authStore.user?.familyInfoID ||
                          authStore.user?.familyInfoId
 
+    console.log('🔑 [addParent] 當前目標用戶 ID:', targetUserID.value)
     console.log('🔑 [addParent] 使用的 FamilyInfoID:', familyInfoId)
     console.log('🔑 [addParent] currentFamilyInfoId.value:', currentFamilyInfoId.value)
     console.log('🔑 [addParent] authStore.user.FamilyInfoID:', authStore.user?.FamilyInfoID)
@@ -640,7 +667,7 @@ const closeAddForm = () => {
 
 // 返回會員中心
 const goBack = () => {
-  router.push('/member-center')
+  router.back()
 }
 
 // 在組件掛載時載入資料
