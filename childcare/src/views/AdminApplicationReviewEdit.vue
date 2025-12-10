@@ -4,7 +4,7 @@
       <!-- Title Section -->
       <div class="title-row">
         <img src="https://img.icons8.com/ios/48/2e6fb7/approval.png" class="icon" alt="icon" />
-        <span class="main-title">申請審核 - {{ applicationId }}</span>
+        <span class="main-title">申請審核 </span>
       </div>
 
       <!-- Application Summary Card -->
@@ -13,7 +13,7 @@
         <div class="detail-info">
           <div class="info-row">
             <label class="info-label">申請編號：</label>
-            <span class="info-value">{{ applicationData.applicationId }}</span>
+            <span class="info-value">{{ applicationData.caseNumber }}</span>
           </div>
           <div class="info-row">
             <label class="info-label">申請日期：</label>
@@ -27,26 +27,39 @@
             <label class="info-label">當前狀態：</label>
             <span class="info-value">{{ childList.length > 0 ? childList[0].status : applicationData.status }}</span>
           </div>
-          <div class="info-row">
-            <label class="info-label">審核日期：</label>
-            <span class="info-value">{{ childList.length > 0 ? childList[0].reviewDate : applicationData.reviewDate }}</span>
-          </div>
-          <div class="info-row">
-            <label class="info-label">備註說明：</label>
-            <span class="info-value">{{ childList.length > 0 ? childList[0].reason : applicationData.reason }}</span>
-          </div>
+          
         </div>
       </div>
 
-      <!-- 身分證影像 Card（放在大約原本第 175 行附近） -->
-      <div class="detail-card" v-if="getChildImageUrl(childList[0])">
+      <!-- 身分證影像 Card - 顯示檔名列表，點擊預覽 -->
+      <div class="detail-card" v-if="childList && childList.length > 0">
         <h3>身分別：{{ getIdentityOrderLabel(applicationData.identityType) }}</h3>
-        <div class="identity-card">
-          <img
-            :src="getChildImageUrl(childList[0])"
-            alt="identity image"
-            class="identity-image"
-          />
+        <div v-if="getAttachmentFiles().length > 0" class="attachment-list">
+          <h4>附件檔案</h4>
+          <ul>
+            <li v-for="(file, idx) in getAttachmentFiles()" :key="idx" class="attachment-item">
+              <a href="javascript:void(0)" @click="openFilePreview(file)" class="file-link">
+                📎 {{ file.name }}
+              </a>
+            </li>
+          </ul>
+        </div>
+        <div v-else class="empty-text">無附件</div>
+      </div>
+
+      <!-- Preview Modal -->
+      <div v-if="preview.visible" class="preview-overlay" @click.self="closePreview">
+        <div class="preview-card">
+          <div class="preview-header">
+            <span class="preview-title">{{ preview.file?.name || '預覽' }}</span>
+            <button class="preview-close" @click="closePreview">×</button>
+          </div>
+          <div class="preview-body">
+            <img v-if="preview.file && preview.file.url" :src="preview.file.url" alt="preview" />
+            <div v-else class="preview-fallback">
+              無法預覽此檔案。
+            </div>
+          </div>
         </div>
       </div>
 
@@ -210,6 +223,7 @@ const parentOpen = ref(false)
 const childOpen = ref(false)
 const parentList = ref([])
 const childList = ref([])
+const preview = ref({ visible: false, file: null })
 
 // 計算幼兒年齡
 function getChildAge(birthDate) {
@@ -273,6 +287,46 @@ const getChildImageUrl = (child) => {
   }
   // 其餘情況視為 /identity-files 底下的檔名
   return `http://localhost:8080/identity-files/${path}`
+}
+
+// 獲取所有附件檔案列表
+const getAttachmentFiles = () => {
+  const files = []
+  const pathFields = [
+    { path: applicationData.value.AttachmentPath || applicationData.value.attachmentPath, name: '附件1' },
+    { path: applicationData.value.AttachmentPath1 || applicationData.value.attachmentPath1, name: '附件2' },
+    { path: applicationData.value.AttachmentPath2 || applicationData.value.attachmentPath2, name: '附件3' },
+    { path: applicationData.value.AttachmentPath3 || applicationData.value.attachmentPath3, name: '附件4' }
+  ]
+
+  pathFields.forEach((field, idx) => {
+    if (field.path) {
+      files.push({
+        path: field.path,
+        name: field.name,
+        index: idx,
+        url: getChildImageUrl({ AttachmentPath: field.path })
+      })
+    }
+  })
+
+  return files
+}
+
+// 打開檔案預覽
+const openFilePreview = (file) => {
+  preview.value.visible = true
+  preview.value.file = {
+    name: file.name,
+    url: file.url,
+    type: 'image/jpeg'
+  }
+}
+
+// 關閉檔案預覽
+const closePreview = () => {
+  preview.value.visible = false
+  preview.value.file = null
 }
 
 // 透過 API 載入申請資料，可傳入 optional nationalID 當作 query
@@ -740,22 +794,6 @@ const confirmReview = async () => {
   margin: 24px 0;
 }
 
-/* 身分證影像區塊樣式 */
-.identity-card {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.identity-image {
-  max-width: 100%;
-  max-height: 260px;
-  border-radius: 8px;
-  border: 1px solid #d8dbe0;
-  object-fit: contain;
-  background-color: #f9fafb;
-}
-
 @media (max-width: 900px) {
   .announcement-page {
     width: 100%;
@@ -774,5 +812,114 @@ const confirmReview = async () => {
     flex-direction: column;
     gap: 4px;
   }
+}
+
+/* Preview modal */
+.preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.preview-card {
+  background: #fff;
+  border-radius: 12px;
+  width: min(900px, 92vw);
+  height: min(80vh, 900px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid #eee;
+}
+
+.preview-title {
+  font-weight: 700;
+  color: #334e5c;
+}
+
+.preview-close {
+  background: transparent;
+  border: none;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #666;
+}
+
+.preview-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.preview-body img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.preview-fallback {
+  color: #666;
+}
+
+/* 附件列表樣式 */
+.attachment-list {
+  margin-top: 16px;
+}
+
+.attachment-list h4 {
+  color: #2e6fb7;
+  font-size: 1rem;
+  margin: 0 0 12px 0;
+  font-weight: 600;
+}
+
+.attachment-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attachment-item {
+  padding: 10px 12px;
+  background: #f0f9ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+}
+
+.file-link {
+  color: #2563eb;
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.file-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.empty-text {
+  color: #666;
+  font-size: 0.95rem;
+  margin-top: 8px;
 }
 </style>

@@ -208,7 +208,7 @@ export const getPermissionTypeName = (permissionType) => {
  */
 export const getAccountStatusName = (accountStatus) => {
   const statusMap = {
-    0: '停用',
+    2: '停用',
     1: '啟用'
   };
   return statusMap[accountStatus] || '未知';
