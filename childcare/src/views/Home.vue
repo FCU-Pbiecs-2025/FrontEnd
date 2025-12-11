@@ -79,7 +79,7 @@
 <script setup>
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getAllAnnouncements } from '../api/announcements.js'
+import { getfrontAnnouncements } from '../api/announcements.js'
 import { useAuthStore } from '../store/auth.js'
 import bannersApi from '../api/banners.js'
 
@@ -208,7 +208,7 @@ const loadNewsData = async () => {
   error.value = null
   try {
     // 使用統一的 announcements API，並在 client 端過濾出前台公告 (type === 1)
-    const response = await getAllAnnouncements()
+    const response = await getfrontAnnouncements()
     // getAllAnnouncements 已在 api wrapper 返回 res.data，但要保險處理
     let announcements = Array.isArray(response) ? response : (response?.data ?? [])
 
