@@ -199,7 +199,17 @@ export const getApplicationsCasesList = async (options = {}) => {
 // 1. 接收 CaseEditUpdateDTO 格式的申請資料（JSON）
 // 2. 支持上傳最多 4 個附件檔案
 // 3. 建立案件資訊並將檔案儲存到 IdentityResource/{applicationID}/ 目錄
-// 4. 返回建立成功的完整案件資訊
+// 4. 驗證每個幼兒的 nationalID 總案件數不得超過 2 件
+// 5. 返回建立成功的完整案件資訊
+//
+// 驗證規則：
+//  - 每個幼兒的身分證字號（nationalID）在系統中的總申請案件數不得超過 2 件
+//  - 若超過限制，將返回 400 Bad Request 並說明錯誤訊息
+//
+// 回傳值：
+//  - 200 OK + 完整的 CaseEditUpdateDTO（包含自動設置的 applicationID、attachmentPath 等）
+//  - 400 Bad Request + 錯誤訊息（當幼兒申請案件數超過限制時）
+//  - 500 Internal Server Error + 錯誤訊息（當發生系統錯誤時）
 //
 // @param {Object} caseData - 案件資訊 (CaseEditUpdateDTO)
 // @param {string} caseData.caseNumber - 案件編號
@@ -339,9 +349,16 @@ export const submitApplicationCase = async (caseData, files = {}) => {
 
             // 提供診斷信息
             if (error.response.status === 400) {
-                alert('❌ 提交失敗 (400 Bad Request)\n\n請查看 Console 中的詳細錯誤信息');
+                // 400 Bad Request - 通常是驗證失敗（例如幼兒申請案件超過限制）
+                const errorMessage = typeof error.response.data === 'string'
+                    ? error.response.data
+                    : JSON.stringify(error.response.data);
+                console.error('❌ 驗證失敗:', errorMessage);
+                alert('❌ 提交失敗\n\n' + errorMessage);
             } else if (error.response.status === 500) {
                 alert('❌ 提交失敗 (500 Server Error)\n\n' + (error.response.data || '伺服器內部錯誤'));
+            } else {
+                alert('❌ 提交失敗 (HTTP ' + error.response.status + ')\n\n' + (error.response.data || error.message));
             }
         } else {
             alert('❌ 提交失敗\n\n' + error.message);

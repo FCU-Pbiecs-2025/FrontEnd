@@ -365,7 +365,7 @@
                   <span class="field-label">幼兒</span>
                   <select v-model="child.name" class="field-select">
                     <option value="">請選擇</option>
-                    <option v-for="n in childNameOptions" :key="n" :value="n">{{ n }}</option>
+                    <option v-for="n in getAvailableChildNames(idx)" :key="n" :value="n">{{ n }}</option>
                   </select>
                 </label>
               </div>
@@ -787,7 +787,32 @@ onBeforeUnmount(() => {
   })
 })
 const submitForm = () => {
-  // 不檢查內容，直接進入下一步
+  // ✅ 新增：驗證留職停薪欄位
+  // 檢查家長1的留職停薪驗證
+  if (form.value.parent1.name && form.value.parent1.isLeave) {
+    if (!form.value.parent1.leaveStart || form.value.parent1.leaveStart.trim() === '') {
+      alert('❌ 家長1已勾選「是否留停」，請填寫「留停起」日期')
+      return
+    }
+    if (!form.value.parent1.leaveEnd || form.value.parent1.leaveEnd.trim() === '') {
+      alert('❌ 家長1已勾選「是否留停」，請填寫「留停訖」日期')
+      return
+    }
+  }
+
+  // 檢查家長2的留職停薪驗證
+  if (form.value.parent2.name && form.value.parent2.isLeave) {
+    if (!form.value.parent2.leaveStart || form.value.parent2.leaveStart.trim() === '') {
+      alert('❌ 家長2已勾選「是否留停」，請填寫「留停起」日期')
+      return
+    }
+    if (!form.value.parent2.leaveEnd || form.value.parent2.leaveEnd.trim() === '') {
+      alert('❌ 家長2已勾選「是否留停」，請填寫「留停訖」日期')
+      return
+    }
+  }
+
+  // 通過驗證，進入下一步
   step.value = 2 // 切換到上傳附件步驟
 }
 
@@ -879,9 +904,29 @@ const children = ref([
   { id: Date.now(), name: "", gender: "", age: "", nationality: "" }
 ])
 const childNameOptions = computed(() => {
-  // 從 familyData.children 中提取幼兒名稱
-  return familyData.value.children.map(child => child.name).filter(name => name)
+  // 從 familyData.children 中提取幼兒名稱，但排除已被其他幼兒選擇的名稱
+  const allChildNames = familyData.value.children.map(child => child.name).filter(name => name)
+  const selectedChildNames = children.value.map(child => child.name).filter(name => name)
+
+  // 只返回還未被選中的幼兒名稱
+  return allChildNames.filter(name => !selectedChildNames.includes(name))
 })
+
+// 根據幼兒索引返回可用的名稱列表（允許當前幼兒選擇自己的名稱，但排除其他已選擇的名稱）
+const getAvailableChildNames = (currentIndex) => {
+  const allChildNames = familyData.value.children.map(child => child.name).filter(name => name)
+  const currentChildName = children.value[currentIndex]?.name || ""
+
+  // 返回所有名稱，但排除其他幼兒已選擇的名稱（除了當前幼兒自己）
+  return allChildNames.filter(name => {
+    // 如果是當前幼兒的名稱，總是包含
+    if (name === currentChildName) return true
+
+    // 如果其他幼兒已選擇了這個名稱，則排除
+    return !children.value.some((child, idx) => idx !== currentIndex && child.name === name)
+  })
+}
+
 function addChild(){
   if(children.value.length < maxChildren){
     children.value.push({ id: Date.now() + Math.random(), name: "", gender: "", age: "", nationality: "" })
@@ -890,6 +935,7 @@ function addChild(){
 function removeChild(index){
   children.value.splice(index,1)
 }
+
 // 若已登入並直接跳到第3步（保險）
 if(step.value === 3) fetchChildren()
 
@@ -1143,14 +1189,33 @@ async function submitCase() {
     console.error('========== ❌ 提交申請案件失敗 ==========');
     console.error('錯誤信息:', error.message);
     console.error('錯誤詳情:', error);
+
+    let errorMessage = '❌ 提交申請失敗';
+
     if (error.response) {
       console.error('API 錯誤狀態碼:', error.response.status);
       console.error('API 錯誤數據:', error.response.data);
+
+      // 根據不同的 HTTP 狀態碼提供相應的錯誤訊息
+      if (error.response.status === 400) {
+        // 400 Bad Request - 驗證失敗（例如幼兒申請案件超過限制）
+        const apiErrorMessage = typeof error.response.data === 'string'
+          ? error.response.data
+          : JSON.stringify(error.response.data);
+        console.error('❌ 驗證失敗:', apiErrorMessage);
+        errorMessage = '❌ 提交失敗\n\n' + apiErrorMessage;
+      } else if (error.response.status === 500) {
+        errorMessage = '❌ 伺服器內部錯誤\n\n' + (error.response.data || '請聯絡客服');
+      } else {
+        errorMessage = '❌ 提交失敗 (HTTP ' + error.response.status + ')\n\n' + (error.response.data || error.message);
+      }
     }
+
     if (error.config) {
       console.error('請求配置:', error.config);
     }
-    alert('❌ 提交申請失敗，請重試或聯絡客服');
+
+    alert(errorMessage);
     throw error;
   }
 }

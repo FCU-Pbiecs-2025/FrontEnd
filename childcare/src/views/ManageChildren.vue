@@ -364,13 +364,30 @@ const cancelEdit = () => {
 
 // 新增幼兒（含驗證）
 const addChild = async () => {
-  if (!newChild.value.name) {
-    alert('請填寫幼兒姓名')
+  // ✅ 新增：完整的欄位驗證
+  if (!newChild.value.name || newChild.value.name.trim() === '') {
+    alert('❌ 請填寫幼兒姓名')
     return
   }
+
+  if (!newChild.value.idNumber || newChild.value.idNumber.trim() === '') {
+    alert('❌ 請填寫身分證字號')
+    return
+  }
+
   validateNewChildId()
   if (newChildIdError.value) {
-    alert(newChildIdError.value)
+    alert('❌ ' + newChildIdError.value)
+    return
+  }
+
+  if (!newChild.value.gender || newChild.value.gender.trim() === '') {
+    alert('❌ 請選擇性別')
+    return
+  }
+
+  if (!newChild.value.birthday || newChild.value.birthday.trim() === '') {
+    alert('❌ 請填寫出生日期')
     return
   }
 
@@ -432,7 +449,6 @@ const addChild = async () => {
     alert('✅ 幼兒資料已成功新增')
   } catch (error) {
     console.error('❌ 新增幼兒失敗:', error)
-    alert(`❌ 新增幼兒失敗: ${error.message}`)
     alert(`❌ 新增幼兒失敗: ${error.message}`)
   }
 }

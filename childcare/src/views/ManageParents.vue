@@ -561,13 +561,60 @@ const deleteParent = async (idx) => {
 
 // 新增家長
 const addParent = async () => {
-  if (!newParent.value.name) {
-    alert('請填寫家長姓名')
+  // ✅ 新增：完整的欄位驗證
+  if (!newParent.value.name || newParent.value.name.trim() === '') {
+    alert('❌ 請填寫家長姓名')
     return
   }
+
+  if (!newParent.value.idNumber || newParent.value.idNumber.trim() === '') {
+    alert('❌ 請填寫身分證字號')
+    return
+  }
+
   validateNewParentId()
   if (newParentIdError.value) {
-    alert(newParentIdError.value)
+    alert('❌ ' + newParentIdError.value)
+    return
+  }
+
+  if (!newParent.value.relation || newParent.value.relation.trim() === '') {
+    alert('❌ 請填寫關係（如：父親、母親等）')
+    return
+  }
+
+  if (!newParent.value.gender || newParent.value.gender.trim() === '') {
+    alert('❌ 請選擇性別')
+    return
+  }
+
+  if (!newParent.value.phone || newParent.value.phone.trim() === '') {
+    alert('❌ 請填寫電話號碼')
+    return
+  }
+
+  if (!newParent.value.email || newParent.value.email.trim() === '') {
+    alert('❌ 請填寫電子郵件')
+    return
+  }
+
+  if (!newParent.value.job || newParent.value.job.trim() === '') {
+    alert('❌ 請填寫職業')
+    return
+  }
+
+  if (!newParent.value.birthday || newParent.value.birthday.trim() === '') {
+    alert('❌ 請填寫出生日期')
+    return
+  }
+
+  if (!newParent.value.householdAddress || newParent.value.householdAddress.trim() === '') {
+    alert('❌ 請填寫戶籍地址')
+    return
+  }
+
+  if (!newParent.value.contactAddress || newParent.value.contactAddress.trim() === '') {
+    alert('❌ 請填寫聯絡地址')
     return
   }
 
