@@ -126,6 +126,29 @@
         </div>
       </div>
 
+      <!-- 圖片全視窗預覽 Modal -->
+      <div v-if="showImagePreview" class="image-preview-overlay" @click="closeImagePreview">
+        <div class="image-preview-container">
+          <button class="preview-close-btn" @click="closeImagePreview" aria-label="關閉預覽">×</button>
+          <img :src="carouselImages[currentSlide]" alt="圖片預覽" class="preview-image" @click.stop />
+          <div class="preview-navigation">
+            <button class="preview-btn left" @click.stop="prevSlide" v-if="carouselImages.length > 1">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <polyline points="20,8 12,16 20,24" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              </svg>
+            </button>
+            <button class="preview-btn right" @click.stop="nextSlide" v-if="carouselImages.length > 1">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <polyline points="12,8 20,16 12,24" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              </svg>
+            </button>
+          </div>
+          <div class="preview-counter" v-if="carouselImages.length > 1">
+            {{ currentSlide + 1 }} / {{ carouselImages.length }}
+          </div>
+        </div>
+      </div>
+
       <!-- Main Content -->
       <main class="main-content">
         <!-- Restore carousel only on Home route -->
@@ -137,7 +160,7 @@
           </button>
           <div class="carousel-image-box">
             <template v-if="carouselImages.length > 0">
-              <img ref="carouselImg" :src="carouselImages[currentSlide]" alt="輪播圖" class="carousel-image" @error="retryCarouselImage" />
+              <img ref="carouselImg" :src="carouselImages[currentSlide]" alt="輪播圖" class="carousel-image" @error="retryCarouselImage" @click="openImagePreview" style="cursor: pointer;" />
             </template>
             <template v-else>
               <div class="no-image-placeholder">暫無圖片</div>
@@ -304,6 +327,7 @@ const handleChangePassword = async () => {
 const carouselImages = ref([])
 const currentSlide = ref(0)
 const carouselImg = ref(null)
+const showImagePreview = ref(false)
 
 async function fetchCarousel() {
   try {
@@ -342,6 +366,14 @@ function prevSlide() {
   if (carouselImages.value.length === 0) return
   currentSlide.value = (currentSlide.value - 1 + carouselImages.value.length) % carouselImages.value.length
   if (carouselImg.value) carouselImg.value.removeAttribute('data-attempt-index')
+}
+
+function openImagePreview() {
+  showImagePreview.value = true
+}
+
+function closeImagePreview() {
+  showImagePreview.value = false
 }
 
 function openImageInNewWindow() {
@@ -888,6 +920,113 @@ footer {
 }
 .carousel-btn:hover {
   background: rgba(227,93,106,0.7);
+}
+
+/* 圖片全視窗預覽樣式 */
+.image-preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  backdrop-filter: blur(5px);
+}
+
+.image-preview-container {
+  position: relative;
+  width: 90vw;
+  height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.preview-close-btn {
+  position: absolute;
+  top: -50px;
+  right: 0;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  font-size: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  line-height: 1;
+  padding: 0;
+}
+
+.preview-close-btn:hover {
+  background: rgba(227, 93, 106, 0.8);
+  border-color: rgba(227, 93, 106, 0.8);
+  transform: rotate(90deg);
+}
+
+.preview-navigation {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.preview-btn {
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.preview-btn.left {
+  margin-left: 32px;
+}
+
+.preview-btn.right {
+  margin-right: 32px;
+}
+
+.preview-btn:hover {
+  background: rgba(227, 93, 106, 0.8);
+  transform: scale(1.1);
+}
+
+.preview-counter {
+  position: absolute;
+  bottom: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 16px;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
 }
 
 /* 漢堡選單按鈕樣式 */

@@ -115,7 +115,6 @@
       <div v-if="accountId" class="member-info-section">
         <div class="title-row">
           <span class="main-title">帳號管理</span>
-          <span class="account-id">ID：{{ accountId }}</span>
         </div>
         <div class="status-toggle">
           <span class="status-label">狀態：</span>
@@ -271,9 +270,7 @@ const newParent = ref({
 })
 
 // 幼兒資料
-const children = ref([
-  { id: 1, idNumber: '', name: '王小寶', birthday: '2022-05-01', gender: '男' }
-])
+const children = ref([])
 const editChildIdx = ref(null)
 const showAddChild = ref(false)
 const newChild = ref({ idNumber: '', name: '', birthday: '', gender: '男' })
@@ -1414,10 +1411,10 @@ const manageChildren = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 40px;
 }
 .main-title {
-  font-size: 1.35rem;
+  font-size: 1.5rem;
   color: #f27575;
   font-weight: bold;
   margin: 0;
@@ -1452,6 +1449,7 @@ const manageChildren = () => {
   font-weight: bold;
   box-shadow: 0 2px 8px #f9afae22;
   transition: border 0.2s, box-shadow 0.2s;
+  max-width: 85%;
 }
 .form-input:focus {
   border-color: #f27575;
@@ -1469,8 +1467,8 @@ const manageChildren = () => {
 .bottom-row {
   display: flex;
   gap: 18px;
-  justify-content: flex-end;
-  margin-top: 10px;
+  justify-content: center;
+  margin-top: 30px;
 }
 .btn {
   padding: 10px 28px;

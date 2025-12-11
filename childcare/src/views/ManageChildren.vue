@@ -256,31 +256,15 @@ const loadChildren = async () => {
       console.log('✅ 已從 API 載入幼兒資料:', children.value)
     } else {
       console.warn('⚠️ 沒有幼兒資料或 children 不是陣列')
-      // 使用預設資料
-      children.value = [
-        {
-          id: 1,
-          name: '王小寶',
-          idNumber: '',
-          gender: '男',
-          birthday: '2022-05-01'
-        }
-      ]
-      childIdErrors.value = ['']
+      // 初始化空陣列
+      children.value = []
+      childIdErrors.value = []
     }
   } catch (error) {
     console.error('❌ 載入幼兒信息失敗:', error)
-    // 載入失敗時使用預設資料
-    children.value = [
-      {
-        id: 1,
-        name: '王小寶',
-        idNumber: '',
-        gender: '男',
-        birthday: '2022-05-01'
-      }
-    ]
-    childIdErrors.value = ['']
+    // 載入失敗時初始化空陣列
+    children.value = []
+    childIdErrors.value = []
   }
 }
 
