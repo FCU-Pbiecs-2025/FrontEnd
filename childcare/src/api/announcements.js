@@ -5,6 +5,11 @@ export const getAllAnnouncements = () => {
   return http.get('/announcements/summary').then(res => res.data)
 }
 
+// 獲取所有公告
+export const getfrontAnnouncements = () => {
+    return http.get('/announcements/front').then(res => res.data)
+}
+
 // 獲取分頁公告
 export const getAnnouncementsByOffset = (offset = 0) => {
   return http.get(`/announcements/offset?offset=${offset}`).then(res => res.data)
