@@ -21,6 +21,7 @@ export const getInstitutionsSimpleAll = async () => {
  * @param offset 起始項目索引
  * @param size 每頁大小
  * @param institutionID (可選) 機構ID - admin 角色使用，過濾特定機構
+ * @param search (可選) 搜尋關鍵字 - 搜尋機構名稱、聯絡人、電話
  * @return 分頁機構列表及分頁資訊
  *
  * 範例回應:
@@ -54,7 +55,7 @@ export const getInstitutionsSimpleAll = async () => {
  *   "totalElements": 4
  * }
  */
-export const getInstitutionsWithOffset = async (offset = 0, size = 10, institutionID = null) => {
+export const getInstitutionsWithOffset = async (offset = 0, size = 10, institutionID = null, search = null) => {
     try {
         const url = '/institutions/offset';
         const params = { offset, size };
@@ -64,12 +65,55 @@ export const getInstitutionsWithOffset = async (offset = 0, size = 10, instituti
             params.InstitutionID = institutionID;
         }
 
+        // 如果有傳入 search，則加入查詢參數
+        if (search && search.trim()) {
+            params.search = search.trim();
+        }
+
         console.log('[API] getInstitutionsWithOffset request url:', url);
         console.log('[API] getInstitutionsWithOffset params:', params);
 
         const response = await http.get(url, { params });
 
         console.log('[API] getInstitutionsWithOffset response.data:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('獲取機構分頁資料失敗:', error);
+        throw error;
+    }
+};
+
+/**
+ * GET /institutions/offset/name-search
+ * 取得機構分頁資料（僅搜尋機構名稱）
+ *
+ * @param offset 起始項目索引
+ * @param size 每頁大小
+ * @param institutionID (可選) 機構ID - admin 角色使用，過濾特定機構
+ * @param name (可選) 機構名稱搜尋關鍵字 - 僅搜尋機構名稱
+ * @return 分頁機構列表及分頁資訊
+ */
+export const getInstitutionsWithNameSearch = async (offset = 0, size = 10, institutionID = null, name = null) => {
+    try {
+        const url = '/institutions/offset/name-search';
+        const params = { offset, size };
+
+        // 如果有傳入 institutionID，則加入查詢參數
+        if (institutionID) {
+            params.InstitutionID = institutionID;
+        }
+
+        // 如果有傳入 name，則加入查詢參數
+        if (name && name.trim()) {
+            params.name = name.trim();
+        }
+
+        console.log('[API] getInstitutionsWithNameSearch request url:', url);
+        console.log('[API] getInstitutionsWithNameSearch params:', params);
+
+        const response = await http.get(url, { params });
+
+        console.log('[API] getInstitutionsWithNameSearch response.data:', response.data);
         return response.data;
     } catch (error) {
         console.error('獲取機構分頁資料失敗:', error);
@@ -125,6 +169,37 @@ export const getInstitutionById = async (id) => {
     }
 };
 
+/**
+ * 新增機構資料
+ * POST /institutions
+ *
+ * @param data 機構 JSON 資料
+ * @return 新增後的機構資訊
+ */
+export const createInstitution = async (data) => {
+    if (!data) {
+        throw new Error('缺少機構資料');
+    }
+
+    try {
+        const url = '/institutions';
+        console.log('[API] createInstitution request url:', url);
+        console.log('[API] createInstitution data:', data);
+
+        const response = await http.post(url, data, {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        console.log('[API] createInstitution HTTP status:', response.status);
+        console.log('[API] createInstitution response.data:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('新增機構資料失敗:', error);
+        throw error;
+    }
+};
 
 /**
  * 更新機構資料（支援圖片上傳）
@@ -209,5 +284,3 @@ export const updateInstitution = async (id, data, image = null) => {
         throw error;
     }
 };
-
-

@@ -16,7 +16,7 @@
           <div class="query-row">
             <div class="search-area">
               <label class="search-label" for="queryInstitution">查詢條件：</label>
-              <input id="queryInstitution" type="text" v-model="searchKeyword" placeholder="機構名稱" class="search-input" :disabled="!isSuperAdmin" />
+              <input id="queryInstitution" type="text" v-model="searchKeyword" placeholder="請輸入機構名稱" class="search-input" :disabled="!isSuperAdmin" />
             </div>
             <div class="btn-query">
              <button class="btn primary" @click="addNew" :disabled="!isSuperAdmin">新增</button>
@@ -80,7 +80,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getInstitutionsWithOffset } from '@/api/Institution.js'
+import { getInstitutionsWithOffset, getInstitutionsWithNameSearch } from '@/api/Institution.js'
 import Pagination from '@/components/Pagination.vue'
 import { useAuthStore } from '@/store/auth.js'
 
@@ -95,26 +95,18 @@ const institutionId = computed(() => authStore.user?.InstitutionID || null)
 
 const STORAGE_KEY = 'institutionData'
 const searchKeyword = ref('')
-const searchQuery = ref('')
 const allInstitutions = ref([])
 const isLoading = ref(false)
 const hasQueried = ref(false)
-const currentPage = ref(0 )// 0-based
+const currentPage = ref(0) // 0-based
 const pageSize = ref(10)
 const totalPages = ref(0)
 const totalElements = ref(0)
 const hasNext = ref(false)
 
-// 顯示的機構列表（考慮搜尋過濾）
+// 顯示的機構列表（直接使用後端分頁結果，不再進行前端過濾）
 const displayList = computed(() => {
-  if (!searchQuery.value.trim()) {
-    return allInstitutions.value
-  }
-  return allInstitutions.value.filter(item =>
-    (item.institutionName || '').toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-    (item.contactPerson || '').toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-    (item.phoneNumber || '').toLowerCase().includes(searchQuery.value.toLowerCase())
-  )
+  return allInstitutions.value
 })
 
 // 分頁按鈕頁碼（1-based 顯示）
@@ -135,7 +127,7 @@ const pageNumbers = computed(() => {
 })
 
 // 載入機構資料
-const loadInstitutions = async (offset = 0) => {
+const loadInstitutions = async (offset = 0, search = null) => {
   try {
     isLoading.value = true
 
@@ -146,13 +138,15 @@ const loadInstitutions = async (offset = 0) => {
     console.log('institutionId:', institutionId.value)
     console.log('user role:', authStore.user?.role)
     console.log('user InstitutionID:', authStore.user?.InstitutionID)
+    console.log('search keyword:', search)
 
     // 根據角色決定是否帶機構 ID：super_admin 看全部，admin 只看自己機構
     const institutionIdParam = isSuperAdmin.value ? null : institutionId.value
     console.log('institutionIdParam to API:', institutionIdParam)
     console.log('==================================')
 
-    const response = await getInstitutionsWithOffset(offset, pageSize.value, institutionIdParam)
+    // 使用新的機構名稱專用搜尋API
+    const response = await getInstitutionsWithNameSearch(offset, pageSize.value, institutionIdParam, search)
 
     // 轉換資料格式
     allInstitutions.value = response.content || []
@@ -202,22 +196,24 @@ watch(() => route.name, (newName, oldName) => {
   if (newName === 'AdminInstitution' && (oldName === 'AdminInstitutionNew' || oldName === 'AdminInstitutionEdit')) {
     loadInstitutions(0)
     searchKeyword.value = ''
-    searchQuery.value = ''
     hasQueried.value = false
   }
 })
 
-// 查詢功能
-const doQuery = () => {
-  searchQuery.value = searchKeyword.value
+// 查詢功能 - 重置分頁並使用後端搜尋（僅搜尋機構名稱）
+const doQuery = async () => {
   hasQueried.value = true
+  currentPage.value = 0 // 重置到第一頁
+  const searchTerm = searchKeyword.value.trim()
+  await loadInstitutions(0, searchTerm || null)
 }
 
 // 分頁切換（底層，0-based page）
 const goToPage = async (page) => {
   if (page < 0 || page >= totalPages.value) return
   const offset = page * pageSize.value
-  await loadInstitutions(offset)
+  const searchTerm = hasQueried.value ? searchKeyword.value.trim() : null
+  await loadInstitutions(offset, searchTerm || null)
 }
 
 // Pagination 元件事件包裝（1-based 轉 0-based）
@@ -234,7 +230,11 @@ const edit = (item) => {
   }).catch(error => { console.error('路由跳轉失敗:', error) })
 }
 
-const goBack = () => { searchKeyword.value = ''; searchQuery.value = ''; hasQueried.value = false }
+const goBack = () => {
+  searchKeyword.value = ''
+  hasQueried.value = false
+  loadInstitutions(0) // 重新載入所有資料
+}
 
 const isEditPage = computed(() => route.name === 'AdminInstitutionNew' || route.name === 'AdminInstitutionEdit')
 </script>

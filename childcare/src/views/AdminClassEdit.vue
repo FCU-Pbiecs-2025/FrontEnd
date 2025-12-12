@@ -320,8 +320,9 @@ const save = async () => {
   }
 
   // 若表單有 institutionId（不論新增或編輯），就把它加入 payload
+  // 注意：後端使用 institutionID (大寫 ID)
   if (form.value.institutionId && String(form.value.institutionId).trim() !== '') {
-    dataToSend.institutionId = form.value.institutionId
+    dataToSend.institutionID = form.value.institutionId
   }
 
   // 除錯用：檢查送出的資料

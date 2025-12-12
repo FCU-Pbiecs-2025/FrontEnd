@@ -113,7 +113,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getInstitutionById, updateInstitution } from '@/api/Institution.js'
+import { getInstitutionById, updateInstitution, createInstitution } from '@/api/Institution.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -280,8 +280,54 @@ const save = async () => {
     isSaving.value = true
 
     if (isNew.value) {
-      alert('新增功能尚未實作')
-      return
+      console.log('========== 準備新增機構資料 ==========')
+
+      const createData = {
+        institutionName: form.value.institutionName,
+        contactPerson: form.value.contactPerson,
+        address: form.value.address,
+        latitude: form.value.latitude ? Number(form.value.latitude) : 0,
+        longitude: form.value.longitude ? Number(form.value.longitude) : 0,
+        phoneNumber: form.value.phoneNumber,
+        fax: form.value.fax || '',
+        email: form.value.email,
+        relatedLinks: form.value.relatedLinks || '',
+        description: form.value.description || '',
+        responsiblePerson: form.value.responsiblePerson,
+        imagePath: form.value.imagePath || '',
+        institutionsType: form.value.institutionsType,
+        createdUser: 'admin',
+        updatedUser: 'admin',
+        createdTime: new Date().toISOString(),
+        updatedTime: new Date().toISOString()
+      }
+
+      console.log('新增資料:', createData)
+      console.log('圖片檔案:', selectedImage.value)
+
+      const result = await createInstitution(createData)
+
+      console.log('========== 新增成功 ==========')
+      console.log('新增結果:', result)
+
+      // 如果有選擇圖片，新增成功後立即更新圖片
+      if (selectedImage.value && result.institutionID) {
+        try {
+          console.log('========== 上傳圖片 ==========')
+          const updateWithImageResult = await updateInstitution(
+            result.institutionID,
+            result,
+            selectedImage.value
+          )
+          console.log('圖片上傳成功:', updateWithImageResult)
+        } catch (imageError) {
+          console.error('圖片上傳失敗:', imageError)
+          alert('機構新增成功，但圖片上傳失敗，請編輯機構後重新上傳圖片')
+        }
+      }
+
+      alert('新增成功！')
+      goBack()
     } else {
       console.log('========== 準備更新機構資料 ==========')
 

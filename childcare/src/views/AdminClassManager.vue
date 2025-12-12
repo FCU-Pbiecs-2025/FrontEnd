@@ -145,24 +145,16 @@ const institutionId = computed(() => auth?.user?.InstitutionID || null)
 const classes = ref([])
 const searchKeyword = ref('')
 const filteredClasses = computed(() => {
-  // 按機構ID排序班級資料
+  // 依機構名稱排序，再依班級名稱排序，確保依機構分組顯示
   const sortedClasses = [...classes.value].sort((a, b) => {
-    // 首先按機構ID排序
-    const aInstId = a.institutionID || a.institutionId || 0
-    const bInstId = b.institutionID || b.institutionId || 0
-    if (aInstId !== bInstId) {
-      return aInstId - bInstId
-    }
-    // 如果機構ID相同，再按機構名稱排序
     const aInstName = (a.institutionName || '').toString()
     const bInstName = (b.institutionName || '').toString()
-    if (aInstName !== bInstName) {
-      return aInstName.localeCompare(bInstName, 'zh-TW')
-    }
-    // 最後按班級名稱排序
+    const instCmp = aInstName.localeCompare(bInstName, 'zh-TW', { sensitivity: 'base' })
+    if (instCmp !== 0) return instCmp
+
     const aClassName = (a.className || '').toString()
     const bClassName = (b.className || '').toString()
-    return aClassName.localeCompare(bClassName, 'zh-TW')
+    return aClassName.localeCompare(bClassName, 'zh-TW', { sensitivity: 'base' })
   })
 
   return sortedClasses.slice(0, PAGE_SIZE)
@@ -333,9 +325,23 @@ const deleteClass = async (cls) => {
     })
 
     if (res.ok || res.status === 204) {
-      // 後端刪除成功，從前端列表移除該筆
+      // 後端刪除成功，先從前端列表移除該筆（立即回饋）
       const idx = classes.value.findIndex(c => c.classID === cls.classID)
       if (idx !== -1) classes.value.splice(idx, 1)
+
+      // 重新載入目前頁面以更新總筆數與分頁資訊
+      // 若刪除造成目前頁面資料為空且仍有前一頁，則往前一頁
+      const hasMorePages = totalElements.value > 0
+      const isPageEmptyAfterDelete = classes.value.length === 0 && currentPage.value > 1
+      const targetPage = isPageEmptyAfterDelete ? currentPage.value - 1 : currentPage.value
+
+      // 判斷目前是否在搜尋模式（有關鍵字）或一般列表
+      if (searchKeyword.value.trim()) {
+        await doQueryInstitution(targetPage)
+      } else {
+        await fetchClasses(targetPage)
+      }
+
       alert('刪除成功')
     } else {
       const txt = await res.text()
