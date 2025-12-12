@@ -16,7 +16,7 @@ import http from './http.js';
  *
  * accountStatus:
  *   1 = 啟用
- *   0 = 停用
+ *   2 = 停用
  *
  * 範例回應:
  * {
@@ -188,6 +188,50 @@ export const createUser = async (user) => {
 };
 
 /**
+ * GET /users/search
+ * 模糊查詢使用者，支援分頁
+ * 搜尋帳號、姓名、信箱、機構名稱
+ *
+ * @param searchTerm 搜尋關鍵字（可選，為空時返回一般分頁結果）
+ * @param offset 起始位置
+ * @param size 頁面大小
+ * @return 搜尋結果及分頁資訊
+ *
+ * 範例回應:
+ * {
+ *   "offset": 0,
+ *   "size": 10,
+ *   "totalPages": 1,
+ *   "hasNext": false,
+ *   "searchTerm": "王",
+ *   "content": [
+ *     {
+ *       "userID": "86c23732-ce0d-4ec7-93d5-048faee27d4b",
+ *       "account": "wang001",
+ *       "institutionName": "小天使托嬰中心",
+ *       "permissionType": 2,
+ *       "accountStatus": 1
+ *     }
+ *   ],
+ *   "totalElements": 1
+ * }
+ */
+export const searchUsers = async (searchTerm = '', offset = 0, size = 10) => {
+  try {
+    const params = { offset, size };
+    if (searchTerm && searchTerm.trim()) {
+      params.searchTerm = searchTerm.trim();
+    }
+
+    const response = await http.get('/users/search', { params });
+    return response.data;
+  } catch (error) {
+    console.error('搜尋使用者失敗:', error);
+    throw error;
+  }
+};
+
+/**
  * 輔助函數：取得權限類型的中文名稱
  * @param permissionType 權限類型代碼
  * @return 權限類型中文名稱
@@ -208,8 +252,8 @@ export const getPermissionTypeName = (permissionType) => {
  */
 export const getAccountStatusName = (accountStatus) => {
   const statusMap = {
-    2: '停用',
-    1: '啟用'
+    1: '啟用',
+    2: '停用'
   };
   return statusMap[accountStatus] || '未知';
 };

@@ -137,7 +137,7 @@ const loadAccountFromAPI = async (userId) => {
       password: userData.password || '', // 顯示密碼（加密後的）
       org: orgName,
       role: mapPermissionTypeToRole(permNum),
-      right: userData.accountStatus === 1 ? 'enable' : 'suspended',
+      right: userData.accountStatus === 1 ? 'enable' : 'suspended', // 1=啟用, 其他=停用
       // 保存完整的 API 資料以便儲存時使用
       _apiData: userData
     }
@@ -262,7 +262,7 @@ const save = async () => {
       const newUserData = {
         account: account.value.id,
         password: account.value.password, // 後端會進行加密
-        accountStatus: account.value.right === 'enable' ? 1 : 0,
+        accountStatus: account.value.right === 'enable' ? 1 : 2,
         permissionType: mapRoleToPermissionType(account.value.role),
         institutionID: institutionID,
         // 以下欄位使用預設值，後續可根據需求調整
@@ -326,7 +326,7 @@ const save = async () => {
       const updateData = {
         ...account.value._apiData,  // 保留原始資料
         account: account.value.id,
-        accountStatus: account.value.right === 'enable' ? 1 : 0,
+        accountStatus: account.value.right === 'enable' ? 1 : 2,
         permissionType: mapRoleToPermissionType(account.value.role),
         institutionID: institutionID  // 使用 institutionID 而非 institutionName
       }

@@ -263,18 +263,24 @@ const getOriginalFileName = () => {
   if (!form.value.originalAttachmentPath) return ''
 
   // 從路徑中提取檔案名稱
-  const path = form.value.originalAttachmentPath
+  let fileName = form.value.originalAttachmentPath
 
   // 處理各種路徑格式
-  if (path.includes('/')) {
-    const parts = path.split('/')
-    return parts[parts.length - 1]
-  } else if (path.includes('\\')) {
-    const parts = path.split('\\')
-    return parts[parts.length - 1]
+  if (fileName.includes('/')) {
+    const parts = fileName.split('/')
+    fileName = parts[parts.length - 1]
+  } else if (fileName.includes('\\')) {
+    const parts = fileName.split('\\')
+    fileName = parts[parts.length - 1]
   }
 
-  return path
+  // 如果檔名包含底線，只取底線後面的部分
+  if (fileName.includes('_')) {
+    const underscoreIndex = fileName.indexOf('_')
+    fileName = fileName.substring(underscoreIndex + 1)
+  }
+
+  return fileName
 }
 
 const validate = () => {

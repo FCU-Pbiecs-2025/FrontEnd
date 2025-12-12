@@ -332,10 +332,14 @@ const showImagePreview = ref(false)
 async function fetchCarousel() {
   try {
     const res = await bannersApi.active()
-    const imgs = (res.data || [])
-        .map(item => (item && typeof item.imageName === 'string' ? item.imageName.trim() : ''))
-        .filter(name => !!name)
-        .map(name => bannersApi.imageUrl(name))
+    const now = Date.now();
+const imgs = (res.data || [])
+  .filter(item => {
+    if (!item || !item.imageName) return false;
+    if (!item.endTime) return true; // 無下架時間視為永久
+    return new Date(item.endTime).getTime() > now;
+  })
+  .map(item => bannersApi.imageUrl(item.imageName.trim()));
     // 加上 cache buster，避免瀏覽器快取舊圖
     const ts = Date.now()
     carouselImages.value = imgs.map(u => `${u}${u.includes('?') ? '&' : '?'}_=${ts}`)
@@ -346,14 +350,19 @@ async function fetchCarousel() {
   }
 }
 
+let carouselInterval = null;
+
 onMounted(async () => {
   await fetchCarousel()
   // 監聽後台更新事件
   window.addEventListener('banners:updated', fetchCarousel)
+  // 每 1 分鐘自動刷新一次輪播圖
+  carouselInterval = setInterval(fetchCarousel, 60000)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('banners:updated', fetchCarousel)
+  if (carouselInterval) clearInterval(carouselInterval)
 })
 
 function nextSlide() {

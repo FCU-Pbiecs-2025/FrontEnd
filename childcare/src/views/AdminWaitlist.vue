@@ -37,20 +37,22 @@
               <th>案號</th>
               <th>幼兒姓名</th>
               <th>幼兒年紀</th>
+              <th>機構名稱</th>
               <th>序位</th>
               <th>排序</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in waitlist" :key="row.ApplicationID">
-              <td data-label="案號">{{ row.ApplicationID }}</td>
+            <tr v-for="row in waitlist" :key="row.CaseNumber">
+              <td data-label="案號">{{ row.CaseNumber }}</td>
               <td data-label="幼兒姓名">{{ row.Name }}</td>
               <td data-label="幼兒年紀">{{ row.Age || formatBirthToAge(row.BirthDate) }}</td>
+              <td data-label="機構名稱">{{ row.InstitutionName }}</td>
               <td data-label="序位">{{ row.IdentityType }}</td>
               <td data-label="排序">{{ row.CurrentOrder }}</td>
             </tr>
             <tr v-if="!loading && waitlist.length === 0">
-              <td colspan="5" class="empty-tip">
+              <td colspan="6" class="empty-tip">
                 <div class="empty-box">
                   <img src="https://img.icons8.com/ios-glyphs/30/cfcfcf/opened-folder.png" alt="empty" />
                   <div>目前沒有候補資料</div>
@@ -58,7 +60,7 @@
               </td>
             </tr>
             <tr v-if="loading">
-              <td colspan="5" class="empty-tip">載入中...</td>
+              <td colspan="6" class="empty-tip">載入中...</td>
             </tr>
           </tbody>
         </table>
@@ -182,30 +184,32 @@ async function generateExcel() {
     }
 
     const rows = list.map(item => ({
-      '案號': item.ApplicationID,
+      '案號': item.CaseNumber,
       '幼兒姓名': item.Name,
       '幼兒年紀': item.Age || formatBirthToAge(item.BirthDate),
+      '機構名稱': item.InstitutionName,
       '序位': item.IdentityType,
       '排序': item.CurrentOrder
     }))
 
     const wb = XLSX.utils.book_new()
-    // 先建立第一列為大標題，並合併 A1~E1
+    // 先建立第一列為大標題，並合併 A1~F1
     const bigTitle = `${selectedInstitutionName.value}機構候補清冊`
     const ws = XLSX.utils.aoa_to_sheet([[bigTitle]])
     ws['!merges'] = ws['!merges'] || []
-    ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } })
+    ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } })
 
     // 從 A2 開始放表頭與資料
-    XLSX.utils.sheet_add_json(ws, rows, { header: ['案號', '幼兒姓名', '幼兒年紀', '序位', '排序'], origin: 'A2' })
+    XLSX.utils.sheet_add_json(ws, rows, { header: ['案號', '幼兒姓名', '幼兒年紀', '機構名稱', '序位', '排序'], origin: 'A2' })
 
     // 自動欄寬（粗略）
     ws['!cols'] = [
-      { wch: 40 }, // 案號
-      { wch: 16 }, // 姓名
-      { wch: 14 }, // 年紀
+      { wch: 15 }, // 案號
+      { wch: 12 }, // 姓名
+      { wch: 12 }, // 年紀
+      { wch: 20 }, // 機構名稱
       { wch: 8 },  // 序位
-      { wch: 10 }  // 排序
+      { wch: 8 }   // 排序
     ]
 
     XLSX.utils.book_append_sheet(wb, ws, '候補清冊')

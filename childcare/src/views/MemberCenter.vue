@@ -187,7 +187,7 @@ const saveAccountStatus = async () => {
     accountStatuses.value[targetId] = accountStatus.value
     localStorage.setItem('accountStatuses', JSON.stringify(accountStatuses.value))
 
-    alert('帳號狀態已同步至後端')
+    alert('帳號狀態已更新')
     return resp
   } catch (err) {
     console.error('更新帳號狀態失敗:', err)

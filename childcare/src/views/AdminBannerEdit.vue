@@ -26,7 +26,7 @@
             <button type="button" @click="$refs.fileInput.click()" class="btn file-btn">
               選擇檔案
             </button>
-            <span v-if="form.imageName" class="file-name">{{ form.imageName }}</span>
+            <span v-if="form.imageName" class="file-name">{{ getDisplayFileName(form.imageName) }}</span>
           </div>
         </div>
         <div class="form-row">
@@ -256,7 +256,20 @@ const cancel = () => {
   router.replace({ path: '/admin/banner' })
 }
 
-const previewAvailable = computed(() => !!(selectedFile.value || form.value.imageName))
+// 提取顯示用的檔案名稱（去掉UUID前綴）
+const getDisplayFileName = (fileName) => {
+  if (!fileName) return ''
+
+  // 如果檔名包含底線，只取底線後面的部分
+  if (fileName.includes('_')) {
+    const underscoreIndex = fileName.indexOf('_')
+    return fileName.substring(underscoreIndex + 1)
+  }
+
+  return fileName
+}
+
+const previewAvailable = computed(() => !!(selectedFile.value || form.imageName))
 
 const previewImageUrl = computed(() => {
   if (selectedFile.value) {
