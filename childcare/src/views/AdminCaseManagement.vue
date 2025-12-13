@@ -11,15 +11,22 @@
         <div class="query-row">
           <div class="search-area">
             <label class="date-label">公托機構：</label>
-            <select v-model="qAgency" class="date-input">
-              <option value="">全部</option>
-              <option v-for="a in agencyOptions" :key="a" :value="a">{{ a }}</option>
-            </select>
+            <!-- 僅 SUPERADMIN 可選擇機構；其他角色顯示當前機構名稱且不可修改 -->
+            <template v-if="isSuperAdmin">
+              <select v-model="qAgency" class="date-input">
+                <option value="">全部</option>
+                <option v-for="a in agencyOptions" :key="a" :value="a">{{ a }}</option>
+              </select>
+            </template>
+            <template v-else>
+              <input class="date-input" :value="currentInstitutionName || '—'" disabled />
+            </template>
           </div>
           <div class="search-area">
             <label class="date-label">班級名稱：</label>
-            <select v-model="qClassName" class="date-input" :disabled="!qAgency">
-              <option value="">{{ qAgency ? '全部' : '請先選擇機構' }}</option>
+            <!-- 非 SUPERADMIN 時不可選擇班級（維持現有查詢條件為使用者機構） -->
+            <select v-model="qClassName" class="date-input" :disabled="!isSuperAdmin || !qAgency">
+              <option value="">{{ (isSuperAdmin && qAgency) ? '全部' : '僅限超級管理員可選擇' }}</option>
               <option v-for="cn in classOptions" :key="cn" :value="cn">{{ cn }}</option>
             </select>
           </div>
@@ -58,58 +65,58 @@
       <div class="table-section" >
         <table class="announcement-table">
           <thead>
-            <tr>
-              <th>案件編號</th>
-              <th>申請日期</th>
-              <th>機構</th>
-              <th>申請幼兒資訊</th>
-              <th>幼兒年齡</th>
-              <th>候補序號</th>
-              <th>狀態</th>
-              <th>操作</th>
-            </tr>
+          <tr>
+            <th>案件編號</th>
+            <th>申請日期</th>
+            <th>機構</th>
+            <th>申請幼兒資訊</th>
+            <th>幼兒年齡</th>
+            <th>候補序號</th>
+            <th>狀態</th>
+            <th>操作</th>
+          </tr>
           </thead>
           <tbody>
-            <tr v-for="item in resultItems" :key="item.id">
-              <td class="date-cell">{{ item.id }}</td>
-              <td class="date-cell">{{ item.applyDate }}</td>
-              <td class="title-cell">
-                <div>{{ item.institution }}</div>
-                <div>{{item.className}}</div>
-              </td>
-              <td>
-                <div class="user-col">
-                  <div class="user-row"><span>{{ item.childName || '-' }}</span></div>
-                  <div class="user-row"><span>{{ item.childNationalId || '-' }}</span></div>
-                </div>
-              </td>
-              <td>
-                <div class="child-col">
-                  <div class="child-row"><span>{{ ageInYearsMonths(item.childBirth) }}</span></div>
-                </div>
-              </td>
-              <td class="title-cell">{{ item.queueNo ?? '—' }}</td>
-              <td class="title-cell">{{ item.status }}</td>
-              <td class="action-cell">
-                <button class="btn small" @click="goToEditPage(item)" :disabled="!item.participantID">管理</button>
-              </td>
-            </tr>
-            <tr v-if="resultItems.length === 0">
-              <td colspan="7" class="empty-tip">目前沒有個案</td>
-            </tr>
+          <tr v-for="item in resultItems" :key="item.id">
+            <td class="date-cell">{{ item.id }}</td>
+            <td class="date-cell">{{ item.applyDate }}</td>
+            <td class="title-cell">
+              <div>{{ item.institution }}</div>
+              <div>{{item.className}}</div>
+            </td>
+            <td>
+              <div class="user-col">
+                <div class="user-row"><span>{{ item.childName || '-' }}</span></div>
+                <div class="user-row"><span>{{ item.childNationalId || '-' }}</span></div>
+              </div>
+            </td>
+            <td>
+              <div class="child-col">
+                <div class="child-row"><span>{{ ageInYearsMonths(item.childBirth) }}</span></div>
+              </div>
+            </td>
+            <td class="title-cell">{{ item.queueNo ?? '—' }}</td>
+            <td class="title-cell">{{ item.status }}</td>
+            <td class="action-cell">
+              <button class="btn small" @click="goToEditPage(item)" :disabled="!item.participantID">管理</button>
+            </td>
+          </tr>
+          <tr v-if="resultItems.length === 0">
+            <td colspan="7" class="empty-tip">目前沒有個案</td>
+          </tr>
           </tbody>
         </table>
       </div>
 
       <!-- 分頁元件 -->
       <Pagination
-        :currentPage="currentPage"
-        :totalPages="totalPages"
-        :totalElements="totalElements"
-        :pageNumbers="pageNumbers"
-        @prev="prevPage"
-        @next="nextPage"
-        @goToPage="goToPage"
+          :currentPage="currentPage"
+          :totalPages="totalPages"
+          :totalElements="totalElements"
+          :pageNumbers="pageNumbers"
+          @prev="prevPage"
+          @next="nextPage"
+          @goToPage="goToPage"
       />
 
       <div class="bottom-row">
@@ -118,22 +125,30 @@
 
     </div>
 
-      <router-view />
+    <router-view />
 
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onActivated } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getInstitutionsSimpleAll } from '@/api/Institution'
 import { getClassNamesByInstitutionId } from '@/api/class'
 import { getApplicationsCasesList, IDENTITY_TYPE_MAP, CASE_STATUS_MAP } from '@/api/application'
 import Pagination from '@/components/Pagination.vue'
+// 新增：讀取當前使用者資訊（角色與機構）
+import { useAuthStore } from '@/store/auth.js'
 
 const route = useRoute()
 const router = useRouter()
 const isEditing = computed(() => route.name === 'AdminCaseManagementEdit')
+
+// 當前使用者角色與機構
+const authStore = useAuthStore()
+const isSuperAdmin = computed(() => authStore?.user?.role === 'super_admin')
+const currentInstitutionId = computed(() => authStore?.user?.InstitutionID || null)
+const currentInstitutionName = ref('')
 
 // Base list - 從 API 加載
 const items = ref([])
@@ -202,30 +217,96 @@ const statusOptions = ref(Object.values(CASE_STATUS_MAP))
 
 const showBack = ref(false)
 
+// 將查詢條件組裝為共用方法（包含 SUPERADMIN 與非 SUPERADMIN 的處理）
+const buildListParams = (overrides = {}) => {
+  const params = {}
+
+  // 僅 SUPERADMIN 可選擇機構／班級
+  if (isSuperAdmin.value && qAgency.value) {
+    const institutionId = getInstitutionIdByName(qAgency.value)
+    if (institutionId) params.institutionId = institutionId
+  }
+  if (isSuperAdmin.value && qClassName.value) {
+    const classId = getClassIdByName(qClassName.value)
+    if (classId) params.classId = classId
+  }
+
+  if (qCaseId.value) params.caseNumber = qCaseId.value
+  if (qApplicantId.value) params.childNationalId = qApplicantId.value
+  if (qIdentity.value) {
+    for (const [code, label] of Object.entries(IDENTITY_TYPE_MAP)) {
+      if (label === qIdentity.value) { params.identityType = code; break }
+    }
+  }
+  if (qStatus.value) params.status = qStatus.value
+
+  // 分頁與覆蓋
+  if (overrides.page) {
+    params.offset = (overrides.page - 1) * (overrides.size || PAGE_SIZE)
+    params.size = overrides.size || PAGE_SIZE
+  } else {
+    if (typeof overrides.offset === 'number') params.offset = overrides.offset
+    params.size = overrides.size || PAGE_SIZE
+  }
+
+  // 非 SUPERADMIN 強制加入使用者機構 ID
+  if (!isSuperAdmin.value && currentInstitutionId.value) {
+    params.institutionId = currentInstitutionId.value
+  }
+
+  return params
+}
+
 // 載入機構資料和初始案件列表
 onMounted(async () => {
   try {
     agencyList.value = await getInstitutionsSimpleAll()
-    await loadCasesList({ page: 1, size: PAGE_SIZE })
+    // 設定目前機構名稱（非 SUPERADMIN 顯示於查詢區）
+    if (!isSuperAdmin.value && currentInstitutionId.value) {
+      const match = agencyList.value.find(a => a.institutionID === currentInstitutionId.value)
+      currentInstitutionName.value = match?.institutionName || ''
+    }
+    await loadCasesList(buildListParams({ page: 1, size: PAGE_SIZE }))
   } catch (error) {
     console.error('載入資料失敗:', error)
+  }
+})
+
+// 當頁面從編輯返回被重新激活時，重新載入列表
+onActivated(async () => {
+  try {
+    // 以目前分頁＋查詢條件重新取資料
+    const params = buildListParams({ page: currentPage.value, size: PAGE_SIZE })
+    await loadCasesList(params)
+  } catch (e) {
+    console.error('返回後刷新列表失敗:', e)
   }
 })
 
 // 載入案件列表（支援分頁與查詢）
 const loadCasesList = async (options = {}) => {
   try {
-    const response = await getApplicationsCasesList(options)
+    const requestOptions = { ...options }
+    if (!isSuperAdmin.value && currentInstitutionId.value) {
+      requestOptions.institutionId = currentInstitutionId.value
+    }
+
+    const response = await getApplicationsCasesList(requestOptions)
 
     // 更新分頁資訊（若後端提供）
     totalElements.value = Number(response.totalElements ?? response.total ?? 0)
-    if (totalElements.value && options.size) {
-      totalPages.value = Number(response.totalPages ?? Math.ceil(totalElements.value / options.size))
+    const respSize = Number(response.size ?? requestOptions.size ?? PAGE_SIZE)
+    const respOffset = Number(response.offset ?? requestOptions.offset ?? 0)
+    totalPages.value = Number(response.totalPages ?? (totalElements.value ? Math.ceil(totalElements.value / respSize) : 1))
+
+    // 正確計算目前頁碼：優先使用後端 offset/size；否則使用傳入的 page；再不然以 offset/size 推算
+    if (response.offset !== undefined && response.size !== undefined) {
+      currentPage.value = Math.floor(respOffset / respSize) + 1
+    } else if (requestOptions.page !== undefined) {
+      currentPage.value = Number(requestOptions.page)
     } else {
-      // 後端未提供總數，使用目前頁面的內容長度做退化處理
-      totalPages.value = Number(response.totalPages ?? 1)
+      currentPage.value = Math.floor(respOffset / respSize) + 1
     }
-    currentPage.value = Number(options.page ?? 1)
 
     // 將後端資料對應到前端欄位
     items.value = (response.content || []).map(item => ({
@@ -291,31 +372,7 @@ const ageInYearsMonths = (dateStr) => {
 
 const doQuery = async () => {
   try {
-    const params = {}
-
-    if (qAgency.value) {
-      const institutionId = getInstitutionIdByName(qAgency.value)
-      if (institutionId) params.institutionId = institutionId
-    }
-    if (qClassName.value) {
-      const classId = getClassIdByName(qClassName.value)
-      console.log('[doQuery] qClassName:', qClassName.value, 'classId:', classId)
-      if (classId) params.classId = classId
-    }
-    if (qCaseId.value) params.caseNumber = qCaseId.value
-    if (qApplicantId.value) params.childNationalId = qApplicantId.value
-    if (qIdentity.value) {
-      for (const [code, label] of Object.entries(IDENTITY_TYPE_MAP)) {
-        if (label === qIdentity.value) { params.identityType = code; break }
-      }
-    }
-    if (qStatus.value) params.status = qStatus.value
-
-    // 查詢從第一頁開始
-    params.offset = 0
-    params.size = PAGE_SIZE
-
-    console.log('[doQuery] Final params:', params)
+    const params = buildListParams({ page: 1, size: PAGE_SIZE })
     const response = await getApplicationsCasesList(params)
 
     // 更新分頁資訊
@@ -444,29 +501,7 @@ const goToEditPage = (item) => {
 // 分頁事件處理
 const goToPage = async (page) => {
   if (page < 1 || page > totalPages.value) return
-  const baseParams = {}
-  if (qAgency.value) {
-    const institutionId = getInstitutionIdByName(qAgency.value)
-    if (institutionId) baseParams.institutionId = institutionId
-  }
-  if (qClassName.value) {
-    const classId = getClassIdByName(qClassName.value)
-    console.log('[goToPage] qClassName:', qClassName.value, 'classId:', classId)
-    if (classId) baseParams.classId = classId
-  }
-  if (qCaseId.value) baseParams.caseNumber = qCaseId.value
-  if (qApplicantId.value) baseParams.childNationalId = qApplicantId.value
-  if (qIdentity.value) {
-    for (const [code, label] of Object.entries(IDENTITY_TYPE_MAP)) {
-      if (label === qIdentity.value) { baseParams.identityType = code; break }
-    }
-  }
-  if (qStatus.value) baseParams.status = qStatus.value
-
-  // 將 page 轉換為 offset
-  baseParams.offset = (page - 1) * PAGE_SIZE
-  baseParams.size = PAGE_SIZE
-
+  const baseParams = buildListParams({ page, size: PAGE_SIZE })
   console.log('[goToPage] page:', page, 'baseParams:', baseParams)
   await loadCasesList(baseParams)
 }
