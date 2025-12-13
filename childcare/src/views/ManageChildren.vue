@@ -14,7 +14,7 @@
         </div>
 
         <div v-if="children.length === 0" class="no-data">
-          <div class="no-data-icon">👶</div>
+          <div class="no-data-icon"></div>
           <p>目前沒有幼兒資料</p>
           <button class="save-btn" @click="showAddForm = true">新增第一筆資料</button>
         </div>
@@ -290,6 +290,19 @@ const editChild = (idx) => {
   if (childIdErrors.value[idx] === undefined) childIdErrors.value[idx] = ''
 }
 
+// 計算年齡
+const getAge = (birthday) => {
+  if (!birthday) return null
+  const today = new Date()
+  const birth = new Date(birthday)
+  let age = today.getFullYear() - birth.getFullYear()
+  const m = today.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+    age--
+  }
+  return age
+}
+
 // 儲存幼兒資料（含驗證）
 const saveChild = async (idx) => {
   if (!children.value[idx].name) {
@@ -299,6 +312,12 @@ const saveChild = async (idx) => {
   validateChildId(idx)
   if (childIdErrors.value[idx]) {
     alert(childIdErrors.value[idx])
+    return
+  }
+  // 年齡檢查
+  const age = getAge(children.value[idx].birthday)
+  if (age !== null && age >= 3) {
+    alert('本服務僅提供三歲以下幼童使用')
     return
   }
 
@@ -388,6 +407,12 @@ const addChild = async () => {
 
   if (!newChild.value.birthday || newChild.value.birthday.trim() === '') {
     alert('❌ 請填寫出生日期')
+    return
+  }
+  // 年齡檢查
+  const age = getAge(newChild.value.birthday)
+  if (age !== null && age >= 3) {
+    alert('本服務僅提供三歲以下幼童使用')
     return
   }
 
