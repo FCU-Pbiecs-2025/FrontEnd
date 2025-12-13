@@ -1,115 +1,55 @@
-// Google reCAPTCHA v2/v3 整合模組
+// Google reCAPTCHA 整合模組 (原生實作)
 class ReCaptchaService {
   constructor() {
-    // 從環境變數或配置文件讀取
-    this.siteKeyV2 = import.meta.env.VITE_RECAPTCHA_SITE_KEY_V2 || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI' // 測試用 key
-    this.siteKeyV3 = import.meta.env.VITE_RECAPTCHA_SITE_KEY_V3 || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI' // 測試用 key
-    this.secretKeyV2 = import.meta.env.VITE_RECAPTCHA_SECRET_KEY_V2
-    this.secretKeyV3 = import.meta.env.VITE_RECAPTCHA_SECRET_KEY_V3
-    this.isV2Loaded = false
-    this.isV3Loaded = false
-    this.v2Callback = null
-    this.v3Callback = null
-  }
-
-  // 載入 reCAPTCHA v2 腳本
-  loadReCaptchaV2() {
-    return new Promise((resolve, reject) => {
-      if (this.isV2Loaded || window.grecaptcha) {
-        resolve()
-        return
-      }
-
-      const script = document.createElement('script')
-      script.src = `https://www.google.com/recaptcha/api.js?onload=onReCaptchaV2Load&render=explicit`
-      script.async = true
-      script.defer = true
-
-      // 設定全域回調函數
-      window.onReCaptchaV2Load = () => {
-        this.isV2Loaded = true
-        resolve()
-      }
-
-      script.onerror = () => {
-        reject(new Error('Failed to load reCAPTCHA v2 script'))
-      }
-
-      document.head.appendChild(script)
-    })
+    // 從環境變數讀取 Site Key
+    this.siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
+    this.isLoaded = false
   }
 
   // 載入 reCAPTCHA v3 腳本
-  loadReCaptchaV3() {
+  load() {
     return new Promise((resolve, reject) => {
-      if (this.isV3Loaded) {
+      if (this.isLoaded || window.grecaptcha) {
         resolve()
         return
       }
 
+      if (!this.siteKey) {
+        reject(new Error('reCAPTCHA Site Key not found in environment variables'))
+        return
+      }
+
       const script = document.createElement('script')
-      script.src = `https://www.google.com/recaptcha/api.js?render=${this.siteKeyV3}`
+      script.src = `https://www.google.com/recaptcha/api.js?render=${this.siteKey}`
       script.async = true
       script.defer = true
 
       script.onload = () => {
-        this.isV3Loaded = true
+        this.isLoaded = true
         // 等待 grecaptcha.ready
         if (window.grecaptcha && window.grecaptcha.ready) {
           window.grecaptcha.ready(() => {
             resolve()
           })
         } else {
-          setTimeout(() => resolve(), 1000)
+          // 如果 ready 還沒準備好，稍微等一下
+          setTimeout(() => resolve(), 500)
         }
       }
 
       script.onerror = () => {
-        reject(new Error('Failed to load reCAPTCHA v3 script'))
+        reject(new Error('Failed to load reCAPTCHA script'))
       }
 
       document.head.appendChild(script)
     })
   }
 
-  // 渲染 reCAPTCHA v2 widget
-  renderV2(containerId, callback, theme = 'light', size = 'normal') {
-    return new Promise(async (resolve, reject) => {
-      try {
-        await this.loadReCaptchaV2()
-
-        if (!window.grecaptcha || !window.grecaptcha.render) {
-          reject(new Error('reCAPTCHA v2 not loaded'))
-          return
-        }
-
-        const widgetId = window.grecaptcha.render(containerId, {
-          sitekey: this.siteKeyV2,
-          callback: (token) => {
-            if (callback) callback(token)
-          },
-          'expired-callback': () => {
-            console.log('reCAPTCHA v2 expired')
-          },
-          'error-callback': () => {
-            console.error('reCAPTCHA v2 error')
-          },
-          theme: theme, // light 或 dark
-          size: size  // normal, compact, invisible
-        })
-
-        resolve(widgetId)
-      } catch (error) {
-        reject(error)
-      }
-    })
-  }
-
   // 執行 reCAPTCHA v3 驗證
-  executeV3(action = 'submit') {
+  execute(action = 'submit') {
     return new Promise(async (resolve, reject) => {
       try {
-        await this.loadReCaptchaV3()
+        await this.load()
 
         if (!window.grecaptcha || !window.grecaptcha.execute) {
           reject(new Error('reCAPTCHA v3 not loaded'))
@@ -117,7 +57,7 @@ class ReCaptchaService {
         }
 
         window.grecaptcha.ready(() => {
-          window.grecaptcha.execute(this.siteKeyV3, { action: action })
+          window.grecaptcha.execute(this.siteKey, { action: action })
             .then((token) => {
               resolve(token)
             })
@@ -130,78 +70,83 @@ class ReCaptchaService {
       }
     })
   }
+}
 
-  // 重置 reCAPTCHA v2
-  resetV2(widgetId) {
-    if (window.grecaptcha && window.grecaptcha.reset) {
+// v2 相關：載入與渲染
+let v2ScriptLoaded = false
+const loadReCaptchaV2Script = (siteKeyV2) => {
+  return new Promise((resolve, reject) => {
+    if (window.grecaptcha && typeof window.grecaptcha.render === 'function') {
+      resolve()
+      return
+    }
+    if (v2ScriptLoaded) {
+      // 已嘗試載入，稍等 ready
+      const tryReady = () => {
+        if (window.grecaptcha && typeof window.grecaptcha.render === 'function') {
+          resolve()
+        } else {
+          setTimeout(tryReady, 200)
+        }
+      }
+      tryReady()
+      return
+    }
+    if (!siteKeyV2) {
+      reject(new Error('reCAPTCHA v2 Site Key not found (VITE_RECAPTCHA_V2_SITE_KEY)'))
+      return
+    }
+    const script = document.createElement('script')
+    script.src = 'https://www.google.com/recaptcha/api.js?onload=onloadCallback&render=explicit'
+    script.async = true
+    script.defer = true
+    v2ScriptLoaded = true
+
+    // 建立全域 onload callback 以符合 v2 需求
+    window.onloadCallback = () => {
+      resolve()
+    }
+
+    script.onerror = () => reject(new Error('Failed to load reCAPTCHA v2 script'))
+    document.head.appendChild(script)
+  })
+}
+
+// 渲染 v2 widget 並返回 widgetId
+export const renderReCaptchaV2 = async (containerId, onSuccess, theme = 'light', size = 'normal') => {
+  const siteKeyV2 = import.meta.env.VITE_RECAPTCHA_V2_SITE_KEY || import.meta.env.VITE_RECAPTCHA_SITE_KEY // 允許共用同一 key
+  await loadReCaptchaV2Script(siteKeyV2)
+  return new Promise((resolve, reject) => {
+    try {
+      const widgetId = window.grecaptcha.render(containerId, {
+        sitekey: siteKeyV2,
+        theme,
+        size,
+        callback: (token) => {
+          try { onSuccess && onSuccess(token) } catch (e) { /* ignore */ }
+        }
+      })
+      resolve(widgetId)
+    } catch (e) {
+      reject(e)
+    }
+  })
+}
+
+// 重置 v2 widget
+export const resetReCaptchaV2 = (widgetId) => {
+  try {
+    if (window.grecaptcha && typeof window.grecaptcha.reset === 'function') {
       window.grecaptcha.reset(widgetId)
     }
-  }
-
-  // 取得 reCAPTCHA v2 回應
-  getV2Response(widgetId) {
-    if (window.grecaptcha && window.grecaptcha.getResponse) {
-      return window.grecaptcha.getResponse(widgetId)
-    }
-    return null
-  }
-
-  // 後端驗證 reCAPTCHA token
-  async verifyToken(token, version = 'v2') {
-    const secretKey = version === 'v3' ? this.secretKeyV3 : this.secretKeyV2
-
-    try {
-      const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          secret: secretKey,
-          response: token
-        })
-      })
-
-      const result = await response.json()
-      return result
-    } catch (error) {
-      console.error('reCAPTCHA verification error:', error)
-      return { success: false, error: error.message }
-    }
-  }
-
-  // 清理資源
-  cleanup() {
-    // 移除載入的腳本（如果需要）
-    const scripts = document.querySelectorAll('script[src*="recaptcha"]')
-    scripts.forEach(script => {
-      if (script.parentNode) {
-        script.parentNode.removeChild(script)
-      }
-    })
-
-    this.isV2Loaded = false
-    this.isV3Loaded = false
-
-    // 清理全域變數
-    if (window.grecaptcha) {
-      delete window.grecaptcha
-    }
-    if (window.onReCaptchaV2Load) {
-      delete window.onReCaptchaV2Load
-    }
+  } catch (e) {
+    // ignore
   }
 }
 
-// 建立單例實例
-export const reCaptchaService = new ReCaptchaService()
+// v3 代理：提供 ForgotPassword.vue 匯入的函式
+export const executeReCaptchaV3 = async (action = 'submit') => {
+  return await new ReCaptchaService().execute(action)
+}
 
-// 匯出便捷函數
-export const loadReCaptchaV2 = () => reCaptchaService.loadReCaptchaV2()
-export const loadReCaptchaV3 = () => reCaptchaService.loadReCaptchaV3()
-export const renderReCaptchaV2 = (containerId, callback, theme, size) =>
-  reCaptchaService.renderV2(containerId, callback, theme, size)
-export const executeReCaptchaV3 = (action) => reCaptchaService.executeV3(action)
-export const resetReCaptchaV2 = (widgetId) => reCaptchaService.resetV2(widgetId)
-export const getReCaptchaV2Response = (widgetId) => reCaptchaService.getV2Response(widgetId)
-export const verifyReCaptchaToken = (token, version) => reCaptchaService.verifyToken(token, version)
+export default new ReCaptchaService()

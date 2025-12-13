@@ -21,15 +21,10 @@
             >
           </div>
 
-          <!-- reCAPTCHA v2 容器 -->
-          <div v-if="useReCaptchaV2" class="form-group">
-            <div id="recaptcha-container" class="recaptcha-container"></div>
-          </div>
-
           <button
             type="submit"
             class="submit-btn"
-            :disabled="loading || !email || !isRecaptchaValid"
+            :disabled="loading || !email"
           >
             <span v-if="loading">發送中...</span>
             <span v-else>發送重置連結</span>
@@ -127,10 +122,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { forgotPassword, resetPassword, verifyResetToken } from '@/api/auth'
-import { renderReCaptchaV2, executeReCaptchaV3, resetReCaptchaV2 } from '@/api/recaptcha'
+import { executeReCaptchaV3 } from '@/api/recaptcha'
 
 const router = useRouter()
 const route = useRoute()
@@ -150,21 +145,11 @@ const resetToken = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
 
-// reCAPTCHA 配置
-const reCaptchaVersion = import.meta.env.VITE_RECAPTCHA_VERSION || 'v2'
-const useReCaptchaV2 = ref(reCaptchaVersion === 'v2')
-const useReCaptchaV3 = ref(reCaptchaVersion === 'v3')
-const isRecaptchaValid = ref(reCaptchaVersion === 'v3') // v3 預設為有效，v2 需要用戶互動
-const recaptchaWidgetId = ref(null)
+// reCAPTCHA v3 專用
 const recaptchaToken = ref('')
 
-// 組件掛載時初始化 reCAPTCHA 並檢查網址中的 token
+// 組件掛載時檢查網址中的 token
 onMounted(async () => {
-  if (useReCaptchaV2.value) {
-    await initReCaptchaV2()
-  }
-
-  // 如果 URL 包含 token 和 email，直接驗證並進入重置步驟
   const query = route.query
   if (query && query.token && query.email) {
     email.value = decodeURIComponent(query.email)
@@ -188,111 +173,36 @@ onMounted(async () => {
   }
 })
 
-// 組件卸載時清理 reCAPTCHA
-onUnmounted(() => {
-  if (recaptchaWidgetId.value !== null) {
-    resetReCaptchaV2(recaptchaWidgetId.value)
-  }
-})
-
-// 初始化 reCAPTCHA v2
-const initReCaptchaV2 = async () => {
-  try {
-    recaptchaWidgetId.value = await renderReCaptchaV2(
-      'recaptcha-container',
-      onRecaptchaV2Success,
-      'light',
-      'normal'
-    )
-  } catch (error) {
-    console.error('Failed to initialize reCAPTCHA v2:', error)
-    errorMessage.value = 'reCAPTCHA 載入失敗，請重新整理頁面'
-  }
-}
-
-// reCAPTCHA v2 驗證成功回調
-const onRecaptchaV2Success = (token) => {
-  recaptchaToken.value = token
-  isRecaptchaValid.value = true
-  errorMessage.value = '' // 清除錯誤訊息
-}
-
-// 執行 reCAPTCHA v3 驗證
-const executeReCaptchaV3Verification = async () => {
-  if (!useReCaptchaV3.value) return true
-
-  try {
-    recaptchaToken.value = await executeReCaptchaV3('forgot_password')
-    return true
-  } catch (error) {
-    console.error('reCAPTCHA v3 execution failed:', error)
-    errorMessage.value = 'reCAPTCHA 驗證失敗，請稍後再試'
-    return false
-  }
-}
-
-// 重置 reCAPTCHA
-const resetRecaptcha = () => {
-  if (useReCaptchaV2.value && recaptchaWidgetId.value !== null) {
-    resetReCaptchaV2(recaptchaWidgetId.value)
-    isRecaptchaValid.value = false
-    recaptchaToken.value = ''
-  }
-}
-
-// 發送重置郵件
+// 發送重置郵件（只使用 v3）
 const sendResetEmail = async () => {
   if (!email.value) return
-
-  // 檢查 reCAPTCHA 驗證
-  if (useReCaptchaV2.value && !isRecaptchaValid.value) {
-    errorMessage.value = '請完成 reCAPTCHA 驗證'
-    return
-  }
-
-  // 執行 reCAPTCHA v3 驗證
-  if (useReCaptchaV3.value) {
-    const v3Valid = await executeReCaptchaV3Verification()
-    if (!v3Valid) return
-  }
 
   loading.value = true
   errorMessage.value = ''
 
   try {
-    // 包含 reCAPTCHA token 發送請求
+    // 執行 reCAPTCHA v3 驗證
+    recaptchaToken.value = await executeReCaptchaV3('forgot_password')
+
     const result = await forgotPassword(email.value, recaptchaToken.value)
 
     if (result.success) {
       resetToken.value = result.resetToken
       currentStep.value = 2
-      // 重置 reCAPTCHA 以供下次使用
-      resetRecaptcha()
     } else {
       errorMessage.value = result.message || '發送失敗，請稍後再試'
-      // 重置 reCAPTCHA
-      resetRecaptcha()
     }
   } catch (error) {
     errorMessage.value = '網路錯誤，請稍後再試'
     console.error('Forgot password error:', error)
-    // 重置 reCAPTCHA
-    resetRecaptcha()
   } finally {
     loading.value = false
   }
 }
 
-// 重新發送郵件
+// 重新發送郵件：返回步驟 1
 const resendEmail = async () => {
-  // 返回步驟 1 重新驗證
   currentStep.value = 1
-  if (useReCaptchaV2.value) {
-    // 重新初始化 reCAPTCHA v2
-    setTimeout(async () => {
-      await initReCaptchaV2()
-    }, 100)
-  }
 }
 
 // 提交新密碼
@@ -497,10 +407,6 @@ const submitNewPassword = async () => {
   font-size: 0.9rem;
   margin-top: 0.5rem;
   text-align: left;
-}
-
-.recaptcha-container {
-  margin-top: 1rem;
 }
 
 @media (max-width: 480px) {

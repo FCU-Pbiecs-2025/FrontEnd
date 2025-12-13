@@ -787,6 +787,16 @@ onBeforeUnmount(() => {
   })
 })
 const submitForm = () => {
+  // 新增：檢查家長1與家長2戶籍地址是否有新竹縣
+  const p1 = form.value.parent1.homeAddress || ''
+  const p2 = form.value.parent2.homeAddress || ''
+  const isHsinchu1 = p1.includes('新竹縣')
+  const isHsinchu2 = p2.includes('新竹縣')
+  if (!isHsinchu1 && !isHsinchu2) {
+    alert('兩位家長戶籍地皆非新竹縣! \n \n 本服務僅限新竹縣民申請服務')
+
+    return
+  }
   // ✅ 新增：驗證留職停薪欄位
   // 檢查家長1的留職停薪驗證
   if (form.value.parent1.name && form.value.parent1.isLeave) {

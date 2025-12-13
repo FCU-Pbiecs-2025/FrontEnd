@@ -95,15 +95,15 @@ export function changePassword(account, oldPassword, newPassword) {
 }
 
 // 登入 API
-export const loginUser = async (account, password) => {
+export const loginUser = async (account, password, recaptchaToken) => {
     try {
         const response = await fetch('http://localhost:8080/Login/Verify', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ account, password })
-        })
+            body: JSON.stringify({ account, password, recaptchaToken }),
+        });
         const result = await response.json()
         return result
     } catch (error) {
