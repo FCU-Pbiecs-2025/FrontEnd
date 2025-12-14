@@ -242,14 +242,15 @@ async function confirmRevoke() {
       confirmDate
     })
 
-    // 第二個 PUT：更新 application_participants 表的 Status 為 '撤銷申請通過'
-    console.log('revokeData for update-participant-status:', revokeData.value)
-    await http.put('/revoke/update-participant-status', {
+    // 第二個 POST：呼叫新的 API 來處理撤銷並自動遞補候補序號
+    console.log('revokeData for cancel:', revokeData.value)
+    await http.post('/application-participants/cancel', {
       ApplicationID: revokeData.value.applicationID.toUpperCase(),
       NationalID: revokeData.value.nationalID.toUpperCase(),
-      Status: '撤銷申請通過'
+      reason: revokeData.value.reason || '管理員審核撤銷通過'
     })
 
+    alert('撤銷審核通過，已自動遞補候補序號')
     // 成功後返回列表
     goBack()
   } catch (e) {
