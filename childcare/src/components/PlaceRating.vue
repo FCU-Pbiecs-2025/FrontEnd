@@ -30,6 +30,7 @@
       <div v-if="details" class="result">
         <h3>{{ details.displayName?.text || details.displayName }}</h3>
         <p v-if="details.formattedAddress">地址：{{ details.formattedAddress }}</p>
+        <p v-if="matchMeta?.distanceMeters !== null">距離提供座標：約 {{ matchMeta.distanceMeters }} 公尺（候選 {{ matchMeta.candidates }} 筆）</p>
         <p v-if="details.rating !== undefined">評分：{{ details.rating }} （{{ details.userRatingCount || 0 }} 則評分）</p>
         <p v-if="details.googleMapsUri">地圖連結： <a :href="details.googleMapsUri.uri || details.googleMapsUri" target="_blank">在 Google Maps 開啟</a></p>
       </div>
@@ -48,8 +49,8 @@ const props = defineProps({
   apiKey: { type: String, required: false },
   placeName: { type: String, required: false },
   placeId: { type: String, required: false },
-  latitude: { type: Number, required: false },  // 機構緯度
-  longitude: { type: Number, required: false }, // 機構經度
+  latitude: { type: Number },  // 機構緯度
+  longitude: { type: Number }, // 機構經度
   inline: { type: Boolean, default: false },
   fallbackText: { type: String, default: '無評分' }
 });
@@ -60,6 +61,7 @@ const localPlaceName = ref(props.placeName || '');
 const loading = ref(false);
 const error = ref('');
 const details = ref(null);
+const matchMeta = ref(null); // track which place was picked
 
 const hasEnvKey = Boolean(import.meta.env?.VITE_GOOGLE_MAPS_API_KEY);
 const apiKeyUsed = computed(() => props.apiKey || import.meta.env?.VITE_GOOGLE_MAPS_API_KEY);
@@ -90,6 +92,7 @@ const inlineRating = computed(() => {
 async function fetchRating() {
   error.value = '';
   details.value = null;
+  matchMeta.value = null;
 
   if (!apiKeyUsed.value) {
     error.value = 'apiKey is required';
@@ -108,18 +111,34 @@ async function fetchRating() {
         return;
       }
 
-      // 如果提供了經緯度，使用嚴格模式搜尋
+      // 如果提供了經緯度，使用寬鬆的位置偏好（不是嚴格限制）
       const searchOptions = {};
       if (typeof props.latitude === 'number' && typeof props.longitude === 'number') {
-        searchOptions.location = { lat: props.latitude, lng: props.longitude };
-        searchOptions.radius = 1000;  // 1km 搜尋範圍
-        searchOptions.strictMode = true;
+        searchOptions.lat = props.latitude;
+        searchOptions.lng = props.longitude;
+        searchOptions.radius = 5000; // 擴大到 5 公里範圍
+        searchOptions.strict = false; // 使用 locationBias 而非 locationRestriction
       }
+      searchOptions.returnAll = true;
 
-      const result = await searchPlaceByText(localPlaceName.value, /*apiKey*/ apiKeyUsed.value, searchOptions);
-      const place = result.place || result; // 新版 API 返回 { place, details }
-      console.log('[PlaceRating] searchPlaceByText result for', localPlaceName.value, place);
-      id = place.id || place.placeId || place.result?.placeId || place.result?.id || place.place?.id;
+      const results = await searchPlaceByText(localPlaceName.value, apiKeyUsed.value, searchOptions);
+      const targetCoords = (typeof props.latitude === 'number' && typeof props.longitude === 'number')
+        ? { lat: props.latitude, lng: props.longitude }
+        : null;
+      const best = pickBestPlace(results, targetCoords, localPlaceName.value);
+      if (!best) {
+        throw new Error('搜尋不到符合的地點');
+      }
+      const place = best.place;
+      matchMeta.value = {
+        chosenId: place.id || place.placeId,
+        displayName: place.displayName?.text || place.displayName,
+        formattedAddress: place.formattedAddress,
+        distanceMeters: Number.isFinite(best.dist) ? Math.round(best.dist) : null,
+        candidates: results.length
+      };
+      console.log('[PlaceRating] best match', matchMeta.value, place);
+      id = matchMeta.value.chosenId;
     }
 
     details.value = await getPlaceDetails(id, apiKeyUsed.value);
@@ -158,6 +177,88 @@ if (props.inline && props.placeName && apiKeyUsed.value) {
   Promise.resolve().then(() => fetchRating());
 }
 
+// Calculates distance in meters between two lat/lng pairs using the haversine formula
+function distanceMeters(a, b) {
+  if (!a || !b || typeof a.lat !== 'number' || typeof a.lng !== 'number' || typeof b.lat !== 'number' || typeof b.lng !== 'number') {
+    return Number.POSITIVE_INFINITY;
+  }
+  const toRad = deg => (deg * Math.PI) / 180;
+  const R = 6371000;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const sinLat = Math.sin(dLat / 2);
+  const sinLng = Math.sin(dLng / 2);
+  const h = sinLat * sinLat + Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+function pickBestPlace(places, targetCoords, targetName) {
+  if (!Array.isArray(places) || !places.length) return null;
+
+  // Score by name similarity + distance when available. Lower score is better.
+  const normalizedTarget = targetName?.trim().toLowerCase();
+
+  const candidates = places
+    .map((p) => {
+      const coord = p.location?.latLng || p.location;
+      const dist = targetCoords ? distanceMeters(targetCoords, coord) : Number.POSITIVE_INFINITY;
+      const name = p.displayName?.text || p.displayName || '';
+      const normalizedName = name.trim().toLowerCase();
+
+      // 更靈活的名稱匹配邏輯
+      let namePenalty = 1.0; // 預設完全不匹配
+      let matchQuality = 0; // 匹配品質分數（0-1，越高越好）
+
+      if (normalizedTarget && normalizedName) {
+        // 完全包含（雙向檢查）
+        if (normalizedName.includes(normalizedTarget) || normalizedTarget.includes(normalizedName)) {
+          namePenalty = 0;
+          matchQuality = 1.0; // 完美匹配
+        }
+        // 檢查關鍵詞匹配（提取主要名稱部分）
+        else {
+          const targetWords = normalizedTarget.split(/[\s\-、]+/).filter(w => w.length >= 2);
+          const nameWords = normalizedName.split(/[\s\-、]+/).filter(w => w.length >= 2);
+
+          if (targetWords.length > 0) {
+            const matchCount = targetWords.filter(tw =>
+              nameWords.some(nw => nw.includes(tw) || tw.includes(nw))
+            ).length;
+
+            // 計算匹配率
+            const matchRatio = matchCount / targetWords.length;
+
+            if (matchCount > 0) {
+              namePenalty = 0.3 - (matchCount * 0.1); // 有部分匹配，降低懲罰
+              matchQuality = matchRatio; // 匹配品質 = 匹配的關鍵詞比例
+            }
+          }
+        }
+      }
+
+      // 降低距離權重，優先考慮名稱匹配
+      const score = (Number.isFinite(dist) ? dist * 0.5 : 1_000_000) + namePenalty * 10_000;
+      return { place: p, score, dist, matchQuality, normalizedName };
+    })
+    .sort((a, b) => a.score - b.score);
+
+  const best = candidates[0];
+
+  // 增加匹配品質門檻：如果最佳匹配的品質太低（< 0.3），則拒絕
+  // 這可以避免顯示完全不相關的地點評分（例如「東正花藝店」vs「東正社區公共托育家園」）
+  if (best.matchQuality < 0.3) {
+    console.warn('[PlaceRating] 最佳匹配品質太低，拒絕使用', {
+      targetName: targetName,
+      foundName: best.normalizedName,
+      matchQuality: best.matchQuality
+    });
+    return null;
+  }
+
+  return best;
+}
 </script>
 
 <style scoped>
@@ -209,10 +310,11 @@ if (props.inline && props.placeName && apiKeyUsed.value) {
 }
 
 .pr-inline.pr-error {
-  background: rgba(239, 68, 68, 0.3);
-  color: #dc2626;
+  /* 統一使用灰色，避免讓使用者感到緊張 */
+  background: rgba(148, 163, 184, 0.3);
+  color: #475569;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15);
+  box-shadow: 0 2px 8px rgba(100, 116, 139, 0.15);
 }
 
 /* Tiny loading dots - 適配柔和背景 */

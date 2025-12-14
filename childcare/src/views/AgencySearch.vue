@@ -92,6 +92,8 @@
                 <div class="agency-rating-wrapper">
                   <PlaceRating
                     :placeName="agency.name + ' ' + agency.address"
+                    :latitude="agency.latitude"
+                    :longitude="agency.longitude"
                     inline
                     fallbackText="無評分資料"
                     class="agency-rating"
@@ -136,7 +138,7 @@ export default {
     const agencies = ref([])
     const isLoading = ref(false)
     const error = ref(null)
-    const displayedAgencies = ref([]) // 用於存儲要顯示的機構列表
+    const displayedAgencies = ref([] )// 用於存儲要顯示的機構列表
 
     // 新竹縣鄉鎮列表
     const towns = [
@@ -173,7 +175,9 @@ export default {
             email: item.email || '',
             fax: item.fax || '',
             description: item.description || '',
-            institutionsType: item.institutionsType
+            institutionsType: item.institutionsType,
+            latitude: item.latitude ?? null,
+            longitude: item.longitude ?? null
           }))
       } catch (err) {
         console.error('載入托育機構資料失敗:', err)
@@ -186,9 +190,9 @@ export default {
         }
         // 如果 API 失敗，使用預設資料作為後備
         agencies.value = [
-          { id: 1, name: '新竹市東區公共托嬰中心', address: '新竹市東區金城一路50-8號1樓', phone: '', institutionsType: true },
-          { id: 2, name: '禾田托嬰中心 Hetian Baby Care Center', address: '新竹市北區金竹路146號148號', phone: '', institutionsType: false },
-          { id: 3, name: '新竹市私立樂橙托嬰中心', address: '新竹市北區水田街1號2樓', phone: '', institutionsType: true }
+          { id: 1, name: '新竹市東區公共托嬰中心', address: '新竹市東區金城一路50-8號1樓', phone: '', institutionsType: true, latitude: null, longitude: null },
+          { id: 2, name: '禾田托嬰中心 Hetian Baby Care Center', address: '新竹市北區金竹路146號148號', phone: '', institutionsType: false, latitude: null, longitude: null },
+          { id: 3, name: '新竹市私立樂橙托嬰中心', address: '新竹市北區水田街1號2樓', phone: '', institutionsType: true, latitude: null, longitude: null }
         ]
       } finally {
         isLoading.value = false
@@ -259,7 +263,9 @@ export default {
             email: item.email || '',
             fax: item.fax || '',
             description: item.description || '',
-            institutionsType: item.institutionsType
+            institutionsType: item.institutionsType,
+            latitude: item.latitude ?? null,
+            longitude: item.longitude ?? null
           }))
         // 初始時顯示所有機構
         displayedAgencies.value = agencies.value
@@ -546,4 +552,3 @@ export default {
   }
 }
 </style>
-
