@@ -4,15 +4,45 @@
     <form @submit.prevent="submitRegister">
       <div class="form-group">
         <label for="account">帳號</label>
-        <input id="account" v-model="form.account" type="text" required placeholder="請輸入帳號" />
+        <input
+          id="account"
+          v-model="form.account"
+          type="text"
+          required
+          placeholder="請輸入帳號"
+          :class="{ 'password-invalid': accountError }"
+          @blur="handleAccountBlur"
+        />
+        <div v-if="checkingAccount" style="text-align:left; margin-top:0.25rem; font-size:0.85em; color:#6c757d;">檢查中...</div>
+        <div v-if="accountError" class="error-msg" style="text-align:left; margin-top:0.25rem; font-size:0.85em;">{{ accountError }}</div>
       </div>
       <div class="form-group">
         <label for="password">密碼</label>
-        <input id="password" v-model="form.password" type="password" required placeholder="請輸入密碼" />
+        <input
+          id="password"
+          v-model="form.password"
+          type="password"
+          required
+          placeholder="請輸入密碼 (至少6位數)"
+          :class="{ 'password-invalid': form.password && form.password.length < 6 }"
+          @input="validatePasswordInput"
+          @blur="passwordTouched = true"
+        />
+        <div v-if="passwordTouched && form.password && form.password.length < 6" class="error-msg" style="text-align:left; margin-top:0.25rem; font-size:0.85em;">密碼長度不得小於六位數</div>
       </div>
       <div class="form-group">
         <label for="confirm">確認密碼</label>
-        <input id="confirm" v-model="form.confirm" type="password" required placeholder="請再次輸入密碼" />
+        <input
+          id="confirm"
+          v-model="form.confirm"
+          type="password"
+          required
+          placeholder="請再次輸入密碼"
+          :class="{ 'password-invalid': form.confirm && (form.password !== form.confirm || form.password.length < 6) }"
+          @input="validateConfirmInput"
+          @blur="confirmTouched = true"
+        />
+        <div v-if="confirmTouched && form.confirm && form.password !== form.confirm" class="error-msg" style="text-align:left; margin-top:0.25rem; font-size:0.85em;">兩次密碼輸入不一致</div>
       </div>
       <div class="form-group">
         <label for="name">姓名</label>
@@ -31,12 +61,22 @@
         <input id="phone" v-model="form.phone" type="tel" required placeholder="請輸入電話號碼" />
       </div>
       <div class="form-group">
-        <label for="address">戶籍地址</label>
+        <label for="address">通訊地址</label>
         <input id="address" v-model="form.address" type="text" required placeholder="請輸入戶籍地址" />
       </div>
       <div class="form-group">
         <label for="email">電子信箱</label>
-        <input id="email" v-model="form.email" type="email" required placeholder="請輸入電子信箱" />
+        <input
+          id="email"
+          v-model="form.email"
+          type="email"
+          required
+          placeholder="請輸入電子信箱"
+          :class="{ 'password-invalid': emailError }"
+          @blur="handleEmailBlur"
+        />
+        <div v-if="checkingEmail" style="text-align:left; margin-top:0.25rem; font-size:0.85em; color:#6c757d;">檢查中...</div>
+        <div v-if="emailError" class="error-msg" style="text-align:left; margin-top:0.25rem; font-size:0.85em;">{{ emailError }}</div>
       </div>
       <div class="form-group">
         <label for="birthday">出生年月日</label>
@@ -55,7 +95,7 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { register } from '../api/register.js'
+import { register, checkAccountExists, checkEmailExists } from '../api/register.js'
 
 const router = useRouter()
 const form = reactive({
@@ -72,6 +112,95 @@ const form = reactive({
 const errorMsg = ref('')
 const isLoading = ref(false)
 const successMsg = ref('')
+const passwordTouched = ref(false)
+const confirmTouched = ref(false)
+
+// 帳號檢查相關
+const accountError = ref('')
+const checkingAccount = ref(false)
+const accountTouched = ref(false)
+
+// 信箱檢查相關
+const emailError = ref('')
+const checkingEmail = ref(false)
+const emailTouched = ref(false)
+
+// 密碼輸入即時驗證函數
+function validatePasswordInput() {
+  if (passwordTouched.value && form.password.length >= 6) passwordTouched.value = false
+}
+
+// 確認密碼輸入即時驗證函數
+function validateConfirmInput() {
+  if (confirmTouched.value && form.password === form.confirm) confirmTouched.value = false
+}
+
+// 檢查帳號是否已存在
+async function handleAccountBlur() {
+  accountTouched.value = true
+  if (!form.account || form.account.trim() === '') {
+    accountError.value = ''
+    return
+  }
+
+  checkingAccount.value = true
+  accountError.value = ''
+
+  try {
+    const response = await checkAccountExists(form.account)
+    console.log('帳號檢查結果:', response)
+
+    // 根據後端回應判斷帳號是否已存在
+    if (response.data === true || response.data?.exists === true) {
+      accountError.value = '此帳號已被註冊'
+    } else {
+      accountError.value = ''
+    }
+  } catch (error) {
+    console.error('檢查帳號時發生錯誤:', error)
+    // 如果後端回傳 404 或其他錯誤，表示帳號可用
+    accountError.value = ''
+  } finally {
+    checkingAccount.value = false
+  }
+}
+
+// 檢查電子信箱是否已存在
+async function handleEmailBlur() {
+  emailTouched.value = true
+  if (!form.email || form.email.trim() === '') {
+    emailError.value = ''
+    return
+  }
+
+  // 先驗證 email 格式
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+  if (!emailRegex.test(form.email)) {
+    emailError.value = '請輸入正確的電子信箱格式'
+    return
+  }
+
+  checkingEmail.value = true
+  emailError.value = ''
+
+  try {
+    const response = await checkEmailExists(form.email)
+    console.log('信箱檢查結果:', response)
+
+    // 根據後端回應判斷信箱是否已存在
+    if (response.data === true || response.data?.exists === true) {
+      emailError.value = '此電子信箱已被註冊'
+    } else {
+      emailError.value = ''
+    }
+  } catch (error) {
+    console.error('檢查信箱時發生錯誤:', error)
+    // 如果後端回傳 404 或其他錯誤，表示信箱可用
+    emailError.value = ''
+  } finally {
+    checkingEmail.value = false
+  }
+}
 
 async function submitRegister() {
   errorMsg.value = ''
@@ -84,8 +213,32 @@ async function submitRegister() {
     return
   }
 
+  // 檢查帳號或信箱是否已存在
+  if (accountError.value) {
+    errorMsg.value = accountError.value
+    return
+  }
+
+  if (emailError.value) {
+    errorMsg.value = emailError.value
+    return
+  }
+
   if (form.password !== form.confirm) {
     errorMsg.value = '兩次密碼輸入不一致'
+    return
+  }
+
+  // 驗證密碼長度（不得小於六位數）
+  if (form.password.length < 6) {
+    errorMsg.value = '密碼長度不得小於六位數'
+    return
+  }
+
+  // 驗證 email 格式
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+  if (!emailRegex.test(form.email)) {
+    errorMsg.value = '請輸入正確的電子信箱格式'
     return
   }
 
@@ -222,6 +375,12 @@ h2 {
   margin-bottom: 1rem;
   text-align: center;
   font-size: 0.875rem;
+}
+
+.password-invalid {
+  border-color: #dc3545 !important;
+  background-color: #fff5f5;
+  box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.25) !important;
 }
 
 .success-msg {

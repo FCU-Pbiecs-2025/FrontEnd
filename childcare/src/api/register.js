@@ -13,16 +13,12 @@ export function register(userData) {
 
 // 檢查帳號是否已存在
 export function checkAccountExists(account) {
-    if (USE_MOCK_API) {
-        return mockAuth.checkAccountExists(account);
-    }
-    return http.get(`/auth/check-account/${account}`);
+
+    return http.get(`/users/check-account/${account}`);
 }
 
 // 檢查電子信箱是否已存在
 export function checkEmailExists(email) {
-    if (USE_MOCK_API) {
-        return mockAuth.checkEmailExists(email);
-    }
-    return http.get(`/auth/check-email/${email}`);
+
+    return http.get(`/users/check-email/${email}`);
 }
