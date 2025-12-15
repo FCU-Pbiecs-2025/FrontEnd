@@ -606,7 +606,12 @@ async function admit () {
       nationalID: caseData.value.childNationalID
     })
     alert('已錄取')
-    await fetchCaseData() // 重新載入資料
+    // 返回列表，由 onActivated 钩子刷新数据
+    if (window.history.length > 1) {
+      router.back()
+    } else {
+      router.push('/admin/case-management')
+    }
   } catch (error) {
     alert('錄取失敗，請稍後再試')
     console.error('錄取操作失敗:', error)
@@ -635,7 +640,12 @@ async function revoke () {
     })
     await updateApplicationParticipantStatus(applicationId.value, payload)
     alert('已退托')
-    await fetchCaseData() // 重新載入資料
+    // 返回列表，由 onActivated 钩子刷新数据
+    if (window.history.length > 1) {
+      router.back()
+    } else {
+      router.push('/admin/case-management')
+    }
   } catch (error) {
     alert('退托失敗，請稍後再試')
     console.error('退托操作失敗:', error)
@@ -643,27 +653,32 @@ async function revoke () {
 }
 
 function goBack () {
-  router.push('/admin/case-management')
+  // 使用 router.back() 而不是 push，以确保触发 onActivated 钩子
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/admin/case-management')
+  }
 }
 
-function computeChildAge (birth) {
-  if (!birth) return ''
-  const bd = new Date(birth)
-  if (isNaN(bd)) return ''
+function computeChildAge (bd) {
+  if (!bd) return ''
+  const birth = new Date(bd)
+  if (isNaN(birth)) return ''
   const now = new Date('2025-10-27')
 
-  if (bd > now) return '0歲0月0周'
+  if (birth > now) return '0歲0月0周'
 
   // 計算總月數
-  let months = (now.getFullYear() - bd.getFullYear()) * 12 + (now.getMonth() - bd.getMonth())
-  if (now.getDate() < bd.getDate()) months -= 1
+  let months = (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth())
+  if (now.getDate() < birth.getDate()) months -= 1
 
   // 計算年、月
   const years = Math.floor(months / 12)
   const remainMonths = months % 12
 
   // 計算剩餘天數
-  const tmp = new Date(bd.getTime())
+  const tmp = new Date(birth.getTime())
   tmp.setMonth(tmp.getMonth() + months)
   let daysDiff = Math.floor((now - tmp) / (1000 * 60 * 60 * 24))
   if (isNaN(daysDiff) || daysDiff < 0) daysDiff = 0

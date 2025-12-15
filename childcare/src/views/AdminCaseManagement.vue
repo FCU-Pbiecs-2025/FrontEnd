@@ -131,8 +131,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onActivated } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, computed, watch, onMounted, onActivated, onDeactivated } from 'vue'
+import { useRoute, useRouter, onBeforeRouteUpdate } from 'vue-router'
 import { getInstitutionsSimpleAll } from '@/api/Institution'
 import { getClassNamesByInstitutionId } from '@/api/class'
 import { getApplicationsCasesList, IDENTITY_TYPE_MAP, CASE_STATUS_MAP } from '@/api/application'
@@ -280,6 +280,20 @@ onActivated(async () => {
     await loadCasesList(params)
   } catch (e) {
     console.error('返回後刷新列表失敗:', e)
+  }
+})
+
+// 監聽路由名稱變化，當從子路由返回時觸發刷新
+watch(() => route.name, async (newName) => {
+  if (newName === 'AdminCaseManagement') {
+    try {
+      // 重新載入當前頁面的數據
+      const params = buildListParams({ page: currentPage.value, size: PAGE_SIZE })
+      await loadCasesList(params)
+      console.log('[Watch route.name] 已刷新列表數據')
+    } catch (e) {
+      console.error('[Watch route.name] 刷新列表失敗:', e)
+    }
   }
 })
 
