@@ -26,7 +26,7 @@
             <label class="date-label">班級名稱：</label>
             <!-- 非 SUPERADMIN 時不可選擇班級（維持現有查詢條件為使用者機構） -->
             <select v-model="qClassName" class="date-input" :disabled="!isSuperAdmin || !qAgency">
-              <option value="">{{ (isSuperAdmin && qAgency) ? '全部' : '僅限超級管理員可選擇' }}</option>
+              <option value="">{{ (isSuperAdmin && qAgency) ? '全部' : '' }}</option>
               <option v-for="cn in classOptions" :key="cn" :value="cn">{{ cn }}</option>
             </select>
           </div>

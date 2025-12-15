@@ -231,12 +231,51 @@ watch(() => route.name, async (newName, oldName) => {
   }
 })
 
-const doQuery = () => {
-  // client-side filter for now; paging remains
-  resultBanners.value = banners.value.filter(item => {
-    return (!(dateStart.value && item.displayDate < dateStart.value)) && (!(dateEnd.value && item.displayDate > dateEnd.value))
-  })
-  showBack.value = true
+const doQuery = async () => {
+  // 使用後端 API 進行日期範圍查詢
+  try {
+    const resp = await bannersApi.queryByDateRange(dateStart.value, dateEnd.value, offset.value, size.value)
+    console.debug('DEBUG bannersApi.queryByDateRange response:', resp)
+
+    let data = []
+    if (resp.data) {
+      if (Array.isArray(resp.data)) {
+        data = resp.data
+        total.value = null
+        totalPages.value = null
+        hasNext.value = null
+      } else if (Array.isArray(resp.data.content)) {
+        data = resp.data.content
+        total.value = typeof resp.data.totalElements === 'number' ? resp.data.totalElements : (typeof resp.data.totalElements === 'string' ? Number(resp.data.totalElements) : null)
+        totalPages.value = typeof resp.data.totalPages === 'number' ? resp.data.totalPages : (typeof resp.data.totalPages === 'string' ? Number(resp.data.totalPages) : null)
+        hasNext.value = typeof resp.data.hasNext === 'boolean' ? resp.data.hasNext : null
+      }
+    }
+
+    banners.value = data.map(item => {
+      const getDatePart = (iso) => {
+        if (!iso) return ''
+        try {
+          return new Date(iso).toISOString().slice(0,10)
+        } catch (e) {
+          return ''
+        }
+      }
+      return {
+        id: item.id || item.ID || item.bannerId || item.bannerID || item.pk || item._id || item.sortOrder,
+        image: item.imageName ? `/banners/image/${item.imageName}` : '',
+        link: item.linkUrl || '',
+        displayDate: getDatePart(item.startTime),
+        status: item.status ? '下架' : '顯示',
+        _raw: item
+      }
+    })
+    resultBanners.value = [...banners.value]
+    showBack.value = true
+  } catch (e) {
+    console.error('查詢失敗', e)
+    alert('查詢失敗：' + (e.response?.data?.error || e.message))
+  }
 }
 
 const openNew = () => {
@@ -290,11 +329,12 @@ const remove = async (id) => {
   }
 }
 
-const goBack = () => {
+const goBack = async () => {
   dateStart.value = ''
   dateEnd.value = ''
-  resultBanners.value = [...banners.value]
   showBack.value = false
+  offset.value = 0
+  await loadList()
 }
 
 const isEditPage = computed(() => {

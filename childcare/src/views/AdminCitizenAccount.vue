@@ -70,7 +70,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { getUsersWithOffset, getAccountStatusName } from '@/api/account.js'
+import { searchCitizenUsersByAccount, getAccountStatusName } from '@/api/account.js'
 import Pagination from '@/components/Pagination.vue'
 
 const router = useRouter()
@@ -86,14 +86,9 @@ const totalElements = ref(0)
 const hasNext = ref(false)
 const hasQueried = ref(false) // 是否已執行過查詢
 
-// 顯示的帳號列表（考慮搜尋過濾）
+// 顯示的帳號列表（現在由後端處理搜尋過濾）
 const displayAccounts = computed(() => {
-  if (!searchQuery.value.trim()) {
-    return allAccounts.value
-  }
-  return allAccounts.value.filter(a =>
-    a.account.toLowerCase().includes(searchQuery.value.toLowerCase())
-  )
+  return allAccounts.value
 })
 
 // 分頁頁碼（1-based 顯示）
@@ -118,7 +113,7 @@ const loadAllAccounts = async () => {
   try {
     isLoading.value = true
     // 先獲取第一頁，取得總筆數
-    const firstResponse = await getUsersWithOffset(0, 100) // 使用較大的 size
+    const firstResponse = await searchCitizenUsersByAccount('', 0, 100) // 使用新的民眾帳號 API
 
     // 計算需要載入多少頁
     const totalElementsFromAPI = firstResponse.totalElements || 0
@@ -130,7 +125,7 @@ const loadAllAccounts = async () => {
     if (needPages > 1) {
       const promises = []
       for (let i = 1; i < needPages; i++) {
-        promises.push(getUsersWithOffset(i * 100, 100))
+        promises.push(searchCitizenUsersByAccount('', i * 100, 100))
       }
       const responses = await Promise.all(promises)
       responses.forEach(res => {
@@ -138,15 +133,9 @@ const loadAllAccounts = async () => {
       })
     }
 
-    // 過濾只顯示 permissionType=3 的一般使用者
-    const citizenAccounts = allUsers.filter(user => {
-      const raw = user.PermissionType ?? user.permissionType ?? null
-      const p = raw != null && raw !== '' ? Number(raw) : null
-      return p === 3
-    })
-
-    // 轉換資料格式並添加狀態文字
-    allCitizenAccounts.value = citizenAccounts.map(user => ({
+    // 新的 API 已經過濾了 permissionType=3，無需再次過濾
+    // 直接轉換資料格式並添加狀態文字
+    allCitizenAccounts.value = allUsers.map(user => ({
       ...user,
       statusText: getAccountStatusName(user.accountStatus)
     }))
@@ -183,10 +172,55 @@ const updatePaginationInfo = () => {
 loadAllAccounts()
 
 // 查詢功能
-const handleQuery = () => {
-  // 更新搜尋關鍵字，觸發 displayAccounts 重新計算
-  searchQuery.value = query.value
-  hasQueried.value = true
+const handleQuery = async () => {
+  try {
+    isLoading.value = true
+    searchQuery.value = query.value
+    hasQueried.value = true
+
+    if (!searchQuery.value.trim()) {
+      // 如果查詢字串為空，重新載入所有資料
+      await loadAllAccounts()
+      return
+    }
+
+    // 使用新 API 進行後端搜尋
+    const searchKeyword = searchQuery.value.trim()
+    const firstResponse = await searchCitizenUsersByAccount(searchKeyword, 0, 100)
+
+    // 如果有多頁結果，載入所有頁面
+    const totalElementsFromAPI = firstResponse.totalElements || 0
+    const needPages = Math.ceil(totalElementsFromAPI / 100)
+
+    let searchResults = [...firstResponse.content]
+
+    if (needPages > 1) {
+      const promises = []
+      for (let i = 1; i < needPages; i++) {
+        promises.push(searchCitizenUsersByAccount(searchKeyword, i * 100, 100))
+      }
+      const responses = await Promise.all(promises)
+      responses.forEach(res => {
+        searchResults = searchResults.concat(res.content)
+      })
+    }
+
+    // 更新搜尋結果
+    allCitizenAccounts.value = searchResults.map(user => ({
+      ...user,
+      statusText: getAccountStatusName(user.accountStatus)
+    }))
+
+    // 重設分頁到第一頁
+    currentPage.value = 0
+    updatePaginationInfo()
+
+  } catch (error) {
+    console.error('查詢失敗:', error)
+    alert('查詢失敗，請稍後再試')
+  } finally {
+    isLoading.value = false
+  }
 }
 
 // 分頁切換（前端分頁）
@@ -209,11 +243,14 @@ const manageAccount = (userID) => {
 }
 
 // 返回
-const goBack = () => {
+const goBack = async () => {
   // 清空搜尋
   query.value = ''
   searchQuery.value = ''
   hasQueried.value = false
+
+  // 重新載入所有資料
+  await loadAllAccounts()
 }
 </script>
 

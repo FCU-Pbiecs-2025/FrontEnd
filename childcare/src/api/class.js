@@ -107,3 +107,37 @@ export const getClassNamesByInstitutionId = async (id) => {
         throw error
     }
 }
+
+// 增加班級當前學生數 (錄取時調用)
+export const incrementClassStudents = async (classId) => {
+    try {
+        const response = await http.put(`/classes/${classId}/increment-students`)
+        return response.data
+    } catch (error) {
+        console.error('增加班級學生數失敗:', error)
+        throw error
+    }
+}
+
+// 減少班級當前學生數 (退學或撤銷錄取時調用)
+export const decrementClassStudents = async (classId) => {
+    try {
+        const response = await http.put(`/classes/${classId}/decrement-students`)
+        return response.data
+    } catch (error) {
+        console.error('減少班級學生數失敗:', error)
+        throw error
+    }
+}
+
+// 檢查班級是否已滿
+export const checkClassFull = async (classId) => {
+    try {
+        const response = await http.get(`/classes/${classId}/is-full`)
+        return response.data
+    } catch (error) {
+        console.error('檢查班級是否已滿失敗:', error)
+        throw error
+    }
+}
+

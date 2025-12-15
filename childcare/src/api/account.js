@@ -59,6 +59,74 @@ export const getUsersWithOffset = async (offset = 0, size = 10) => {
 };
 
 /**
+ * GET /users/search2
+ * 依帳號關鍵字搜尋使用者（支援 offset 分頁）
+ *
+ * @param account 帳號關鍵字
+ * @param offset 起始位置
+ * @param size 頁面大小
+ * @return 分頁使用者列表及分頁資訊
+ */
+export const searchUsersByAccount = async (account, offset = 0, size = 10) => {
+  try {
+    const response = await http.get('/users/search2', {
+      params: {
+        account,
+        offset,
+        size
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('搜尋使用者失敗:', error);
+    throw error;
+  }
+};
+
+/**
+ * GET /users/SEARCH3
+ * 依帳號關鍵字搜尋民眾帳號 (permissionType = 3)（支援 offset 分頁）
+ *
+ * @param account 帳號關鍵字（可選，為空時查詢所有民眾帳號）
+ * @param offset 起始位置
+ * @param size 頁面大小
+ * @return 分頁民眾帳號列表及分頁資訊
+ *
+ * 範例回應:
+ * {
+ *   "offset": 0,
+ *   "size": 10,
+ *   "totalPages": 1,
+ *   "hasNext": false,
+ *   "content": [
+ *     {
+ *       "userID": "c6948f8d-de54-40ba-9bb8-18dec3880c5b",
+ *       "account": "citizen001",
+ *       "institutionName": null,
+ *       "permissionType": 3,
+ *       "accountStatus": 1
+ *     }
+ *   ],
+ *   "totalElements": 1
+ * }
+ */
+export const searchCitizenUsersByAccount = async (account = '', offset = 0, size = 10) => {
+  try {
+    const response = await http.get('/users/SEARCH3', {
+      params: {
+        account,
+        offset,
+        size
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('搜尋民眾帳號失敗:', error);
+    throw error;
+  }
+};
+
+/**
  * GET /users/{id}
  * 依使用者 ID 取得使用者資料
  *
