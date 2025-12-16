@@ -33,11 +33,16 @@ http.interceptors.request.use(
             }
         }
 
-        // 這裡可選擇性加入 JWT Token（目前停用）
-        // try {
-        //   const token = localStorage.getItem('token')
-        //   if (token) { config.headers = config.headers || {}; config.headers['Authorization'] = `Bearer ${token}` }
-        // } catch {}
+        // 加入 JWT Token
+        try {
+            const token = localStorage.getItem('token')
+            if (token) {
+                config.headers = config.headers || {}
+                config.headers['Authorization'] = `Bearer ${token}`
+            }
+        } catch (error) {
+            console.error('讀取 token 失敗:', error)
+        }
 
         return config
     },

@@ -16,6 +16,15 @@ export function logout() {
     if (USE_MOCK_API) {
         return mockAuth.logout();
     }
+
+    // 清除 localStorage 中的 token
+    try {
+        localStorage.removeItem('token');
+        console.log('JWT Token 已清除');
+    } catch (error) {
+        console.error('清除 token 失敗:', error);
+    }
+
     return http.post("/auth/logout");
 }
 
@@ -105,6 +114,13 @@ export const loginUser = async (account, password, recaptchaToken) => {
             body: JSON.stringify({ account, password, recaptchaToken }),
         });
         const result = await response.json()
+
+        // 如果登入成功且有 token，儲存到 localStorage
+        if (result.success && result.token) {
+            localStorage.setItem('token', result.token)
+            console.log('JWT Token 已儲存')
+        }
+
         return result
     } catch (error) {
         console.error('登入失敗:', error)
@@ -123,10 +139,50 @@ export const loginadmin = async (account, password) => {
             body: JSON.stringify({ account, password })
         })
         const result = await response.json()
+
+        // 如果登入成功且有 token，儲存到 localStorage
+        if (result.success && result.token) {
+            localStorage.setItem('token', result.token)
+            console.log('JWT Token 已儲存')
+        }
+
         return result
     } catch (error) {
         console.error('登入失敗:', error)
         return { success: false, message: '伺服器連線失敗' }
     }
+}
+
+// Token 管理工具函數
+export const getToken = () => {
+    try {
+        return localStorage.getItem('token');
+    } catch (error) {
+        console.error('讀取 token 失敗:', error);
+        return null;
+    }
+}
+
+export const setToken = (token) => {
+    try {
+        localStorage.setItem('token', token);
+        console.log('JWT Token 已設定');
+    } catch (error) {
+        console.error('設定 token 失敗:', error);
+    }
+}
+
+export const removeToken = () => {
+    try {
+        localStorage.removeItem('token');
+        console.log('JWT Token 已移除');
+    } catch (error) {
+        console.error('移除 token 失敗:', error);
+    }
+}
+
+// 檢查 token 是否存在
+export const hasToken = () => {
+    return !!getToken();
 }
 

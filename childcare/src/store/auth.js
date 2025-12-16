@@ -53,8 +53,12 @@ export const useAuthStore = defineStore('auth', {
           }
           console.log('Debug: Final role assigned:', role)
 
-          // 設定 token 與 user 資訊（若後端未提供 token，維持 null）
-          this.token = payload.token || null
+          // 設定 token 與 user 資訊（從 localStorage 讀取或使用 payload 中的 token）
+          this.token = payload.token || localStorage.getItem('token') || null
+          // 如果 payload 有 token，確保也儲存到 localStorage
+          if (payload.token) {
+            localStorage.setItem('token', payload.token)
+          }
 
           // 🔍 調試：檢查 API 返回的 FamilyInfoID
           console.log('🔍 [auth.js] user.FamilyInfoID:', user.FamilyInfoID)
@@ -109,6 +113,14 @@ export const useAuthStore = defineStore('auth', {
       } catch (error) {
         console.error('Logout error:', error)
       } finally {
+        // 清除 localStorage 中的 token
+        try {
+          localStorage.removeItem('token')
+          console.log('JWT Token 已從 localStorage 清除')
+        } catch (error) {
+          console.error('清除 token 失敗:', error)
+        }
+
         this.token = null
         this.user = {
           UserID: null,
@@ -126,23 +138,25 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async initializeAuth() {
-      // Disabled: do not read token from localStorage
-      // const token = localStorage.getItem('token')
-      // const user = localStorage.getItem('user')
+      // 從 localStorage 讀取 token
+      const token = localStorage.getItem('token')
 
-      // if (token && user) {
-      //   this.token = token
-      //   this.user = JSON.parse(user)
-      //   this.isAuthenticated = true
+      if (token) {
+        this.token = token
+        // 注意：不從 localStorage 讀取 user，因為需要從後端驗證 token 並獲取最新資料
+        // 如果需要驗證 token 是否仍有效，可以呼叫 getUserInfo()
 
-      //   // 驗證 token 是否仍有效
-      //   try {
-      //     await getUserInfo()
-      //   } catch (error) {
-      //     console.error('Token validation failed:', error)
-      //     this.logoutUser()
-      //   }
-      // }
+        // 暫時標記為已驗證，實際驗證邏輯可以在路由守衛中進行
+        this.isAuthenticated = true
+
+        // 可選：驗證 token 是否仍有效
+        // try {
+        //   await getUserInfo()
+        // } catch (error) {
+        //   console.error('Token validation failed:', error)
+        //   this.logoutUser()
+        // }
+      }
     },
 
     async changePassword(newPassword) {
