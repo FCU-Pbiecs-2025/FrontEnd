@@ -273,15 +273,48 @@ const saveToStorage = () => {
   localStorage.setItem('childrenData', JSON.stringify(children.value))
 }
 
+// 檢查身分證字號是否已存在（不包括當前編輯的幼兒）
+const isDuplicateIdNumber = (idNumber, excludeIdx = null) => {
+  if (!idNumber) return false
+  return children.value.some((child, idx) => {
+    if (excludeIdx !== null && idx === excludeIdx) return false
+    return child.idNumber && child.idNumber.toUpperCase() === idNumber.toUpperCase()
+  })
+}
+
 // 驗證（離開欄位時觸發）
 const validateChildId = (idx) => {
   const id = children.value[idx]?.idNumber || ''
-  childIdErrors.value[idx] = id ? (validateTWId(id) ? '' : '身分證字號格式錯誤') : ''
+  if (!id) {
+    childIdErrors.value[idx] = ''
+    return
+  }
+  if (!validateTWId(id)) {
+    childIdErrors.value[idx] = '身分證字號格式錯誤'
+    return
+  }
+  if (isDuplicateIdNumber(id, idx)) {
+    childIdErrors.value[idx] = '此身分證字號已存在'
+    return
+  }
+  childIdErrors.value[idx] = ''
 }
 
 const validateNewChildId = () => {
   const id = newChild.value.idNumber || ''
-  newChildIdError.value = id ? (validateTWId(id) ? '' : '身分證字號格式錯誤') : ''
+  if (!id) {
+    newChildIdError.value = ''
+    return
+  }
+  if (!validateTWId(id)) {
+    newChildIdError.value = '身分證字號格式錯誤'
+    return
+  }
+  if (isDuplicateIdNumber(id)) {
+    newChildIdError.value = '此身分證字號已存在'
+    return
+  }
+  newChildIdError.value = ''
 }
 
 // 編輯幼兒
@@ -309,11 +342,14 @@ const saveChild = async (idx) => {
     alert('請填寫幼兒姓名')
     return
   }
+
+  // 驗證身分證字號（包含格式和重複檢查）
   validateChildId(idx)
   if (childIdErrors.value[idx]) {
     alert(childIdErrors.value[idx])
     return
   }
+
   // 年齡檢查
   const age = getAge(children.value[idx].birthday)
   if (age !== null && age >= 3) {
@@ -371,7 +407,15 @@ const saveChild = async (idx) => {
     alert('✅ 幼兒資料已更新')
   } catch (error) {
     console.error('❌ 更新幼兒失敗:', error)
-    alert(`❌ 更新幼兒失敗: ${error.message || '未知錯誤'}`)
+
+    // 處理身分證字號重複的錯誤
+    if (error.response?.status === 409) {
+      alert(' 此身分證字號已被使用，請檢查是否重複')
+    } else if (error.message?.includes('身分證字號')) {
+      alert(`❌ ${error.message}`)
+    } else {
+      alert(`更新幼兒失敗: ${error.message || '未知錯誤'}`)
+    }
   }
 }
 
@@ -474,7 +518,15 @@ const addChild = async () => {
     alert('✅ 幼兒資料已成功新增')
   } catch (error) {
     console.error('❌ 新增幼兒失敗:', error)
-    alert(`❌ 新增幼兒失敗: ${error.message}`)
+
+    // 處理身分證字號重複的錯誤
+    if (error.response?.status === 409) {
+      alert('❌ 此身分證字號已被使用，請檢查是否重複')
+    } else if (error.message?.includes('身分證字號')) {
+      alert(`❌ ${error.message}`)
+    } else {
+      alert(`❌ 新增幼兒失敗: ${error.message}`)
+    }
   }
 }
 

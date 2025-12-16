@@ -4,21 +4,21 @@ import http from './http.js';
 
 // 身分別代碼映射表
 export const IDENTITY_TYPE_MAP = {
-  1: '第一序位',
-  2: '第二序位',
-  3: '第三序位'
+    1: '第一序位',
+    2: '第二序位',
+    3: '第三序位'
 };
 
 // 案件狀態代碼映射表
 export const CASE_STATUS_MAP = {
-  '1': '審核中',
-  '2': '需要補件',
-  '3': '已退件',
-  '4': '候補中',
-  '5': '撤銷申請審核中',
-  '6': '撤銷申請通過',
-  '7': '已退托',
-  '8': '已錄取'
+    '1': '審核中',
+    '2': '需要補件',
+    '3': '已退件',
+    '4': '候補中',
+    '5': '撤銷申請審核中',
+    '6': '撤銷申請通過',
+    '7': '已退托',
+    '8': '已錄取'
 };
 
 // ===== API 函數 =====
@@ -251,7 +251,7 @@ export const submitApplicationCase = async (caseData, files = {}) => {
             user: {
                 userID: caseData.User?.userID || caseData.User?.UserID || caseData.userID,
                 name: caseData.User?.Name,
-                gender: caseData.User?.Gender === 'F' ? true : false,
+                gender: caseData.User?.Gender === 'F' ?'女': '男' ,
                 nationalID: caseData.User?.NationalID,
                 birthDate: caseData.User?.BirthDate,
                 mailingAddress: caseData.User?.MailingAddress,
@@ -263,7 +263,7 @@ export const submitApplicationCase = async (caseData, files = {}) => {
                 participantType: parent.participantType,
                 nationalID: parent.nationalID,
                 name: parent.name,
-                gender: parent.gender === 'F' ? true : false,
+                gender: parent.gender === 'F' ? '女': '男' ,
                 relationShip: parent.relationShip,
                 occupation: parent.occupation,
                 phoneNumber: parent.phoneNumber,
@@ -279,7 +279,7 @@ export const submitApplicationCase = async (caseData, files = {}) => {
                 participantType: child.participantType,
                 nationalID: child.nationalID,
                 name: child.name,
-                gender: child.gender === 'F' ? true : false,
+                gender: child.gender === 'F' ? '女': '男' ,
                 relationShip: child.relationShip,
                 occupation: child.occupation,
                 phoneNumber: child.phoneNumber,
@@ -386,4 +386,3 @@ export const uploadApplicationAttachments = async (applicationId, files) => {
         throw error;
     }
 };
-

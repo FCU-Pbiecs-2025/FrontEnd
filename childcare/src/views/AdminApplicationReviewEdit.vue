@@ -207,6 +207,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getApplicationById, updateApplicationCase } from '@/api/application.js'
+import { incrementClassStudents, decrementClassStudents } from '@/api/class.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -225,33 +226,57 @@ const parentList = ref([])
 const childList = ref([])
 const preview = ref({ visible: false, file: null })
 
-// 計算幼兒年齡
+// 計算幼兒年齡（以目前日期動態計算，避免負值）
 function getChildAge(birthDate) {
-  if (!birthDate) return '';
-  let birthArr = birthDate.includes('/') ? birthDate.split('/') : birthDate.split('-');
-  let birthYear = parseInt(birthArr[0]);
-  let birthMonth = parseInt(birthArr[1]);
-  let birthDay = parseInt(birthArr[2]);
-  let nowYear = 2025;
-  let nowMonth = 10;
-  let nowDay = 27;
-  let totalMonths = (nowYear - birthYear) * 12 + (nowMonth - birthMonth);
-  let days = nowDay - birthDay;
+  if (!birthDate) return ''
+
+  // 解析日期字串，支援 YYYY-MM-DD 或 YYYY/MM/DD
+  const parts = birthDate.includes('/') ? birthDate.split('/') : birthDate.split('-')
+  if (parts.length < 3) return ''
+
+  const year = parseInt(parts[0], 10)
+  const month = parseInt(parts[1], 10)
+  const day = parseInt(parts[2], 10)
+
+  if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) return ''
+
+  // JavaScript 的月份以 0 開始
+  const birth = new Date(year, month - 1, day)
+  if (isNaN(birth.getTime())) return ''
+
+  const now = new Date()
+
+  // 若出生日期在未來，直接回傳 0 歲 0 月 0 周（或可顯示「未出生」）
+  if (birth > now) return '0歲0月0周'
+
+  // 計算完整年、月、天差
+  let years = now.getFullYear() - birth.getFullYear()
+  let months = now.getMonth() - birth.getMonth()
+  let days = now.getDate() - birth.getDate()
+
+  // 借位處理：若天數為負，向前一個月借位
   if (days < 0) {
-    totalMonths--;
-    let prevMonth = nowMonth - 1;
-    let prevYear = nowYear;
-    if (prevMonth === 0) {
-      prevMonth = 12;
-      prevYear--;
-    }
-    let daysInPrevMonth = new Date(prevYear, prevMonth, 0).getDate();
-    days = daysInPrevMonth + days;
+    // 取得前一個月的最後一天天數
+    const prevMonth = new Date(now.getFullYear(), now.getMonth(), 0) // 當月第 0 天 = 上個月最後一天
+    const daysInPrevMonth = prevMonth.getDate()
+    days += daysInPrevMonth
+    months -= 1
   }
-  let years = Math.floor(totalMonths / 12);
-  let months = totalMonths % 12;
-  let weeks = Math.floor(days / 7);
-  return `${years}歲${months}月${weeks}周`;
+
+  // 借位處理：若月份為負，向前一年借位
+  if (months < 0) {
+    months += 12
+    years -= 1
+  }
+
+  // 週數取天數除以 7 的整數
+  const weeks = Math.floor(days / 7)
+
+  // 防呆：避免任何負值（極端邊界）
+  years = Math.max(0, years)
+  months = Math.max(0, months)
+
+  return `${years}歲${months}月${weeks}周`
 }
 
 // identityType 對應顯示序位文字
@@ -500,10 +525,14 @@ const confirmReview = async () => {
       return
     }
 
+    // 取得原始狀態，用於判斷是否需要調整班級人數
+    const originalStatus = childList.value[0].status || ''
+    const newStatus = reviewResult.value
+
     // 呼叫 updateApplicationCase API
     const response = await updateApplicationCase(applicationId.value, {
       nationalID: childNationalID,
-      status: reviewResult.value,
+      status: newStatus,
       reason: reviewNote.value || '',
       children: [{ nationalID: childNationalID }]
     })
@@ -511,13 +540,51 @@ const confirmReview = async () => {
     // 更新畫面上的狀態資訊
     if (response && response.children && response.children.length > 0) {
       const updatedChild = response.children[0]
-      childList.value[0].status = updatedChild.status || reviewResult.value
+      childList.value[0].status = updatedChild.status || newStatus
       childList.value[0].reason = updatedChild.reason || reviewNote.value || ''
       childList.value[0].reviewDate = updatedChild.reviewDate || new Date().toISOString()
     } else {
-      childList.value[0].status = reviewResult.value
+      childList.value[0].status = newStatus
       childList.value[0].reason = reviewNote.value || ''
       childList.value[0].reviewDate = new Date().toISOString()
+    }
+
+    // 處理班級學生數變更
+    // 從 applicationData 中取得 ClassID（可能的欄位名稱：ClassID, classID, classId, class_id）
+    const classId = applicationData.value.ClassID ||
+                   applicationData.value.classID ||
+                   applicationData.value.classId ||
+                   applicationData.value.class_id ||
+                   response?.ClassID ||
+                   response?.classID ||
+                   response?.classId
+
+    if (classId) {
+      // 判斷是否為新錄取（從非已錄取狀態 -> 已錄取狀態）
+      const wasAdmitted = originalStatus === '8' || originalStatus === '已錄取'
+      const isNowAdmitted = newStatus === '8' || newStatus === '已錄取'
+
+      if (!wasAdmitted && isNowAdmitted) {
+        // 從未錄取變成已錄取 -> 增加學生數
+        try {
+          await incrementClassStudents(classId)
+          console.log(`班級 ${classId} 學生數已增加`)
+        } catch (classError) {
+          console.error('增加班級學生數失敗:', classError)
+          alert('審核成功，但更新班級人數失敗：' + (classError.response?.data?.message || classError.message))
+        }
+      } else if (wasAdmitted && !isNowAdmitted) {
+        // 從已錄取變成非已錄取（撤銷錄取） -> 減少學生數
+        try {
+          await decrementClassStudents(classId)
+          console.log(`班級 ${classId} 學生數已減少`)
+        } catch (classError) {
+          console.error('減少班級學生數失敗:', classError)
+          alert('審核成功，但更新班級人數失敗：' + (classError.response?.data?.message || classError.message))
+        }
+      }
+    } else {
+      console.warn('申請資料中未找到班級ID，無法更新班級學生數')
     }
 
     alert('審核已送出成功')

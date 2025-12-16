@@ -77,7 +77,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getUsersWithOffset, getPermissionTypeName, getAccountStatusName } from '@/api/account.js'
+import { getUsersWithOffset, searchUsersByAccount, getPermissionTypeName, getAccountStatusName } from '@/api/account.js'
 import Pagination from '@/components/Pagination.vue'
 
 const router = useRouter()
@@ -96,15 +96,9 @@ const totalPages = ref(0)
 const totalElements = ref(0)
 const hasNext = ref(false)
 
-// 顯示的帳號列表（考慮搜尋過濾）
+// 顯示的帳號列表（搜尋已在後端完成，直接顯示當前頁資料）
 const displayAdmins = computed(() => {
-  if (!searchQuery.value.trim()) {
-    return allAdmins.value
-  }
-  return allAdmins.value.filter(a =>
-    a.account.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-    (a.institutionName && a.institutionName.toLowerCase().includes(searchQuery.value.toLowerCase()))
-  )
+  return allAdmins.value
 })
 
 // 兼容舊資料，補齊 right 欄位
@@ -217,10 +211,66 @@ watch(() => route.name, (newName, oldName) => {
   }
 })
 
-const handleQuery = () => {
-  // 更新搜尋關鍵字，觸發 displayAdmins 重新計算
-  searchQuery.value = query.value
-  hasQueried.value = true
+const handleQuery = async () => {
+  // 如果沒有輸入查詢關鍵字，載入所有資料
+  if (!query.value.trim()) {
+    searchQuery.value = ''
+    hasQueried.value = false
+    currentPage.value = 0
+    await loadAllBackendAccounts()
+    return
+  }
+
+  // 呼叫後端 API 進行搜尋
+  try {
+    isLoading.value = true
+    searchQuery.value = query.value
+    hasQueried.value = true
+    currentPage.value = 0
+
+    // 先載入第一頁，取得總筆數
+    const firstResponse = await searchUsersByAccount(searchQuery.value, 0, 100)
+
+    // 計算需要載入多少頁
+    const totalElementsFromAPI = firstResponse.totalElements || 0
+    const needPages = Math.ceil(totalElementsFromAPI / 100)
+
+    let allUsers = [...firstResponse.content]
+
+    // 如果還有更多頁，繼續載入
+    if (needPages > 1) {
+      const promises = []
+      for (let i = 1; i < needPages; i++) {
+        promises.push(searchUsersByAccount(searchQuery.value, i * 100, 100))
+      }
+      const responses = await Promise.all(promises)
+      responses.forEach(res => {
+        allUsers = allUsers.concat(res.content)
+      })
+    }
+
+    // 過濾只顯示 permissionType=1 或 2 的管理員和機構人員
+    const backendAccounts = allUsers.filter(user => {
+      const raw = user.PermissionType ?? user.permissionType ?? null
+      const p = raw != null && raw !== '' ? Number(raw) : null
+      return p === 1 || p === 2
+    })
+
+    // 轉換資料格式並添加文字
+    allBackendAccounts.value = backendAccounts.map(user => ({
+      ...user,
+      roleText: getPermissionTypeName(user.PermissionType ?? user.permissionType ?? null),
+      statusText: getAccountStatusName(user.accountStatus)
+    }))
+
+    // 設定為第一頁
+    updatePaginationInfo()
+  } catch (error) {
+    console.error('搜尋失敗:', error)
+    alert('搜尋失敗，請稍後再試')
+  } finally {
+    isLoading.value = false
+  }
 }
 
 // 分頁切換（前端分頁）

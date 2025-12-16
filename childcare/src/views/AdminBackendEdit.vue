@@ -21,7 +21,18 @@
         </div>
         <div class="form-row">
           <label class="form-label">密碼：</label>
-          <input v-model="account.password" type="password" class="form-input" :placeholder="isNew ? '請輸入密碼' : '若不修改可留空'" />
+          <div style="width: 420px; max-width: 100%;">
+            <input
+              v-model="account.password"
+              type="password"
+              class="form-input"
+              :class="{ 'password-invalid': passwordError }"
+              placeholder="請輸入密碼"
+              @blur="handlePasswordBlur"
+              style="width: 100%;"
+            />
+            <div v-if="passwordError" class="error-msg" style="text-align:left; margin-top:0.25rem; font-size:0.85em;">{{ passwordError }}</div>
+          </div>
         </div>
         <div class="form-row">
           <label class="form-label">機構名稱：</label>
@@ -79,10 +90,10 @@ import { getUserById, updateUser, createUser } from '@/api/account.js'
 const route = useRoute()
 const router = useRouter()
 
-// 從路由參數獲取帳號 ID，如果是新增頁面則生成新 ID
+// 從路由參數獲取帳號 ID，如果是新增頁面則返回空字串
 const accountId = computed(() => {
   if (route.name === 'AdminBackendNew') {
-    return 'admin' + Date.now()
+    return ''
   }
   return route.params.id || ''
 })
@@ -91,6 +102,10 @@ const account = ref({ id: '', password: '', org: '', role: 'admin', right: 'enab
 const remoteInstitutions = ref([])
 const isLoading = ref(false)
 const isSaving = ref(false)
+
+// 密碼驗證相關
+const passwordError = ref('')
+const passwordTouched = ref(false)
 
 const isNew = computed(() => route.name === 'AdminBackendNew')
 
@@ -197,13 +212,30 @@ const fetchRemoteInstitutions = async () => {
   }
 }
 
+// 檢查密碼長度
+const handlePasswordBlur = () => {
+  passwordTouched.value = true
+
+  if (!account.value.password || account.value.password.trim() === '') {
+    passwordError.value = '密碼不能為空'
+    return
+  }
+
+  // 檢查密碼長度
+  if (account.value.password.length < 6) {
+    passwordError.value = '密碼長度不得小於六位數'
+  } else {
+    passwordError.value = ''
+  }
+}
+
 onMounted(async () => {
   // 先載入機構列表
   await fetchRemoteInstitutions()
 
   if (isNew.value) {
-    // 新增模式：初始化空白表單
-    account.value.id = accountId.value
+    // 新增模式：初始化空白表單，帳號ID保持空白
+    account.value.id = ''
   } else {
     // 編輯模式：從 API 載入資料
     if (accountId.value) {
@@ -231,8 +263,20 @@ const save = async () => {
     return
   }
 
-  if (isNew.value && !account.value.password) {
-    alert('新增帳號時必須設定密碼')
+  if (!account.value.password) {
+    alert('密碼不能為空')
+    return
+  }
+
+  // 檢查密碼錯誤
+  if (passwordError.value) {
+    alert(passwordError.value)
+    return
+  }
+
+  // 檢查密碼長度
+  if (account.value.password.length < 6) {
+    alert('密碼長度不得小於六位數')
     return
   }
 
@@ -331,16 +375,9 @@ const save = async () => {
         institutionID: institutionID  // 使用 institutionID 而非 institutionName
       }
 
-      // 密碼處理
-      if (account.value.password && account.value.password.trim() !== '' && account.value.password !== account.value._apiData.password) {
-        // 如果有輸入新密碼且與原密碼不同，使用新密碼
-        updateData.password = account.value.password
-        console.log('使用新密碼')
-      } else {
-        // 沒有輸入新密碼或密碼未改變，保持原密碼
-        updateData.password = account.value._apiData.password
-        console.log('保持原密碼')
-      }
+      // 密碼處理 - 使用輸入的新密碼
+      updateData.password = account.value.password
+      console.log('使用新密碼')
 
       console.log('========== 準備更新資料 ==========')
       console.log('userID:', account.value._apiData.userID)
@@ -420,6 +457,8 @@ const cancel = () => {
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff }
 .btn.ghost { background:transparent; border:1px solid #3b82f6; color:#2563eb }
 .btn.danger { background:#ff7b8a; color:#fff }
+.password-invalid { border-color: #dc3545 !important; background-color: #fff5f5; box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.25) !important; }
+.error-msg { color: #dc3545; }
 @media (max-width:900px){
   .backend-edit-card{ width:100%; padding:16px }
   .form-row{ flex-direction:column; align-items:flex-start; }

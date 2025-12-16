@@ -365,3 +365,45 @@ export const searchUsers = async (params = {}) => {
         throw error
     }
 }
+
+/**
+ * 以帳號模糊查詢使用者列表（支援分頁）
+ * GET /users/search?account={account}&offset={offset}&size={size}
+ *
+ * 範例回應:
+ * {
+ *     "offset": 0,
+ *     "size": 10,
+ *     "totalPages": 1,
+ *     "hasNext": false,
+ *     "content": [
+ *         {
+ *             "userID": "86c23732-ce0d-4ec7-93d5-048faee27d4b",
+ *             "account": "inst001",
+ *             "institutionName": "小天使托嬰中心",
+ *             "permissionType": 2,
+ *             "accountStatus": 1
+ *         }
+ *     ],
+ *     "totalElements": 1
+ * }
+ * @param account 帳號關鍵字
+ * @param offset 起始位置（預設 0）
+ * @param size 分頁大小（預設 10）
+ * @return 搜尋結果（包含分頁資訊）
+ */
+export const searchUsersByAccount = async (account, offset = 0, size = 10) => {
+    try {
+        const response = await http.get('/users/search', {
+            params: {
+                account,
+                offset,
+                size
+            }
+        })
+        return response.data
+    } catch (error) {
+        console.error('查詢帳號失敗:', error)
+        throw error
+    }
+}

@@ -14,6 +14,13 @@ export default {
     if (typeof size !== 'undefined' && size !== null) params.size = size
     return http.get('/banners/offset', { params })
   },
+  // Query with date range and pagination: GET /banners/query?startDate=2024-01-01&endDate=2024-12-31&offset=0&size=10
+  queryByDateRange(startDate, endDate, offset = 0, size = 10) {
+    const params = { offset, size }
+    if (startDate) params.startDate = startDate
+    if (endDate) params.endDate = endDate
+    return http.get('/banners/query', { params })
+  },
   get(id) {
     return http.get(`/banners/${id}`)
   },

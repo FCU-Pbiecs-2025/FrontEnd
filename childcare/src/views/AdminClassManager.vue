@@ -12,7 +12,7 @@
           <div class="query-card">
             <div class="query-row">
               <div class="search-area">
-                <label class="search-label" for="queryInstitution">查詢條件：</label>
+                <label class="search-label" for="queryInstitution">查詢機構名稱：</label>
                 <input id="queryInstitution" type="text" v-model="searchKeyword" placeholder="機構名稱" class="search-input" :disabled="!isSuperAdmin" />
               </div>
               <div class="btn-query">
