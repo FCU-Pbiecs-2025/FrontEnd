@@ -85,7 +85,11 @@ export default {
       userAccuracyCircle: null, // 精準度圓圈
       isLocating: false,
       isLoadingAgencies: true,  // 載入機構資料中
-      loadError: null        // 載入錯誤訊息
+      loadError: null,       // 載入錯誤訊息
+      watchId: null,         // 持續監控位置的 ID
+      bestAccuracy: Infinity, // 記錄最佳精準度
+      locationAttempts: 0,   // 定位嘗試次數
+      currentLocation: null  // 儲存當前位置資訊（用於調試）
     }
   },
   mounted() {
@@ -104,6 +108,11 @@ export default {
     });
   },
   beforeUnmount() {
+    // 停止位置監控
+    if (this.watchId !== null) {
+      navigator.geolocation.clearWatch(this.watchId);
+      this.watchId = null;
+    }
     // 清理地圖資源
     if (this.map) {
       this.map.remove();
@@ -210,51 +219,129 @@ export default {
         console.warn('地圖尚未初始化');
         return;
       }
+
+      // 如果已經在定位中，停止定位
+      if (this.isLocating && this.watchId !== null) {
+        navigator.geolocation.clearWatch(this.watchId);
+        this.watchId = null;
+        this.isLocating = false;
+        this.bestAccuracy = Infinity;
+        this.locationAttempts = 0;
+        console.log('已停止定位監控');
+        return;
+      }
+
+      console.log('=== 開始定位 ===');
+      console.log('裝置資訊:', {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        isHTTPS: window.location.protocol === 'https:'
+      });
+
       this.isLocating = true;
-      const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
-      navigator.geolocation.getCurrentPosition(
+      this.bestAccuracy = Infinity;
+      this.locationAttempts = 0;
+      this.currentLocation = null;
+
+      const options = {
+        enableHighAccuracy: true,  // 強制要求高精度定位（使用 GPS）
+        timeout: 20000,            // 延長超時時間到 20 秒
+        maximumAge: 0              // 絕對不使用快取的位置
+      };
+
+      console.log('定位選項:', options);
+
+      // 使用 watchPosition 持續獲取更精準的位置
+      this.watchId = navigator.geolocation.watchPosition(
         pos => this.onLocationSuccess(pos),
         err => this.onLocationError(err),
         options
       );
+
+      // 30 秒後自動停止監控（避免一直耗電）
+      setTimeout(() => {
+        if (this.watchId !== null) {
+          navigator.geolocation.clearWatch(this.watchId);
+          this.watchId = null;
+          this.isLocating = false;
+          console.log('定位監控已自動停止（30秒超時）');
+          if (this.currentLocation) {
+            console.log('最終位置:', this.currentLocation);
+          }
+        }
+      }, 30000);
     },
     onLocationSuccess(position) {
-      this.isLocating = false;
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
       const accuracy = position.coords.accuracy || 0;
 
-      // 清除舊的 marker / circle
-      if (this.userMarker) {
-        try { this.map.removeLayer(this.userMarker); } catch(e){}
-        this.userMarker = null;
+      this.locationAttempts++;
+
+      console.log(`定位嘗試 #${this.locationAttempts}: 精度 ${accuracy.toFixed(1)}m`);
+
+      // 只在精度改善時更新位置（或第一次定位）
+      if (accuracy < this.bestAccuracy || this.bestAccuracy === Infinity) {
+        this.bestAccuracy = accuracy;
+
+        // 清除舊的 marker / circle
+        if (this.userMarker) {
+          try { this.map.removeLayer(this.userMarker); } catch(e){}
+          this.userMarker = null;
+        }
+        if (this.userAccuracyCircle) {
+          try { this.map.removeLayer(this.userAccuracyCircle); } catch(e){}
+          this.userAccuracyCircle = null;
+        }
+
+        // 使用 circleMarker 作為使用者位置的視覺化
+        this.userMarker = L.circleMarker([lat, lng], {
+          radius: 10,
+          fillColor: '#2a9df4',
+          color: '#ffffff',
+          weight: 3,
+          fillOpacity: 1
+        }).addTo(this.map);
+
+        // 添加提示文字顯示精度
+        this.userMarker.bindTooltip(
+          `您的位置<br>精度: ${accuracy.toFixed(0)}m`,
+          { permanent: false, direction: 'top' }
+        );
+
+        // 顯示精準度圓圈（以公尺為單位）
+        this.userAccuracyCircle = L.circle([lat, lng], {
+          radius: accuracy,
+          color: '#2a9df4',
+          fillColor: '#2a9df4',
+          fillOpacity: 0.1,
+          weight: 2,
+          dashArray: '5, 5'
+        }).addTo(this.map);
+
+        // 將地圖置中到使用者位置，並依精準度調整縮放
+        const zoomTarget = accuracy <= 50 ? 16 : (accuracy <= 200 ? 15 : 14);
+        this.map.setView([lat, lng], zoomTarget, { animate: true });
+
+        // 如果精度已經很好（小於 30 米），可以停止監控
+        if (accuracy < 30 && this.watchId !== null) {
+          console.log('已達到良好精度，停止定位監控');
+          navigator.geolocation.clearWatch(this.watchId);
+          this.watchId = null;
+          this.isLocating = false;
+        }
       }
-      if (this.userAccuracyCircle) {
-        try { this.map.removeLayer(this.userAccuracyCircle); } catch(e){}
-        this.userAccuracyCircle = null;
+
+      // 如果是第一次定位（即使精度不佳），至少先停止 loading 狀態
+      if (this.locationAttempts === 1 && accuracy > 100) {
+        // 繼續監控但停止 loading 動畫
+        setTimeout(() => {
+          if (this.isLocating && this.locationAttempts === 1) {
+            // 仍在第一次定位，精度未改善
+            console.log('初次定位精度較差，持續嘗試改善...');
+          }
+        }, 2000);
       }
-
-      // 使用 circleMarker 作為使用者位置的視覺化
-      this.userMarker = L.circleMarker([lat, lng], {
-        radius: 8,
-        fillColor: '#2a9df4',
-        color: '#ffffff',
-        weight: 2,
-        fillOpacity: 1
-      }).addTo(this.map);
-
-      // 顯示精準度圓圈（以公尺為單位）
-      this.userAccuracyCircle = L.circle([lat, lng], {
-        radius: accuracy,
-        color: '#2a9df4',
-        fillColor: '#2a9df4',
-        fillOpacity: 0.08,
-        weight: 1
-      }).addTo(this.map);
-
-      // 將地圖置中到使用者位置，並依精準度調整縮放（若精準度大則不放太大）
-      const zoomTarget = accuracy <= 50 ? 15 : (accuracy <= 200 ? 14 : 13);
-      this.map.setView([lat, lng], zoomTarget, { animate: true });
     },
     onLocationError(err) {
       this.isLocating = false;

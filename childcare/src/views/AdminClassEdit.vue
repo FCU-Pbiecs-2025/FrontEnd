@@ -192,18 +192,18 @@ onMounted(async () => {
 
   if (isEdit.value) {
     const classId = route.params.id // 這是 classID (UUID)
-    // 取得機構 ID 或名稱 (route 可能只傳 institutionId)
-    const routeInstitutionId = route.params.institutionId
+
+    if (!classId) {
+      alert('無效的班級ID')
+      router.replace({ name: 'AdminClassManager' })
+      return
+    }
 
     try {
-      // 從API獲取班級資料
-      const res = await fetch('http://localhost:8080/classes/offset')
+      // 直接根據 classId 從 API 獲取單一班級資料
+      const res = await fetch(`http://localhost:8080/classes/${classId}`)
       if (res.ok) {
-        const data = await res.json()
-        const classes = data.content || []
-
-        // 根據 classID 找到班級
-        const found = classes.find(cls => cls.classID === classId)
+        const found = await res.json()
 
         if (found) {
           // 如果 API 沒有回傳 institutionID，用 institutionName 找對應的 ID
@@ -211,11 +211,6 @@ onMounted(async () => {
           if (!institutionId && found.institutionName) {
             const matchedInstitution = institutions.value.find(inst => inst.name === found.institutionName)
             institutionId = matchedInstitution?.id || ''
-          }
-
-          // 如果 route 有提供 institutionId（可能在編輯頁面跳轉時帶入），使用它作為優先值
-          if (!institutionId && routeInstitutionId) {
-            institutionId = routeInstitutionId
           }
 
           form.value = {
@@ -230,7 +225,6 @@ onMounted(async () => {
             additionalInfo: found.additionalInfo || found.AdditionalInfo || found.notes || ''
           }
 
-          // 編輯模式不允許變更機構；畫面僅顯示機構名稱（如未解析到 institutionId，仍會顯示名稱）
 
           // 除錯用：檢查 institutionId 是否正確
           console.log('編輯班級載入：', {
