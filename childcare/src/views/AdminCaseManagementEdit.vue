@@ -111,7 +111,6 @@
           <div class="grid two-col">
             <div class="row"><span class="label">姓名：</span><span>{{ caseData.applicant?.name || '—' }}</span></div>
             <div class="row"><span class="label">生日：</span><span>{{ caseData.applicant?.birth || '—' }}</span></div>
-            <div class="row"><span class="label">身分證：</span><span>{{ caseData.applicant?.id || '—' }}</span></div>
             <div class="row"><span class="label">戶籍地址：</span><span>{{ caseData.applicant?.homeAddress || '—' }}</span></div>
             <div class="row"><span class="label">通訊地址：</span><span>{{ caseData.applicant?.mailAddress || '—' }}</span></div>
             <div class="row"><span class="label">行動電話：</span><span>{{ caseData.applicant?.mobile || '—' }}</span></div>
@@ -146,7 +145,7 @@
               </template>
             </div>
           </div>
-          <div class="parent-block">
+          <div v-if="caseData.parent2 && caseData.parent2.name" class="parent-block">
             <div class="parent-title">家長2</div>
             <div class="grid two-col">
               <div class="row"><span class="label">姓名：</span><span>{{ caseData.parent2?.name || '—' }}</span></div>
