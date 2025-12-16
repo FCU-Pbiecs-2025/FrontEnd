@@ -601,7 +601,7 @@ onMounted(async () => {
     }
 
     // 存放家長資料
-    if (Array.isArray(data.parents)) {
+    if (Array.isArray(data.parents) && data.parents.length > 0) {
       familyData.value.parents = data.parents.map((parent, idx) => ({
         index: idx,
         name: parent.name || '',
@@ -618,10 +618,12 @@ onMounted(async () => {
         suspendEnd: parent.suspendEnd || '',
         email: parent.email || ''
       }))
+    } else {
+      familyData.value.parents = []
     }
 
     // 存放幼兒資料
-    if (Array.isArray(data.children)) {
+    if (Array.isArray(data.children) && data.children.length > 0) {
       familyData.value.children = data.children.map((child, idx) => ({
         index: idx,
         name: child.name || '',
@@ -629,12 +631,39 @@ onMounted(async () => {
         birthDate: child.birthDate || '',
         gender: child.gender === false ? '女' : '男'
       }))
+    } else {
+      familyData.value.children = []
     }
 
     console.log('✅ 已成功載入家庭資料:')
     console.log('userInfo:', familyData.value.userInfo)
     console.log('parents:', familyData.value.parents)
     console.log('children:', familyData.value.children)
+
+    // ========== 檢查家長和幼兒資料是否為空 ==========
+    const hasParents = familyData.value.parents && familyData.value.parents.length > 0
+    const hasChildren = familyData.value.children && familyData.value.children.length > 0
+
+    console.log('========== 家庭資料檢查 ==========')
+    console.log('hasParents:', hasParents, '(陣列長度:', familyData.value.parents?.length || 0, ')')
+    console.log('hasChildren:', hasChildren, '(陣列長度:', familyData.value.children?.length || 0, ')')
+
+    if (!hasParents || !hasChildren) {
+      let missingData = []
+      if (!hasParents) missingData.push('家長資料')
+      if (!hasChildren) missingData.push('幼兒資料')
+
+      console.warn('⚠️ 缺少必要資料:', missingData.join('、'))
+
+      alert(`⚠️ 申請前請先完善資料\n\n您尚未填寫：${missingData.join('、')}\n\n請先前往「會員中心」填寫完整的家庭資料後，再進行托育服務申請。`)
+
+      // 導航到會員中心
+      router.push('/member-center')
+      return
+    }
+
+    console.log('✅ 家庭資料檢查通過，繼續載入機構列表')
+    console.log('====================================')
 
     // 獲取機構列表
     try {

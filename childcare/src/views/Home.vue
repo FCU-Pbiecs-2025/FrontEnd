@@ -231,7 +231,7 @@ const loadNewsData = async () => {
       return t === 1
     })
 
-    // 正規化欄位並排序、取前五筆
+    // 正規化欄位並排序、取前三筆
     newsItems.value = frontendAnnouncements
       .map(item => ({
         announcementID: item.announcementID || item.id || item.announcementId,
@@ -241,7 +241,7 @@ const loadNewsData = async () => {
       }))
       .filter(i => i.announcementID)
       .sort((a, b) => new Date(b.startDate) - new Date(a.startDate))
-      .slice(0, 5)
+      .slice(0, 3)
   } catch (err) {
     console.error('載入最新消息失敗:', err)
     if (err.response) {
@@ -404,16 +404,17 @@ main {
 .news-list {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
 .news-item {
   background: white;
   border-radius: 12px;
-  padding: 24px;
+  padding: 20px 24px;
   box-shadow: 0 2px 8px rgba(249, 175, 174, 0.1);
   border-left: 4px solid #F9AFAE;
   transition: transform 0.2s, box-shadow 0.2s;
+  min-height: 100px; /* 最小高度 */
 }
 
 .news-item:hover {
@@ -425,7 +426,30 @@ main {
   color: #F9AFAE;
   font-weight: bold;
   font-size: 0.9rem;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+}
+
+.news-content h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap; /* 標題單行顯示 */
+}
+
+.news-content p {
+  color: #666;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* 限制顯示2行 */
+  line-clamp: 2; /* 標準屬性 */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 載入狀態樣式 */
@@ -463,6 +487,19 @@ main {
   .card {
     width: 100%;
     padding: 24px 10px 16px 10px;
+  }
+  .content-area {
+    padding: 0 10px;
+  }
+  .news-item {
+    padding: 16px 20px;
+    min-height: 90px;
+  }
+  .news-content h3 {
+    font-size: 1rem;
+  }
+  .news-content p {
+    font-size: 0.9rem;
   }
   .news-box {
     padding: 20px 8px;
