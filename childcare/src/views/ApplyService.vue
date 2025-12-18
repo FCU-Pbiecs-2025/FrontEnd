@@ -837,6 +837,14 @@ const submitForm = () => {
       alert('❌ 家長1已勾選「是否留停」，請填寫「留停訖」日期')
       return
     }
+    // 檢查留停結束日期是否早於今天
+    const leaveEndDate = new Date(form.value.parent1.leaveStart)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    if (leaveEndDate < today) {
+      alert('❌ 家長1的留職停薪尚未結束，不符合申請公托資格，請確認是否正確填寫')
+      return
+    }
   }
 
   // 檢查家長2的留職停薪驗證
@@ -847,6 +855,14 @@ const submitForm = () => {
     }
     if (!form.value.parent2.leaveEnd || form.value.parent2.leaveEnd.trim() === '') {
       alert('❌ 家長2已勾選「是否留停」，請填寫「留停訖」日期')
+      return
+    }
+    // 檢查留停結束日期是否早於今天
+    const leaveEndDate = new Date(form.value.parent2.leaveStart)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    if (leaveEndDate < today) {
+      alert('❌ 家長2的留職停薪尚未結束，不符合申請公托資格，請確認是否正確填寫')
       return
     }
   }

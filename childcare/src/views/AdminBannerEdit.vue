@@ -29,10 +29,10 @@
             <span v-if="form.imageName" class="file-name">{{ getDisplayFileName(form.imageName) }}</span>
           </div>
         </div>
-        <div class="form-row">
-          <label class="form-label">跳轉連結：</label>
-          <input v-model="form.linkUrl" class="form-input" placeholder="/apply-service 或 https://... 或 RouteName" />
-        </div>
+<!--        <div class="form-row">-->
+<!--          <label class="form-label">跳轉連結：</label>-->
+<!--          <input v-model="form.linkUrl" class="form-input" placeholder="/apply-service 或 https://... 或 RouteName" />-->
+<!--        </div>-->
         <div class="form-row">
           <label class="form-label">開始時間：</label>
           <input type="datetime-local" v-model="form.startTime" class="form-input" />

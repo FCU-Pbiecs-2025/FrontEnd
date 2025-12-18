@@ -46,7 +46,7 @@
           <div v-show="parentOpen" class="collapse-content">
             <template v-for="(parent, idx) in parentList" :key="idx">
               <div class="parent-title">家長資料{{ idx + 1 }}</div>
-              <div class="info-row"><label class="info-label">身分證字號/護照號碼：</label><span class="info-value">{{ parent.id }}</span></div>
+              <div class="info-row"><label class="info-label">身分證字號：</label><span class="info-value">{{ parent.id }}</span></div>
               <div class="info-row"><label class="info-label">姓名：</label><span class="info-value">{{ parent.name }}</span></div>
               <div class="info-row"><label class="info-label">性別：</label><span class="info-value">{{ parent.gender }}</span></div>
               <div class="info-row"><label class="info-label">與幼兒關係：</label><span class="info-value">{{ parent.relation }}</span></div>
@@ -57,7 +57,7 @@
               <div class="info-row"><label class="info-label">電子信箱：</label><span class="info-value">{{ parent.email }}</span></div>
               <div class="info-row"><label class="info-label">出生年月日：</label><span class="info-value">{{ parent.birth }}</span></div>
               <div class="info-row"><label class="info-label">是否留停：</label><span class="info-value">{{ parent.suspend }}</span></div>
-              <div class="info-row"><label class="info-label">留停訖：</label><span class="info-value">{{ parent.suspendEnd }}</span></div>
+              <div class="info-row" v-if="parent.suspendEnd"><label class="info-label">留停訖：</label><span class="info-value">{{ parent.suspendEnd }}</span></div>
               <div class="info-row"><label class="info-label">參與身分類型：</label><span class="info-value">{{ parent.participantType }}</span></div>
               <hr v-if="idx !== parentList.length - 1" />
             </template>
@@ -78,7 +78,7 @@
             <div class="info-row"><label class="info-label">性別：</label><span class="info-value">{{ childData.gender }}</span></div>
             <div class="info-row"><label class="info-label">出生年月日：</label><span class="info-value">{{ childData.birth }}</span></div>
             <div class="info-row"><label class="info-label">年齡：</label><span class="info-value">{{ childData.age }}</span></div>
-            <div class="info-row"><label class="info-label">戶籍地址：</label><span class="info-value">{{ childData.householdAddr }}</span></div>
+<!--            <div class="info-row"><label class="info-label">戶籍地址：</label><span class="info-value">{{ childData.householdAddr }}</span></div>-->
             <div class="info-row"><label class="info-label">通訊地址：</label><span class="info-value">{{ childData.contactAddr }}</span></div>
           </div>
         </transition>

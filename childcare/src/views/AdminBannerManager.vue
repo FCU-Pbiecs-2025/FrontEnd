@@ -29,7 +29,7 @@
             <tr>
               <th>排序</th>
               <th>圖片</th>
-              <th>導向連結</th>
+              <th> </th>
               <th>狀態</th>
               <th>操作</th>
             </tr>
