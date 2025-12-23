@@ -35,7 +35,7 @@
             <!-- 機構資訊（統一欄位） -->
             <div class="agency-info-table">
               <div class="info-row" v-if="uiAgency.contactPerson"><span>聯絡人：</span><span>{{ uiAgency.contactPerson }}</span></div>
-              <div class="info-row" v-if="uiAgency.responsiblePerson"><span>負責人：</span><span>{{ uiAgency.responsiblePerson }}</span></div>
+<!--              <div class="info-row" v-if="uiAgency.responsiblePerson"><span>負責人：</span><span>{{ uiAgency.responsiblePerson }}</span></div>-->
               <div class="info-row" v-if="uiAgency.address"><span>機構地址：</span><span>{{ uiAgency.address }}</span></div>
               <div class="info-row" v-if="uiAgency.phoneNumber"><span>電話：</span><span>{{ uiAgency.phoneNumber }}</span></div>
               <div class="info-row" v-if="uiAgency.fax"><span>傳真：</span><span>{{ uiAgency.fax }}</span></div>

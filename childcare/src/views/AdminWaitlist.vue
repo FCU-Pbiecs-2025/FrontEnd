@@ -9,22 +9,26 @@
       <!-- 篩選條件 -->
       <div class="query-card">
         <div class="query-row">
-          <div class="filters-wrapper">
-            <div class="search-area">
-              <label class="search-label" for="institution">選擇機構：</label>
-              <select id="institution" v-model="selectedInstitutionId" class="search-input">
-                <option value="0">全部機構</option>
-                <option v-for="i in institutions" :key="i.id" :value="String(i.id)">{{ i.name }}</option>
-              </select>
-            </div>
-            <div class="search-area">
-              <label class="search-label" for="keyword">姓名：</label>
-              <input id="keyword" v-model="keyword" class="search-input" placeholder="幼兒姓名" />
-            </div>
+          <div class="search-area">
+            <label class="search-label" for="institution">選擇機構</label>
+            <select id="institution" v-model="selectedInstitutionId" class="search-input">
+              <option value="0">全部機構</option>
+              <option v-for="i in institutions" :key="i.id" :value="String(i.id)">{{ i.name }}</option>
+            </select>
+          </div>
+          <div class="search-area">
+            <label class="search-label" for="keyword">幼兒姓名</label>
+            <input id="keyword" v-model="keyword" class="search-input" placeholder="請輸入幼兒姓名" />
           </div>
           <div class="actions-wrapper">
-            <button class="btn query" @click="doFilter" :disabled="loading">{{ loading ? '查詢中...' : '查詢' }}</button>
-            <button class="btn pdf" @click="generateExcel" :disabled="loadingExport">{{ loadingExport ? '匯出中...' : '匯出Excel' }}</button>
+            <button class="btn query" @click="doFilter" :disabled="loading">
+              <span v-if="loading">🔍 查詢中...</span>
+              <span v-else>🔍 查詢</span>
+            </button>
+            <button class="btn pdf" @click="generateExcel" :disabled="loadingExport">
+              <span v-if="loadingExport">📥 匯出中...</span>
+              <span v-else>📥 匯出Excel</span>
+            </button>
           </div>
         </div>
       </div>
@@ -244,44 +248,82 @@ onMounted(() => {
   background:#fff;
   border:1px solid #e6e6ea;
   border-radius:12px;
-  padding:14px 18px;
+  padding:20px 24px;
   margin: 10px 0 24px;
   box-shadow:0 2px 8px rgba(16,24,40,0.04);
 }
-.query-row { display:flex; align-items:center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
-.filters-wrapper { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.search-area{gap: 10px; display: flex; align-items: center; }
-.search-label { font-weight:700; color:#2e6fb7; font-size:.95rem }
+.query-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items: end;
+  gap: 20px;
+}
+.search-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.search-label {
+  font-weight: 700;
+  color: #2e6fb7;
+  font-size: 0.9rem;
+  letter-spacing: 0.3px;
+}
 .search-input {
-  padding:9px 12px;
-  border-radius:6px;
-  border:1px solid #d8dbe0;
-  min-width:220px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #d8dbe0;
+  width: 100%;
   outline: none;
   background: #fff;
-  transition: border-color .2s, box-shadow .2s;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
 }
 .search-input:focus {
-  border-color:#2e6fb7;
-  box-shadow:0 0 0 3px rgba(46,111,183,.15);
+  border-color: #2e6fb7;
+  box-shadow: 0 0 0 3px rgba(46,111,183,.15);
+}
+.search-input:hover {
+  border-color: #b3d4fc;
 }
 
-.btn { padding:7px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:700 }
-.btn.query { background:#e6f2ff; color:#2e6fb7; border:1px solid #b3d4fc }
-.btn.query:disabled { opacity:.6; cursor:not-allowed }
-.btn.query:hover:not(:disabled) { filter: brightness(0.98); }
+.btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.btn.query {
+  background: #2e6fb7;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(46,111,183,0.25);
+}
+.btn.query:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn.query:hover:not(:disabled) {
+  background: #245a94;
+  box-shadow: 0 4px 10px rgba(46,111,183,0.35);
+  transform: translateY(-1px);
+}
 
 .btn.pdf {
-  background: #e8f5e9;
-  color: #388e3c;
-  border: 1px solid #a5d6a7;
+  background: #4caf50;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(76,175,80,0.25);
 }
-.btn.pdf:disabled { opacity:.6; cursor:not-allowed }
-.btn.pdf:hover { filter: brightness(0.98); }
+.btn.pdf:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn.pdf:hover:not(:disabled) {
+  background: #45a049;
+  box-shadow: 0 4px 10px rgba(76,175,80,0.35);
+  transform: translateY(-1px);
+}
 
 .actions-wrapper {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
@@ -307,10 +349,16 @@ onMounted(() => {
 .empty-box { display:flex; gap:10px; align-items:center; justify-content:center; color:#aaa }
 
 @media (max-width: 900px) {
-  .query-row { flex-direction: column; align-items:stretch; }
-  .filters-wrapper { flex-direction: column; align-items: stretch; width: 100%; }
-  .actions-wrapper { justify-content: flex-start; }
-  .search-input { width: 100%; }
+  .query-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .actions-wrapper {
+    justify-content: stretch;
+  }
+  .btn {
+    width: 100%;
+  }
   .waitlist-card { width: 95%; }
 }
 </style>

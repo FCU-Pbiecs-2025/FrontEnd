@@ -460,11 +460,11 @@ onMounted(() => {
 
 /* 查詢區塊 */
 .query-card { background:#fff; border:1px solid #e6e6ea; border-radius:12px; padding:14px 18px; margin-bottom:24px; box-shadow:0 2px 8px rgba(16,24,40,0.04); margin-top:20px }
-.query-container { display:flex; flex-wrap:wrap; gap:12px }
+.query-container { display:flex; flex-wrap:wrap; gap:12px ;justify-content: center;}
 .query-row { display:flex; width:50%; flex:0 0 calc(50% - 6px); margin-bottom:12px }
 .search-area { gap:30px; display:flex; align-items:center; width:100% }
-.type-label { font-weight:600; color:#2e6fb7; min-width:100px }
-.date-input { padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; flex:1; max-width:220px }
+.type-label { font-weight:600; color:#2e6fb7; min-width:20% }
+.date-input { padding:8px 10px; border-radius:6px; border:1px solid #d8dbe0; flex:1; max-width:80% }
 .btn-query { display:flex; gap:10px; justify-content:center; margin-top:10px }
 .btn { padding:7px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:600 }
 .btn.primary { background: linear-gradient(90deg,#3b82f6,#2563eb); color:#fff }
