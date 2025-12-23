@@ -49,7 +49,8 @@ export const getInstitutionsSimpleAll = async () => {
  *       "updatedTime": "2025-11-20T22:06:47.46",
  *       "latitude": 24.148000,
  *       "longitude": 120.664000,
- *       "institutionsType": true
+ *       "institutionsType": true,
+ *       "accountStatus": 1
  *     }
  *   ],
  *   "totalElements": 4
@@ -147,7 +148,8 @@ export const getInstitutionsWithNameSearch = async (offset = 0, size = 10, insti
  *   "updatedTime": "2025-11-20T22:06:47.46",
  *   "latitude": 24.148000,
  *   "longitude": 120.664000,
- *   "institutionsType": true
+ *   "institutionsType": true,
+ *   "accountStatus": 1
  * }
  */
 export const getInstitutionById = async (id) => {
@@ -222,7 +224,8 @@ export const createInstitution = async (data) => {
  *   "updatedUser": "admin",
  *   "latitude": 24.148000,
  *   "longitude": 120.664000,
- *   "institutionsType": true
+ *   "institutionsType": true,
+ *   "accountStatus": 1
  * }
  *
  * 使用方式2 - 同時上傳圖片（Content-Type: multipart/form-data）:
@@ -260,9 +263,15 @@ export const updateInstitution = async (id, data, image = null) => {
             console.log('[API] updateInstitution 包含圖片:', image.name);
 
             const formData = new FormData();
-            formData.append('data', JSON.stringify(data));
+
+            // 將 JSON 資料轉換為 Blob，設定正確的 Content-Type
+            const jsonBlob = new Blob([JSON.stringify(data)], {
+                type: 'application/json'
+            });
+            formData.append('data', jsonBlob);
             formData.append('image', image);
 
+            // 不要設定 Content-Type header，讓瀏覽器自動設定 multipart/form-data 的 boundary
             response = await http.put(url, formData);
         } else {
             // 使用方式1：纯 JSON 更新（Content-Type: application/json）

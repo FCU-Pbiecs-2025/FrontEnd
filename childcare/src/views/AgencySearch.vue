@@ -254,7 +254,9 @@ export default {
       isLoading.value = true
       try {
         const response = await getAllAgencies()
+        // 只保留 accountStatus === 1 (啟用) 的機構
         agencies.value = response.data
+          .filter(item => item.accountStatus === 1)  // ✅ 只顯示啟用的機構
           .map(item => ({
             id: item.institutionID,
             name: item.institutionName,
@@ -270,7 +272,7 @@ export default {
         // 初始時顯示所有機構
         displayedAgencies.value = agencies.value
         searchTriggered.value = true // 設置為已搜尋狀態以顯示結果
-        console.log('初始載入完成，共', agencies.value.length, '個機構')
+        console.log('初始載入完成，過濾後共', agencies.value.length, '個啟用的機構')
       } catch (err) {
         console.error('初始載入機構資料失敗:', err)
         error.value = '載入機構資料失敗，請稍後再試'

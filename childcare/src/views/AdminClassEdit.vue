@@ -138,9 +138,21 @@ const fetchInstitutions = async () => {
     const data = await res.json()
     // Normalize expected shape: array of { id, name }
     if (Array.isArray(data)) {
-      institutions.value = data.map(item => ({ id: item.id || item.institutionID || item.institutionId || '', name: item.name || item.institutionName || item.InstitutionName || '' }))
+      // 過濾掉 accountStatus !== 1 (未啟用) 的機構
+      const filteredData = data.filter(item => item.accountStatus === 1)
+      institutions.value = filteredData.map(item => ({
+        id: item.id || item.institutionID || item.institutionId || '',
+        name: item.name || item.institutionName || item.InstitutionName || ''
+      }))
+      console.log('✅ 已載入機構列表 (原始:', data.length, '個，過濾後:', institutions.value.length, '個啟用的機構)')
     } else if (data && Array.isArray(data.content)) {
-      institutions.value = data.content.map(item => ({ id: item.id || item.institutionID || item.institutionId || '', name: item.name || item.institutionName || item.InstitutionName || '' }))
+      // 過濾掉 accountStatus !== 1 (未啟用) 的機構
+      const filteredContent = data.content.filter(item => item.accountStatus === 1)
+      institutions.value = filteredContent.map(item => ({
+        id: item.id || item.institutionID || item.institutionId || '',
+        name: item.name || item.institutionName || item.InstitutionName || ''
+      }))
+      console.log('✅ 已載入機構列表 (原始:', data.content.length, '個，過濾後:', institutions.value.length, '個啟用的機構)')
     } else {
       institutions.value = []
     }

@@ -73,6 +73,19 @@
           </div>
         </div>
         <div class="form-row">
+          <label class="form-label">帳號狀態：</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" :value="1" v-model.number="form.accountStatus" />
+              <span>啟用</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" :value="0" v-model.number="form.accountStatus" />
+              <span>停用</span>
+            </label>
+          </div>
+        </div>
+        <div class="form-row">
           <label class="form-label">圖片：</label>
           <div class="file-upload-section">
             <div class="file-btn">
@@ -212,6 +225,7 @@ const loadInstitution = async () => {
       responsiblePerson: data.responsiblePerson || '',
       imagePath: data.imagePath || '',
       institutionsType: data.institutionsType,
+      accountStatus: data.accountStatus ?? 1,
       createdUser: data.createdUser,
       createdTime: data.createdTime,
       updatedUser: data.updatedUser,
@@ -219,6 +233,7 @@ const loadInstitution = async () => {
     }
 
     console.log('映射後的表單資料:', form.value)
+    console.log('accountStatus:', form.value.accountStatus)
     console.log('========== 載入完成 ==========')
 
   } catch (error) {
@@ -296,6 +311,7 @@ const save = async () => {
         responsiblePerson: form.value.responsiblePerson,
         imagePath: form.value.imagePath || '',
         institutionsType: form.value.institutionsType,
+        accountStatus: form.value.accountStatus ?? 1,
         createdUser: 'admin',
         updatedUser: 'admin',
         createdTime: new Date().toISOString(),
@@ -346,6 +362,7 @@ const save = async () => {
         responsiblePerson: form.value.responsiblePerson,
         imagePath: form.value.imagePath,
         institutionsType: form.value.institutionsType,
+        accountStatus: form.value.accountStatus ?? 1,
         createdUser: form.value.createdUser,
         createdTime: form.value.createdTime,
         updatedUser: form.value.updatedUser || 'admin'
@@ -355,35 +372,58 @@ const save = async () => {
       console.log('更新資料:', updateData)
       console.log('圖片檔案:', selectedImage.value)
 
+      // 🔧 修復：採用分離更新策略，避免後端 multipart/form-data 的 Bug
+      // 1. 先用純 JSON 更新資料（確保 accountStatus 等欄位能正確更新）
       const result = await updateInstitution(
         form.value.institutionID,
         updateData,
-        selectedImage.value
+        null  // 第一步不傳圖片
       )
 
-      console.log('========== 更新成功 ==========')
+      console.log('========== 資料更新成功 ==========')
       console.log('更新結果:', result)
+
+      // 2. 如果有選擇新圖片，再單獨上傳圖片
+      let finalResult = result
+      if (selectedImage.value) {
+        try {
+          console.log('========== 上傳圖片 ==========')
+          finalResult = await updateInstitution(
+            form.value.institutionID,
+            result,  // 使用第一步返回的最新資料
+            selectedImage.value
+          )
+          console.log('圖片上傳成功:', finalResult)
+        } catch (imageError) {
+          console.error('圖片上傳失敗:', imageError)
+          alert('資料更新成功，但圖片上傳失敗')
+        }
+      }
+
+      console.log('========== 更新完成 ==========')
+      console.log('最終結果:', finalResult)
 
       // 更新表單資料為後端返回的最新資料
       form.value = {
-        institutionID: result.institutionID,
-        institutionName: result.institutionName || '',
-        contactPerson: result.contactPerson || '',
-        address: result.address || '',
-        latitude: result.latitude || '',
-        longitude: result.longitude || '',
-        phoneNumber: result.phoneNumber || '',
-        fax: result.fax || '',
-        email: result.email || '',
-        relatedLinks: result.relatedLinks || '',
-        description: result.description || '',
-        responsiblePerson: result.responsiblePerson || '',
-        imagePath: result.imagePath || '',
-        institutionsType: result.institutionsType,
-        createdUser: result.createdUser,
-        createdTime: result.createdTime,
-        updatedUser: result.updatedUser,
-        updatedTime: result.updatedTime
+        institutionID: finalResult.institutionID,
+        institutionName: finalResult.institutionName || '',
+        contactPerson: finalResult.contactPerson || '',
+        address: finalResult.address || '',
+        latitude: finalResult.latitude || '',
+        longitude: finalResult.longitude || '',
+        phoneNumber: finalResult.phoneNumber || '',
+        fax: finalResult.fax || '',
+        email: finalResult.email || '',
+        relatedLinks: finalResult.relatedLinks || '',
+        description: finalResult.description || '',
+        responsiblePerson: finalResult.responsiblePerson || '',
+        imagePath: finalResult.imagePath || '',
+        institutionsType: finalResult.institutionsType,
+        accountStatus: finalResult.accountStatus ?? 1,
+        createdUser: finalResult.createdUser,
+        createdTime: finalResult.createdTime,
+        updatedUser: finalResult.updatedUser,
+        updatedTime: finalResult.updatedTime
       }
 
       // 清除選擇的圖片

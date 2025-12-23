@@ -190,8 +190,11 @@ export default {
           rawAgencies = Array.isArray(response.data) ? response.data : [response.data];
         }
 
+        // 過濾掉 accountStatus !== 1 (未啟用) 的機構
+        const activeAgencies = rawAgencies.filter(item => item.accountStatus === 1);
+
         // 將 API 返回的欄位映射到本地使用的欄位名稱
-        this.agencies = rawAgencies.map(item => ({
+        this.agencies = activeAgencies.map(item => ({
           id: item.institutionID || item.id,
           name: item.institutionName || item.name,
           address: item.address,
@@ -202,7 +205,7 @@ export default {
           ...item
         }));
 
-        console.log(`成功加載 ${this.agencies.length} 個機構`);
+        console.log(`✅ 成功加載機構 (原始: ${rawAgencies.length} 個，過濾後: ${this.agencies.length} 個啟用的機構)`);
       } catch (error) {
         console.error('從 API 加載機構失敗:', error);
         this.loadError = error.message;

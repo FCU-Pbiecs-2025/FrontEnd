@@ -206,7 +206,9 @@ const fetchRemoteInstitutions = async () => {
     } else if (Array.isArray(data.list)) {
       arr = data.list
     }
-    remoteInstitutions.value = arr.filter(x => x && x.institutionName)
+    // 過濾掉 accountStatus !== 1 (未啟用) 的機構，並且過濾掉沒有機構名稱的項目
+    remoteInstitutions.value = arr.filter(x => x && x.institutionName && x.accountStatus === 1)
+    console.log('✅ 已載入機構列表 (原始:', arr.length, '個，過濾後:', remoteInstitutions.value.length, '個啟用的機構)')
   } catch (e) {
     console.error('error fetching institutions', e)
   }

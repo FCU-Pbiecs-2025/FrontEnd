@@ -33,6 +33,7 @@
                 <th>聯絡電話</th>
                 <th>地址</th>
                 <th>機構類型</th>
+                <th>帳號狀態</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -43,6 +44,11 @@
                 <td class="phone-cell">{{ item.phoneNumber }}</td>
                 <td class="address-cell">{{ item.address }}</td>
                 <td class="type-cell">{{ item.institutionsType ? '公托' : '準公托' }}</td>
+                <td class="status-cell">
+                  <span :class="['status-badge', getStatusClass(item.accountStatus)]">
+                    {{ getStatusText(item.accountStatus) }}
+                  </span>
+                </td>
                 <td class="action-cell">
                   <div style="display: flex; gap: 8px;">
                     <button class="btn small" style="min-width: 60px; height: 36px;" @click="edit(item)">編輯</button>
@@ -50,7 +56,7 @@
                 </td>
               </tr>
               <tr v-if="displayList.length === 0">
-                <td colspan="6" class="empty-tip">查無資料</td>
+                <td colspan="7" class="empty-tip">查無資料</td>
               </tr>
             </tbody>
           </table>
@@ -151,6 +157,16 @@ const loadInstitutions = async (offset = 0, search = null) => {
     // 轉換資料格式
     allInstitutions.value = response.content || []
 
+    // Debug: 檢查 accountStatus
+    console.log('===== 機構資料 accountStatus 檢查 =====')
+    console.log('總共載入機構數:', allInstitutions.value.length)
+    console.log('後端原始回應 (第一個機構):', response.content?.[0])
+    allInstitutions.value.forEach((inst, index) => {
+      console.log(`機構 ${index + 1}: ${inst.institutionName}`)
+      console.log(`  - accountStatus:`, inst.accountStatus, `(type: ${typeof inst.accountStatus})`)
+    })
+    console.log('========================================')
+
     // 更新分頁資訊（後端為 0-based page）
     currentPage.value = Math.floor(offset / pageSize.value)
     totalElements.value = Number(response.totalElements ?? allInstitutions.value.length) || 0
@@ -236,6 +252,44 @@ const goBack = () => {
   loadInstitutions(0) // 重新載入所有資料
 }
 
+// 取得帳號狀態文字
+const getStatusText = (status) => {
+  console.log('[AdminInstitution] getStatusText - status:', status, 'type:', typeof status)
+
+  // 處理 undefined 和 null
+  if (status === undefined || status === null) {
+    console.warn('[AdminInstitution] status 為 undefined 或 null')
+    return '未知'
+  }
+
+  // 轉換為數字進行比較
+  const statusNum = Number(status)
+  console.log('[AdminInstitution] statusNum:', statusNum)
+
+  switch(statusNum) {
+    case 0: return '停用'
+    case 1: return '啟用'
+    default: return '未知'
+  }
+}
+
+// 取得帳號狀態樣式類別
+const getStatusClass = (status) => {
+  // 處理 undefined 和 null
+  if (status === undefined || status === null) {
+    return 'status-unknown'
+  }
+
+  // 轉換為數字進行比較
+  const statusNum = Number(status)
+
+  switch(statusNum) {
+    case 0: return 'status-inactive'
+    case 1: return 'status-active'
+    default: return 'status-unknown'
+  }
+}
+
 const isEditPage = computed(() => route.name === 'AdminInstitutionNew' || route.name === 'AdminInstitutionEdit')
 </script>
 
@@ -273,6 +327,11 @@ const isEditPage = computed(() => route.name === 'AdminInstitutionNew' || route.
 .phone-cell { color:#6b6f76 }
 .address-cell { color:#6b6f76 }
 .type-cell { color:#2e6fb7; font-weight: 500; }
+.status-cell { text-align: center; }
+.status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.9rem; font-weight: 600; }
+.status-active { background: #d1fae5; color: #065f46; }
+.status-inactive { background: #fee2e2; color: #991b1b; }
+.status-unknown { background: #f3f4f6; color: #6b7280; }
 .action-cell { text-align:left }
 .empty-tip { color:#999; text-align:center; padding:18px 0 }
 .bottom-row { display:flex; justify-content:center; gap:12px; margin-top:10vh; margin-bottom: 20px}
