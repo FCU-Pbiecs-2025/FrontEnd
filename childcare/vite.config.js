@@ -12,10 +12,16 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8080', // Spring Boot 後端地址
+        target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api/, '') // 移除 /api 前綴
+        rewrite: (p) => p.replace(/^\/api/, '')
+      },
+      '/dify-api': {
+        target: 'https://api.dify.ai',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (p) => p.replace(/^\/dify-api/, '')
       }
     }
   }

@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@cucumber/cucumber": "^12.3.0",
     "@vitejs/plugin-vue": "^6.0.1",
+    "chai": "^6.2.1",
     "vite": "npm:rolldown-vite@7.1.12"
   },
   "overrides": {
@@ -17,6 +19,8 @@
   },
   "dependencies": {
     "axios": "^1.12.2",
+    "dompurify": "^3.3.1",
+    "marked": "^17.0.1",
     "pinia": "^3.0.3",
     "quill": "^2.0.3",
     "vue": "^3.5.22",
