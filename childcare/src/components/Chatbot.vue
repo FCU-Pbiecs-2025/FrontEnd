@@ -71,6 +71,22 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
             </svg>
           </button>
+
+          <!-- 麥克風按鈕 -->
+          <button
+            v-if="isSttSupported"
+            @click="toggleListening"
+            :class="['mic-btn', { active: isListening }]"
+            :disabled="isLoading"
+            :title="isListening ? '停止語音輸入' : '語音輸入'"
+            aria-label="語音輸入"
+          >
+            <!-- mic icon -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 14a3 3 0 003-3V5a3 3 0 10-6 0v6a3 3 0 003 3z" />
+              <path d="M19 11a1 1 0 10-2 0 5 5 0 01-10 0 1 1 0 10-2 0 7 7 0 006 6.93V20H9a1 1 0 100 2h6a1 1 0 100-2h-2v-2.07A7 7 0 0019 11z" />
+            </svg>
+          </button>
         </div>
       </div>
     </transition>
@@ -78,7 +94,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, watch } from 'vue';
+import { ref, nextTick, watch, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from 'axios';
 import { marked } from 'marked';
@@ -250,6 +266,107 @@ const renderMarkdown = (text) => {
   return DOMPurify.sanitize(raw);
 };
 
+// =====================
+// Speech to Text (Web Speech API)
+// =====================
+const isSttSupported = ref(false);
+const isListening = ref(false);
+let recognition = null;
+
+const initSpeechRecognition = () => {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    isSttSupported.value = false;
+    return;
+  }
+
+  isSttSupported.value = true;
+  recognition = new SpeechRecognition();
+
+  // 語系：優先繁中，其次中文
+  recognition.lang = 'zh-TW';
+  recognition.interimResults = true;
+  recognition.continuous = false; // 每次按下錄一次，較穩定
+
+  recognition.onstart = () => {
+    isListening.value = true;
+  };
+
+  recognition.onend = () => {
+    isListening.value = false;
+  };
+
+  recognition.onerror = (e) => {
+    console.error('SpeechRecognition error:', e);
+    isListening.value = false;
+  };
+
+  recognition.onresult = (event) => {
+    // 將結果整理成文字
+    let transcript = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      transcript += event.results[i][0].transcript;
+    }
+
+    // 即時顯示在輸入框
+    userInput.value = transcript.trim();
+
+    // 如果是最終結果，停掉錄音（避免卡住）
+    const last = event.results[event.results.length - 1];
+    if (last && last.isFinal) {
+      // 讓使用者有機會看一下內容，不自動送出
+      // 如果你想自動送出，可改成： setTimeout(() => sendMessage(), 100);
+      try {
+        recognition.stop();
+      } catch {
+        // ignore
+      }
+    }
+  };
+};
+
+const toggleListening = () => {
+  if (!isSttSupported.value) {
+    messages.value.push({
+      role: 'assistant',
+      content: '此瀏覽器不支援語音轉文字（建議使用 Chrome）。',
+      time: getCurrentTime()
+    });
+    return;
+  }
+
+  if (!recognition) initSpeechRecognition();
+
+  if (!recognition) return;
+
+  if (isListening.value) {
+    try {
+      recognition.stop();
+    } catch {
+      // ignore
+    }
+    return;
+  }
+
+  try {
+    recognition.start();
+  } catch (e) {
+    // 某些瀏覽器在連續 start 會丟錯
+    console.error('SpeechRecognition start failed:', e);
+  }
+};
+
+onBeforeUnmount(() => {
+  try {
+    recognition?.stop?.();
+  } catch {
+    // ignore
+  }
+});
+
+// 初始化支援偵測
+initSpeechRecognition();
+
 // 監聽路由變化
 watch(() => route.path, () => {
   if (isAdminRelatedPage()) {
@@ -262,7 +379,7 @@ watch(() => route.path, () => {
 /* 浮動按鈕 */
 .chatbot-bubble {
   position: fixed;
-  bottom: 100px;
+  bottom: 120px;
   right: 200px;
   width: 60px;
   height: 60px;
@@ -332,10 +449,10 @@ watch(() => route.path, () => {
 /* 聊天視窗 */
 .chatbot-window {
   position: fixed;
-  bottom: 100px;
+  bottom: 150px;
   right: 300px;
   width: 400px;
-  height: 700px;
+  height: 800px;
   background: white;
   border-radius: 16px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
@@ -564,6 +681,47 @@ watch(() => route.path, () => {
 .send-btn svg {
   width: 20px;
   height: 20px;
+}
+
+/* 麥克風按鈕：弱化風格（預設低調），錄音中才高亮 */
+.mic-btn {
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+  color: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  flex-shrink: 0;
+}
+
+.mic-btn:hover:not(:disabled) {
+  border-color: rgba(0, 0, 0, 0.28);
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.mic-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.mic-btn.active {
+  background: rgba(227, 93, 106, 0.12);
+  border-color: rgba(227, 93, 106, 0.55);
+  color: #e35d6a;
+}
+
+.mic-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mic-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 /* 動畫 */
