@@ -190,133 +190,113 @@ const goToRegister = () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 60px;
+  min-height: 100vh;
+  padding: 20px;
+  background-color: rgba(255, 248, 246, 0.8); /* 輕微的背景覆蓋，使其更易讀 */
 }
 
 .login-form {
-  background: white;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 400px;
+  padding: 40px;
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--primary-color, #fdd2d2);
 }
 
-.login-form h2 {
+h2 {
   text-align: center;
-  margin-bottom: 1.5rem;
-  color: #333;
+  color: var(--primary-text-color, #3a1f1f);
+  margin-bottom: 30px;
+  font-size: 24px;
+  font-weight: 600;
 }
 
 .form-group {
-  margin-bottom: 1rem;
+  margin-bottom: 20px;
 }
 
-.form-group label {
+label {
   display: block;
-  margin-bottom: 0.5rem;
-  color: #555;
+  margin-bottom: 8px;
+  color: var(--primary-text-color, #3a1f1f);
   font-weight: 500;
 }
 
-.form-group input {
+input[type="text"],
+input[type="password"] {
   width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
-  box-sizing: border-box;
+  padding: 12px 15px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+  transition: border-color 0.3s;
 }
 
-.form-group input:focus {
+input[type="text"]:focus,
+input[type="password"]:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-}
-
-.error-message {
-  color: #dc3545;
-  font-size: 0.875rem;
-  margin-bottom: 1rem;
-  text-align: center;
+  border-color: var(--secondary-color, #e28790);
+  box-shadow: 0 0 5px rgba(226, 135, 144, 0.5);
 }
 
 .login-btn {
   width: 100%;
-  padding: 0.75rem;
-  background-color: #007bff;
+  padding: 12px;
+  background-color: var(--front-btn, #F5A1A1);
   color: white;
   border: none;
-  border-radius: 4px;
-  font-size: 1rem;
+  border-radius: 5px;
+  font-size: 18px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.3s;
 }
 
 .login-btn:hover:not(:disabled) {
-  background-color: #0056b3;
+  background-color: var(--secondary-color, #e28790);
 }
 
 .login-btn:disabled {
-  background-color: #6c757d;
+  background-color: #ccc;
   cursor: not-allowed;
 }
 
+.error-message {
+  color: #e15c69;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
 .login-links {
+  margin-top: 20px;
   display: flex;
   justify-content: space-between;
-  margin-top: 1.5rem;
 }
+
 .link-btn {
   background: none;
   border: none;
-  color: #007bff;
+  color: var(--secondary-text-color, #666);
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 14px;
   text-decoration: underline;
   padding: 0;
 }
+
 .link-btn:hover {
-  color: #0056b3;
+  color: var(--secondary-color, #e28790);
 }
 
-.captcha-group {
-  margin-bottom: 1.5rem;
-}
-.captcha-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-.captcha-input {
-  flex: 1;
-  height: 48px;
-  font-size: 1.25rem;
-  padding: 0 12px;
-}
-.captcha-img {
-  width: 120px;
-  height: 48px;
-  border-radius: 6px;
-  border: 1.5px solid #bbb;
-  background: #fff;
-  cursor: pointer;
-  box-shadow: 0 1px 4px #0001;
-  object-fit: contain;
-}
-.refresh-captcha-btn {
-  background: none;
-  border: none;
-  color: #007bff;
-  cursor: pointer;
-  font-size: 2rem;
-  padding: 0 8px;
-  margin-left: 0;
-  height: 48px;
-  display: flex;
-  align-items: center;
-}
-.refresh-captcha-btn:hover {
-  color: #0056b3;
+/* RWD */
+@media (max-width: 480px) {
+  .login-form {
+    padding: 20px;
+  }
+
+  h2 {
+    font-size: 22px;
+  }
 }
 </style>
