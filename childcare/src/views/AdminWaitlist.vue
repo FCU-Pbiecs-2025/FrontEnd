@@ -20,16 +20,17 @@
             <label class="search-label" for="keyword">幼兒姓名</label>
             <input id="keyword" v-model="keyword" class="search-input" placeholder="請輸入幼兒姓名" />
           </div>
-          <div class="actions-wrapper">
-            <button class="btn query" @click="doFilter" :disabled="loading">
-              <span v-if="loading">🔍 查詢中...</span>
-              <span v-else>🔍 查詢</span>
-            </button>
-            <button class="btn pdf" @click="generateExcel" :disabled="loadingExport">
-              <span v-if="loadingExport">📥 匯出中...</span>
-              <span v-else>📥 匯出Excel</span>
-            </button>
-          </div>
+
+        </div>
+        <div class="actions-wrapper">
+          <button class="btn query" @click="doFilter" :disabled="loading">
+            <span v-if="loading">🔍 查詢中...</span>
+            <span v-else>🔍 查詢</span>
+          </button>
+          <button class="btn pdf" @click="generateExcel" :disabled="loadingExport">
+            <span v-if="loadingExport">📥 匯出中...</span>
+            <span v-else>📥 匯出</span>
+          </button>
         </div>
       </div>
 
@@ -238,7 +239,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.waitlist-page { display:flex; justify-content:center; }
+.waitlist-page { display:flex; justify-content:center; width: 80% }
 .waitlist-card { max-width: 1100px; width: 100%; }
 .title-row { display:flex; align-items:center; gap:10px; margin: 48px 0 12px }
 .icon { width:28px; height:28px; }
@@ -251,29 +252,32 @@ onMounted(() => {
   padding:20px 24px;
   margin: 10px 0 24px;
   box-shadow:0 2px 8px rgba(16,24,40,0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 .query-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  align-items: end;
+  display: flex;
+  width: 80%;
   gap: 20px;
 }
 .search-area {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  gap: 15px;
 }
 .search-label {
+  display: flex;
   font-weight: 700;
   color: #2e6fb7;
   font-size: 0.9rem;
   letter-spacing: 0.3px;
+  align-items: center;
 }
 .search-input {
   padding: 10px 14px;
   border-radius: 8px;
   border: 1px solid #d8dbe0;
-  width: 100%;
+  width: 70%;
   outline: none;
   background: #fff;
   font-size: 0.95rem;
@@ -325,6 +329,8 @@ onMounted(() => {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 30px;
 }
 
 .table-section {

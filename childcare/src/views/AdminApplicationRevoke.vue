@@ -12,7 +12,7 @@
           <div class="query-row">
             <div class="search-area">
               <label class="type-label">流水案號：</label>
-              <input v-model="filters.revokeId" placeholder="請輸入流水案號 (caseNumber)" class="date-input" style="width:200px" />
+              <input v-model="filters.revokeId" placeholder="請輸入流水案號" class="date-input" style="width:200px" />
             </div>
           </div>
           <div class="query-row">

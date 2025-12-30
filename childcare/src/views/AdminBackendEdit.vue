@@ -38,7 +38,6 @@
           <label class="form-label">機構名稱：</label>
           <select v-model="account.org" class="form-input">
             <option value="">請選擇機構</option>
-            <option value="市政府">市政府</option>
             <option v-for="inst in remoteInstitutions" :key="inst.id || inst.institutionName" :value="inst.institutionName">
               {{ inst.institutionName }}
             </option>
@@ -206,9 +205,9 @@ const fetchRemoteInstitutions = async () => {
     } else if (Array.isArray(data.list)) {
       arr = data.list
     }
-    // 過濾掉 accountStatus !== 1 (未啟用) 的機構，並且過濾掉沒有機構名稱的項目
-    remoteInstitutions.value = arr.filter(x => x && x.institutionName && x.accountStatus === 1)
-    console.log('✅ 已載入機構列表 (原始:', arr.length, '個，過濾後:', remoteInstitutions.value.length, '個啟用的機構)')
+    // 過濾掉沒有機構名稱的項目
+    remoteInstitutions.value = arr.filter(x => x && x.institutionName)
+    console.log('✅ 已載入機構列表 (原始:', arr.length, '個，過濾後:', remoteInstitutions.value.length, '個機構)')
   } catch (e) {
     console.error('error fetching institutions', e)
   }

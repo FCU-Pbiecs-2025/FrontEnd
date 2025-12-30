@@ -524,6 +524,7 @@ async function searchAllApplications() {
 
 function search() {
   currentPage.value = 1; // 重置到第一頁
+  showBack.value = true; // 顯示返回按鈕
 
   // 如果有輸入流水案號，使用流水案號精確查詢
   if (filters.value.applicationId && filters.value.applicationId.trim()) {
