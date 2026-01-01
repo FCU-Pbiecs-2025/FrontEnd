@@ -224,10 +224,18 @@
             <button class="preview-close" @click="closePreview">×</button>
           </div>
           <div class="preview-body">
-            <img v-if="preview.file && preview.file.url" :src="preview.file.url" alt="preview" />
-            <div v-else class="preview-fallback">
-              無法預覽此檔案。
-            </div>
+            <!-- ✅ 依檔案類型選擇預覽方式 -->
+            <img
+              v-if="preview.file && preview.file.url && preview.file.type?.startsWith('image/')"
+              :src="preview.file.url"
+              alt="preview"
+            />
+            <iframe
+              v-else-if="preview.file && preview.file.url && preview.file.type === 'application/pdf'"
+              :src="preview.file.url"
+              style="width: 100%; height: 100%; border: 0"
+            ></iframe>
+            <div v-else class="preview-fallback">無法預覽此檔案。</div>
           </div>
         </div>
       </div>
@@ -265,6 +273,7 @@ import { IDENTITY_TYPE_MAP, CASE_STATUS_MAP } from '@/api/application'
 import { useRouter, useRoute } from 'vue-router'
 import { getApplicationCaseByParticipantID, updateApplicationParticipantStatus } from '@/api/applicationCase.js'
 import { getClassByInstitutionId } from '@/api/class.js'
+import { buildIdentityFileUrl, withCacheBust } from '@/utils/fileUrl.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -280,7 +289,7 @@ const isLoading = ref(false)
 const loadError = ref('')
 
 // Collapsible sections state - default collapsed
-const openSections = ref({ applicant: false, parents: false, child: false, files: false })
+const openSections = ref({ applicant: false, parents: false, child: false, files: true })
 const toggle = (key) => { openSections.value[key] = !openSections.value[key] }
 
 // Admit selections
@@ -360,7 +369,7 @@ const isPdfFile = (f) => {
 const preview = ref({ visible: false, file: null })
 const closePreview = () => { preview.value.visible = false; preview.value.file = null }
 
-// 獲取幼兒圖片 URL
+// 獲取幼兒圖片 URL（取第一個可用的附件）
 const getChildImageUrl = () => {
   if (!caseData.value) return ''
   const a = caseData.value
@@ -373,50 +382,101 @@ const getChildImageUrl = () => {
     a.attachmentPath2 ||
     a.AttachmentPath3 ||
     a.attachmentPath3
+
   if (!path) return ''
-  // 若後端已回傳完整 URL，直接使用；若已是 /identity-files 開頭，補上網域
-  if (path.startsWith('http://') || path.startsWith('https://')) {
-    return path
-  }
-  if (path.startsWith('/')) {
-    return `http://localhost:8080${path}`
-  }
-  // 其餘情況視為 /identity-files 底下的檔名
-  return `http://localhost:8080/identity-files/${path}`
+
+  // 使用統一的路徑處理工具
+  return buildIdentityFileUrl(path)
+}
+
+// 根據檔案路徑猜測 MIME 類型
+const guessMimeType = (path) => {
+  const p = (path || '').toLowerCase()
+  if (p.endsWith('.pdf')) return 'application/pdf'
+  if (p.endsWith('.png')) return 'image/png'
+  if (p.endsWith('.jpg') || p.endsWith('.jpeg')) return 'image/jpeg'
+  if (p.endsWith('.gif')) return 'image/gif'
+  if (p.endsWith('.webp')) return 'image/webp'
+  return 'application/octet-stream'
 }
 
 // 獲取所有附件檔案列表
 const getAttachmentFiles = () => {
+  console.log('[getAttachmentFiles] caseData.value:', caseData.value)
+
+  if (!caseData.value) {
+    console.log('[getAttachmentFiles] caseData.value 為空')
+    return []
+  }
+
   const files = []
   const pathFields = [
-    { path: caseData.value.attachmentPath, name: '附件1' },
-    { path: caseData.value.attachmentPath1, name: '附件2' },
-    { path: caseData.value.attachmentPath2, name: '附件3' },
-    { path: caseData.value.attachmentPath3, name: '附件4' }
+    { path: caseData.value.attachmentPath || caseData.value.AttachmentPath, name: '附件1' },
+    { path: caseData.value.attachmentPath1 || caseData.value.AttachmentPath1, name: '附件2' },
+    { path: caseData.value.attachmentPath2 || caseData.value.AttachmentPath2, name: '附件3' },
+    { path: caseData.value.attachmentPath3 || caseData.value.AttachmentPath3, name: '附件4' }
   ]
 
+  console.log('[getAttachmentFiles] pathFields:', pathFields)
+
   pathFields.forEach((field, idx) => {
+    console.log(`[getAttachmentFiles] 檢查 ${field.name}: path=`, field.path)
+
     if (field.path) {
+      let finalPath = field.path
+
+      // ✅ 關鍵修復：如果路徑只有檔名（不包含斜線），補上 applicationID
+      if (!finalPath.includes('/') && !finalPath.includes('\\')) {
+        const appId = caseData.value.applicationID
+        if (appId) {
+          finalPath = `${appId}/${finalPath}`
+          console.log(`[路徑修復] ${field.name}: 補上 applicationID => ${finalPath}`)
+        } else {
+          console.warn(`[路徑修復] ${field.name}: 缺少 applicationID，無法補全路徑`)
+        }
+      }
+
+      // 使用統一的路徑處理工具，並添加緩存破壞參數避免圖片快取問題
+      const baseUrl = buildIdentityFileUrl(finalPath)
+      const url = withCacheBust(baseUrl)
+      const type = guessMimeType(finalPath)
+
+      // Debug: 確認每個附件拿到的 path 與 url
+      console.log(`[附件預覽] ${field.name}:`)
+      console.log('  - 原始路徑:', field.path)
+      console.log('  - 修復後路徑:', finalPath)
+      console.log('  - 基礎 URL:', baseUrl)
+      console.log('  - 最終 URL:', url)
+      console.log('  - 檔案類型:', type)
+
       files.push({
-        path: field.path,
+        path: finalPath,
         name: field.name,
         index: idx,
-        url: getChildImageUrl({ AttachmentPath: field.path })
+        url,
+        type
       })
     }
   })
 
+  console.log('[getAttachmentFiles] 最終檔案列表:', files)
   return files
 }
 
 // 打開檔案預覽
 const openFilePreview = (file) => {
+  console.log('[openFilePreview] 開啟預覽:', file)
+  console.log('[openFilePreview] URL:', file.url)
+  console.log('[openFilePreview] Type:', file.type)
+
   preview.value.visible = true
   preview.value.file = {
     name: file.name,
     url: file.url,
-    type: 'image/jpeg'
+    type: guessMimeType(file.path || file.url)
   }
+
+  console.log('[openFilePreview] preview.value.file:', preview.value.file)
 }
 
 // 轉換 API 數據為前端格式
@@ -516,10 +576,15 @@ const transformApiData = (apiData) => {
     withdrawNote: childrenArray.length > 0 ? (childrenArray[0].reason || '') : '',
     applicationID: apiData.applicationID || '',
     childNationalID: childrenArray.length > 0 ? (childrenArray[0].nationalID || '') : '',
-    attachmentPath: apiData.attachmentPath || '',
-    attachmentPath1: apiData.attachmentPath1 || '',
-    attachmentPath2: apiData.attachmentPath2 || '',
-    attachmentPath3: apiData.attachmentPath3 || ''
+    // 附件路徑 - 同時支援大小寫格式
+    attachmentPath: apiData.attachmentPath || apiData.AttachmentPath || '',
+    attachmentPath1: apiData.attachmentPath1 || apiData.AttachmentPath1 || '',
+    attachmentPath2: apiData.attachmentPath2 || apiData.AttachmentPath2 || '',
+    attachmentPath3: apiData.attachmentPath3 || apiData.AttachmentPath3 || '',
+    AttachmentPath: apiData.AttachmentPath || apiData.attachmentPath || '',
+    AttachmentPath1: apiData.AttachmentPath1 || apiData.attachmentPath1 || '',
+    AttachmentPath2: apiData.AttachmentPath2 || apiData.attachmentPath2 || '',
+    AttachmentPath3: apiData.AttachmentPath3 || apiData.attachmentPath3 || ''
   }
 }
 
@@ -528,8 +593,24 @@ const fetchCaseData = async () => {
     isLoading.value = true
     loadError.value = ''
     const apiData = await getApplicationCaseByParticipantID(applicationId.value)
+
+    // Debug: 檢查 API 原始返回數據
+    console.log('[fetchCaseData] API 原始數據:', apiData)
+    console.log('[fetchCaseData] attachmentPath:', apiData?.attachmentPath)
+    console.log('[fetchCaseData] attachmentPath1:', apiData?.attachmentPath1)
+    console.log('[fetchCaseData] attachmentPath2:', apiData?.attachmentPath2)
+    console.log('[fetchCaseData] attachmentPath3:', apiData?.attachmentPath3)
+
     if (apiData) {
       caseData.value = transformApiData(apiData)
+
+      // Debug: 檢查轉換後的數據
+      console.log('[fetchCaseData] 轉換後的 caseData:', caseData.value)
+      console.log('[fetchCaseData] caseData.attachmentPath:', caseData.value.attachmentPath)
+      console.log('[fetchCaseData] caseData.attachmentPath1:', caseData.value.attachmentPath1)
+      console.log('[fetchCaseData] caseData.attachmentPath2:', caseData.value.attachmentPath2)
+      console.log('[fetchCaseData] caseData.attachmentPath3:', caseData.value.attachmentPath3)
+
       if (caseData.value.status === WAITING) {
         admitAgency.value = appliedAgency.value || ''
         admitClass.value = caseData.value.selectedClass || ''

@@ -55,10 +55,18 @@
             <button class="preview-close" @click="closePreview">×</button>
           </div>
           <div class="preview-body">
-            <img v-if="preview.file && preview.file.url" :src="preview.file.url" alt="preview" />
-            <div v-else class="preview-fallback">
-              無法預覽此檔案。
-            </div>
+            <!-- ✅ 依檔案類型選擇預覽方式 -->
+            <img
+              v-if="preview.file && preview.file.url && preview.file.type?.startsWith('image/')"
+              :src="preview.file.url"
+              alt="preview"
+            />
+            <iframe
+              v-else-if="preview.file && preview.file.url && preview.file.type === 'application/pdf'"
+              :src="preview.file.url"
+              style="width: 100%; height: 100%; border: 0"
+            ></iframe>
+            <div v-else class="preview-fallback">無法預覽此檔案。</div>
           </div>
         </div>
       </div>
@@ -208,6 +216,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getApplicationById, updateApplicationCase } from '@/api/application.js'
 import { incrementClassStudents, decrementClassStudents } from '@/api/class.js'
+import { buildIdentityFileUrl, withCacheBust } from '@/utils/fileUrl.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -302,16 +311,29 @@ const getChildImageUrl = (child) => {
     a.attachmentPath2 ||
     a.AttachmentPath3 ||
     a.attachmentPath3
+
   if (!path) return ''
-  // 若後端已回傳完整 URL，直接使用；若已是 /identity-files 開頭，補上網域
-  if (path.startsWith('http://') || path.startsWith('https://')) {
-    return path
-  }
-  if (path.startsWith('/')) {
-    return `http://localhost:8080${path}`
-  }
-  // 其餘情況視為 /identity-files 底下的檔名
-  return `http://localhost:8080/identity-files/${path}`
+
+  // 使用統一的路徑處理工具
+  return buildIdentityFileUrl(path)
+}
+
+// 用單一路徑組出對應的檔案 URL（避免四個附件都取到同一個優先路徑）
+const guessMimeType = (path) => {
+  const p = (path || '').toLowerCase()
+  if (p.endsWith('.pdf')) return 'application/pdf'
+  if (p.endsWith('.png')) return 'image/png'
+  if (p.endsWith('.jpg') || p.endsWith('.jpeg')) return 'image/jpeg'
+  if (p.endsWith('.gif')) return 'image/gif'
+  if (p.endsWith('.webp')) return 'image/webp'
+  return 'application/octet-stream'
+}
+
+const buildAttachmentUrl = (path) => {
+  if (!path) return ''
+  // 使用統一的路徑處理工具，並添加緩存破壞參數
+  const baseUrl = buildIdentityFileUrl(path)
+  return withCacheBust(baseUrl)
 }
 
 // 獲取所有附件檔案列表
@@ -326,11 +348,18 @@ const getAttachmentFiles = () => {
 
   pathFields.forEach((field, idx) => {
     if (field.path) {
+      const url = buildAttachmentUrl(field.path)
+      const type = guessMimeType(field.path)
+
+      // Debug: 確認每個附件拿到的 path 與 url 是否不同
+      console.log(`[附件預覽] ${field.name}: path=`, field.path, '=> url=', url)
+
       files.push({
         path: field.path,
         name: field.name,
         index: idx,
-        url: getChildImageUrl({ AttachmentPath: field.path })
+        url,
+        type
       })
     }
   })
@@ -344,7 +373,7 @@ const openFilePreview = (file) => {
   preview.value.file = {
     name: file.name,
     url: file.url,
-    type: 'image/jpeg'
+    type: guessMimeType(file.path || file.url)
   }
 }
 

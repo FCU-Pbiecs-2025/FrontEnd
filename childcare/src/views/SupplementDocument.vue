@@ -129,7 +129,6 @@ const submitSupplement = async () => {
     return
   }
 
-  // Ensure we have an application id to update
   const appId = applicationId.value
   if (!appId) {
     alert('找不到對應的申請資料，請返回申請頁面後再試')
@@ -138,102 +137,47 @@ const submitSupplement = async () => {
 
   uploading.value = true
   try {
-    // 建立 FormData 並依照後端習慣命名 file/file1/file2/file3
+    // ✅ 直接呼叫後端 ApplicationsController.update()：PUT /api/applications/{id}
+    // 後端接收 multipart/form-data 的 file/file1/file2/file3，並會把檔案存到 IdentityResource/{applicationId}/
     const fd = new FormData()
     const filesPayload = buildFilesPayload(uploadedFiles.value)
     Object.keys(filesPayload).forEach((k) => {
       fd.append(k, filesPayload[k], filesPayload[k].name)
     })
 
-    // 若後端需要 application id 作為參數，也一併送出（某些後端端點可能需要）
+    // 保留（有些後端會用得到）；即使不需要也不會影響
     fd.append('applicationId', String(appId))
 
-    // POST 上傳檔案到後端 —— 假設後端路由為 /applications/{id}/attachments
-    // 這個路由在各專案中常見；若後端使用不同路由，可調整為正確的 endpoint
-    const uploadUrl = `/applications/${encodeURIComponent(appId)}/attachments`
+    // ✅ 改成 update endpoint（不要再打 /attachments）
+    const updateRes = await http.put(`/applications/${encodeURIComponent(appId)}`, fd)
 
-    const uploadRes = await http.post(uploadUrl, fd)
-
-    // 解析後端回傳結果，支援多種結構：
-    // 1) { paths: [...] } 或 { attachmentPaths: [...] }
-    // 2) 直接回傳 application 物件（含 AttachmentPath 欄位）
-    // 3) 回傳陣列路徑
-    const data = uploadRes?.data || {}
-    let paths = []
-
-    if (Array.isArray(data)) {
-      paths = data
-    } else if (Array.isArray(data.paths)) {
-      paths = data.paths
-    } else if (Array.isArray(data.attachmentPaths)) {
-      paths = data.attachmentPaths
-    } else if (data.AttachmentPath || data.attachmentPath || data.AttachmentPath1 || data.attachmentPath1) {
-      // 後端直接回傳 application 物件
-      const a = data
-      paths = []
-      if (a.AttachmentPath) paths.push(a.AttachmentPath)
-      if (a.AttachmentPath1) paths.push(a.AttachmentPath1)
-      if (a.AttachmentPath2) paths.push(a.AttachmentPath2)
-      if (a.AttachmentPath3) paths.push(a.AttachmentPath3)
-    } else if (typeof data === 'object' && Object.keys(data).length > 0) {
-      // fallback: 將物件值中看似路徑的欄位取出
-      const cand = []
-      for (const v of Object.values(data)) {
-        if (typeof v === 'string' && v.length > 0) cand.push(v)
-      }
-      if (cand.length > 0) paths = cand
-    }
-
-    // 若上傳回應沒有提供路徑，嘗試讓前端以回傳的檔名或由後端另行提供（此處簡單處理）
-    if (!paths || paths.length === 0) {
-      // some backends respond with { files: [{ fileName, path }, ...] }
-      if (data.files && Array.isArray(data.files)) {
-        paths = data.files.map(f => f.path || f.fileName || f.file || '')
-      }
-    }
-
-    // 準備更新 application 的 payload
-    const payload = {}
-    if (paths && paths.length > 0) {
-      if (paths[0]) payload.AttachmentPath = paths[0]
-      if (paths[1]) payload.AttachmentPath1 = paths[1]
-      if (paths[2]) payload.AttachmentPath2 = paths[2]
-      if (paths[3]) payload.AttachmentPath3 = paths[3]
-    }
-
-    // 如果沒有從上傳回應得到路徑，也可以考慮後端已在上傳處理時自動更新資料表，這裡僅在有路徑時發起更新請求
-    if (Object.keys(payload).length > 0) {
-      await http.put(`/applications/${encodeURIComponent(appId)}`, payload)
-    }
+    // 後端 update 會回傳更新後的 application（含 AttachmentPath*）
+    const data = updateRes?.data || {}
 
     alert('補件已提交，等待審核')
-    // 1. 上傳成功後，將該幼兒案件狀態設為「審核中」
-    // 取得幼兒身分證號（假設在 selectedApplication.childNationalID 或 children 陣列）
+
+    // 1) 補件成功後，將該幼兒案件狀態設為「審核中」
     let childNationalID = applicationsStore.selectedApplication?.childNationalID
     if (!childNationalID && applicationsStore.selectedApplication?.children && applicationsStore.selectedApplication.children.length > 0) {
       childNationalID = applicationsStore.selectedApplication.children[0].nationalID
     }
     if (appId && childNationalID) {
       try {
-        // 呼叫 API 將該幼兒狀態設為「審核中」
         await http.put(`/applications/${encodeURIComponent(appId)}/case`, { children: [] }, {
           params: { NationalID: childNationalID, status: '審核中' }
         })
       } catch (e) {
-        // 若失敗可忽略，主流程不受影響
         console.warn('補件後自動設審核中失敗', e)
       }
     }
-    // 2. 跳轉回申請進度查詢頁（ApplicationStatus）並強制刷新資料
-    // 不要清空 applicationsStore.applications，直接跳轉，讓 ApplicationStatus.vue 監聽 refresh 參數自動重新抓資料
-    router.push({ name: 'ApplicationStatus', query: { refresh: Date.now() } })
-    // optionally refresh store or selected application
-    try {
-      // 如果 PINIA store 有重新抓取函式，可以呼叫之（此案暫用直接清除選取以促使頁面更新）
-      applicationsStore.selectedApplication = { ...applicationsStore.selectedApplication, ...payload }
-    } catch (e) {}
 
-    // 移除多餘的 router.back()
+    // 2) 回到申請進度查詢刷新
+    router.push({ name: 'ApplicationStatus', query: { refresh: Date.now() } })
+
+    // 3) 更新 store（可選）
+    try {
+      applicationsStore.selectedApplication = { ...applicationsStore.selectedApplication, ...(data || {}) }
+    } catch (e) {}
   } catch (error) {
     console.error('補件上傳失敗:', error)
     const msg = error?.response?.data?.message || error?.message || '上傳失敗，請稍後重試'

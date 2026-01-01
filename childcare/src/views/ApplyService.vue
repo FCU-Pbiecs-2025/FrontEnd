@@ -776,8 +776,11 @@ const validateFile = (file) => {
 
 function handleFileChange(e) {
   const files = Array.from(e.target.files)
+  console.log('🔍 [handleFileChange] 選擇了', files.length, '個檔案')
 
-  files.forEach(file => {
+  files.forEach((file, index) => {
+    console.log(`  📄 檔案 ${index}:`, file.name, `(${(file.size / 1024).toFixed(2)}KB, type: ${file.type})`)
+
     // 檢查是否已達上限
     if (uploadedFiles.value.length >= 4) {
       alert('已達上傳檔案上限（最多4個）')
@@ -796,10 +799,20 @@ function handleFileChange(e) {
       let previewUrl = ''
       if (file.type.startsWith('image/')) {
         previewUrl = URL.createObjectURL(file)
+        console.log(`  🖼️  為圖片創建預覽 URL:`, previewUrl)
       }
       uploadedFiles.value.push({ file, previewUrl })
+      console.log(`  ✅ 已添加檔案到 uploadedFiles，當前總數:`, uploadedFiles.value.length)
+    } else {
+      console.log(`  ⚠️  檔案已存在，跳過`)
     }
   })
+
+  console.log('📊 [handleFileChange] 完成，uploadedFiles 內容:')
+  uploadedFiles.value.forEach((item, idx) => {
+    console.log(`  [${idx}]`, item.file.name, `previewUrl:`, item.previewUrl)
+  })
+
   e.target.value = ''
 }
 function removeFile(idx) {
@@ -1169,19 +1182,30 @@ const buildFilesData = () => {
 
   console.log('📦 上傳的檔案總數:', uploadedFiles.value.length);
 
-  uploadedFiles.value.forEach((file, idx) => {
-    if (idx === 0) {
-      filesData.file = file.file;
-      console.log(`✅ 第 ${idx} 個檔案 -> filesData.file:`, file.file.name, `(${(file.file.size / 1024).toFixed(2)}KB)`);
-    } else if (idx < 4) {
-      filesData[`file${idx}`] = file.file;
-      console.log(`✅ 第 ${idx} 個檔案 -> filesData.file${idx}:`, file.file.name, `(${(file.file.size / 1024).toFixed(2)}KB)`);
-    } else {
-      console.warn(`⚠️ 第 ${idx} 個檔案超過上限(最多4個)，已跳過`);
+  uploadedFiles.value.forEach((item, idx) => {
+    const file = item.file;
+    const key = idx === 0 ? 'file' : `file${idx}`;
+
+    filesData[key] = file;
+
+    console.log(`✅ 第 ${idx} 個檔案:`);
+    console.log(`   - 參數名: ${key}`);
+    console.log(`   - 檔名: ${file.name}`);
+    console.log(`   - 大小: ${(file.size / 1024).toFixed(2)}KB`);
+    console.log(`   - 類型: ${file.type}`);
+    console.log(`   - lastModified: ${file.lastModified}`);
+    console.log(`   - File 對象:`, file);
+
+    if (idx >= 4) {
+      console.warn(`⚠️ 第 ${idx} 個檔案超過上限(最多4個)，但仍會嘗試上傳`);
     }
   });
 
-  console.log('✅ buildFilesData 完成，最終檔案對象 keys:', Object.keys(filesData));
+  console.log('✅ buildFilesData 完成，最終檔案對象:');
+  console.log('   - Keys:', Object.keys(filesData));
+  Object.keys(filesData).forEach(key => {
+    console.log(`   - ${key}:`, filesData[key].name);
+  });
 
   return filesData;
 };
